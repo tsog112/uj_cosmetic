@@ -71,9 +71,12 @@ export default function ProductDetailPage() {
     );
   }
 
-  const images = product.images?.length > 1
-    ? product.images
-    : [product.images?.[0] || '/images/placeholder.png'];
+  const name = product.name_mn ?? 'Нэргүй бараа';
+  const price = product.price ?? 0;
+  const salePrice = product.salePrice;
+  const displayPrice = salePrice ?? price;
+  const rawImages = product.images ?? [];
+  const images = rawImages.length > 0 ? rawImages : ['/placeholder-product.svg'];
 
   const handleAddToCart = () => {
     if (!product.inStock) return;
@@ -95,7 +98,7 @@ export default function ProductDetailPage() {
             {getCategoryName(product.category)}
           </Link>
           <span>/</span>
-          <span className="text-text-primary">{product.name_mn}</span>
+          <span className="text-text-primary">{name}</span>
         </nav>
       </div>
 
@@ -108,7 +111,7 @@ export default function ProductDetailPage() {
               {images[selectedImageIndex] && (
                 <Image
                   src={images[selectedImageIndex]}
-                  alt={product.name_mn}
+                  alt={name}
                   fill
                   className="object-cover"
                   sizes="(max-width: 1024px) 100vw, 50vw"
@@ -134,7 +137,7 @@ export default function ProductDetailPage() {
                         : 'opacity-60 hover:opacity-100'
                     }`}
                   >
-                    <Image src={img} alt={`${product.name_mn} ${index + 1}`} fill className="object-cover" sizes="120px" />
+                    <Image src={img} alt={`${name} ${index + 1}`} fill className="object-cover" sizes="120px" />
                   </button>
                 ))}
               </div>
@@ -147,18 +150,18 @@ export default function ProductDetailPage() {
               UJ Cosmetic
             </p>
             <h1 className="font-serif text-3xl md:text-4xl text-text-primary mb-4 leading-tight">
-              {product.name_mn}
+              {name}
             </h1>
 
             {/* Price */}
             <div className="mb-8 flex items-center gap-3">
-              {product.salePrice ? (
+              {salePrice ? (
                 <>
-                  <span className="text-2xl font-medium text-red-500">{formatPrice(product.salePrice)}</span>
-                  <span className="text-lg text-text-muted line-through">{formatPrice(product.price)}</span>
+                  <span className="text-2xl font-medium text-red-500">{formatPrice(displayPrice)}</span>
+                  <span className="text-lg text-text-muted line-through">{formatPrice(price)}</span>
                 </>
               ) : (
-                <span className="text-2xl font-medium text-text-primary">{formatPrice(product.price)}</span>
+                <span className="text-2xl font-medium text-text-primary">{formatPrice(price)}</span>
               )}
             </div>
 

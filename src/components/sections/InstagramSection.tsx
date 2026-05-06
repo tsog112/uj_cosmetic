@@ -1,4 +1,6 @@
 import Image from 'next/image';
+import { getSiteSettings } from '@/lib/services/firestoreService';
+import { DEFAULT_SETTINGS } from '@/types';
 
 const instagramImages = [
   '/images/instagram/insta_1.png',
@@ -9,7 +11,10 @@ const instagramImages = [
   '/images/products/oil.png',
 ];
 
-export default function InstagramSection() {
+export default async function InstagramSection() {
+  const settings = (await getSiteSettings()) || DEFAULT_SETTINGS;
+  const instaHandle = settings.instagramUrl.split('/').pop() || 'uj_cosmetic';
+
   return (
     <section className="py-20 md:py-28 border-thin-t bg-white" id="instagram">
       <div className="max-w-[1400px] mx-auto px-6 lg:px-10">
@@ -18,12 +23,12 @@ export default function InstagramSection() {
           <p className="section-label">Биднийг дагаарай</p>
           <h2 className="section-heading">
             <a
-              href="https://instagram.com/uj_cosmetic"
+              href={settings.instagramUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-accent transition-colors"
             >
-              @uj_cosmetic
+              @{instaHandle}
             </a>
           </h2>
         </div>
@@ -33,7 +38,7 @@ export default function InstagramSection() {
           {instagramImages.map((src, index) => (
             <a
               key={index}
-              href="https://instagram.com/uj_cosmetic"
+              href={settings.instagramUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="relative aspect-square overflow-hidden bg-cream-dark group"

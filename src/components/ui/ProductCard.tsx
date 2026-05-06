@@ -23,44 +23,44 @@ export default function ProductCard({ product }: ProductCardProps) {
     setTimeout(() => setIsAdded(false), 1500);
   };
 
-  const displayPrice = product.salePrice ?? product.price;
+  const displayPrice = product?.salePrice ?? product?.price ?? 0;
+  const name = product?.name_mn ?? 'Нэргүй бараа';
+  const price = product?.price ?? 0;
+  const images = product?.images ?? [];
+  const image = images[0] ?? '/placeholder-product.svg';
 
   return (
     <Link
-      href={`/shop/${product.slug}`}
+      href={`/shop/${product?.slug}`}
       className="group block bg-white border border-border h-full flex flex-col"
-      id={`product-card-${product.slug}`}
+      id={`product-card-${product?.slug}`}
     >
       {/* Image */}
       <div className="aspect-4-5 relative overflow-hidden bg-cream-dark mb-4">
-        {product.images?.[0] ? (
-          <Image
-            src={product.images[0]}
-            alt={product.name_mn}
-            fill
-            className="object-cover transition-transform duration-700 group-hover:scale-105"
-            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-text-muted text-xs">Зураг алга</div>
-        )}
+        <Image
+          src={image}
+          alt={name}
+          fill
+          className="object-cover transition-transform duration-700 group-hover:scale-105"
+          sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+        />
 
         {/* Sale badge */}
-        {product.salePrice && (
+        {product?.salePrice && (
           <div className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 uppercase tracking-wide">
             Sale
           </div>
         )}
 
         {/* Out of stock overlay */}
-        {!product.inStock && (
+        {product && !product.inStock && (
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
             <span className="bg-red-600 text-white text-xs font-bold px-3 py-1 uppercase tracking-wider">Дуусжээ</span>
           </div>
         )}
 
         {/* Hover Add to Cart */}
-        {product.inStock && (
+        {product?.inStock && (
           <div className="absolute bottom-0 left-0 right-0 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
             <button
               onClick={handleAddToCart}
@@ -78,16 +78,16 @@ export default function ProductCard({ product }: ProductCardProps) {
           UJ Cosmetic
         </p>
         <h3 className="text-sm font-normal text-text-primary leading-snug mb-2 group-hover:text-accent transition-colors flex-1">
-          {product.name_mn}
+          {name}
         </h3>
         <div className="mt-auto flex items-center gap-2">
-          {product.salePrice ? (
+          {product?.salePrice ? (
             <>
-              <span className="text-sm text-red-500 font-medium">{formatPrice(product.salePrice)}</span>
-              <span className="text-xs text-text-muted line-through">{formatPrice(product.price)}</span>
+              <span className="text-sm text-red-500 font-medium">{formatPrice(displayPrice)}</span>
+              <span className="text-xs text-text-muted line-through">{formatPrice(price)}</span>
             </>
           ) : (
-            <span className="text-sm text-text-primary font-medium">{formatPrice(product.price)}</span>
+            <span className="text-sm text-text-primary font-medium">{formatPrice(price)}</span>
           )}
         </div>
       </div>

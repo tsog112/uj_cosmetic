@@ -43,17 +43,17 @@ function ShopContent() {
 
     // Price filter
     result = result.filter(p => {
-      const price = p.salePrice ?? p.price;
+      const price = p?.salePrice ?? p?.price ?? 0;
       return price >= priceRange[0] && price <= priceRange[1];
     });
 
     // Sort
     switch (activeSort) {
       case 'price_asc':
-        result.sort((a, b) => (a.salePrice ?? a.price) - (b.salePrice ?? b.price));
+        result.sort((a, b) => (a?.salePrice ?? a?.price ?? 0) - (b?.salePrice ?? b?.price ?? 0));
         break;
       case 'price_desc':
-        result.sort((a, b) => (b.salePrice ?? b.price) - (a.salePrice ?? a.price));
+        result.sort((a, b) => (b?.salePrice ?? b?.price ?? 0) - (a?.salePrice ?? a?.price ?? 0));
         break;
       case 'newest':
       default:

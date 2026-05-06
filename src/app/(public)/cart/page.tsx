@@ -70,16 +70,23 @@ export default function CartPage() {
 
           {/* Items */}
           <div className="divide-y divide-border">
-            {items.map(item => (
+            {items.map(item => {
+              const product = item.product;
+              const name = product?.name_mn ?? 'Нэргүй бараа';
+              const price = product?.salePrice ?? product?.price ?? 0;
+              const rawImages = product?.images ?? [];
+              const image = rawImages[0] ?? '/placeholder-product.svg';
+
+              return (
               <div
-                key={item.product.id}
+                key={product?.id || Math.random().toString()}
                 className="py-6 grid grid-cols-[80px_1fr] md:grid-cols-[80px_1fr_120px_120px_40px] gap-4 md:gap-4 items-center"
               >
                 {/* Image */}
-                <Link href={`/shop/${item.product.slug}`} className="relative aspect-4-5 bg-cream-dark overflow-hidden">
+                <Link href={`/shop/${product?.slug}`} className="relative aspect-4-5 bg-cream-dark overflow-hidden">
                   <Image
-                    src={item.product.images[0]}
-                    alt={item.product.name_mn}
+                    src={image}
+                    alt={name}
                     fill
                     className="object-cover"
                     sizes="80px"
@@ -88,26 +95,26 @@ export default function CartPage() {
 
                 {/* Name & Price */}
                 <div className="min-w-0">
-                  <Link href={`/shop/${item.product.slug}`} className="hover:text-accent transition-colors">
+                  <Link href={`/shop/${product?.slug}`} className="hover:text-accent transition-colors">
                     <p className="text-[10px] tracking-[0.15em] uppercase text-text-muted mb-1">
                       UJ Cosmetic
                     </p>
                     <p className="text-sm font-medium text-text-primary truncate">
-                      {item.product.name_mn}
+                      {name}
                     </p>
                   </Link>
                   <p className="text-sm text-text-muted mt-1 md:hidden">
-                    {formatPrice(item.product.price)}
+                    {formatPrice(price)}
                   </p>
 
                   {/* Mobile quantity & remove */}
                   <div className="flex items-center gap-4 mt-3 md:hidden">
                     <QuantitySelector
                       quantity={item.quantity}
-                      onChange={q => updateQuantity(item.product.id, q)}
+                      onChange={q => updateQuantity(product?.id, q)}
                     />
                     <button
-                      onClick={() => removeFromCart(item.product.id)}
+                      onClick={() => removeFromCart(product?.id)}
                       className="text-text-muted hover:text-text-primary text-xs underline underline-offset-2"
                     >
                       Устгах
@@ -119,18 +126,18 @@ export default function CartPage() {
                 <div className="hidden md:flex justify-center">
                   <QuantitySelector
                     quantity={item.quantity}
-                    onChange={q => updateQuantity(item.product.id, q)}
+                    onChange={q => updateQuantity(product?.id, q)}
                   />
                 </div>
 
                 {/* Line Total */}
                 <p className="hidden md:block text-sm font-medium text-text-primary text-right">
-                  {formatPrice(item.product.price * item.quantity)}
+                  {formatPrice(price * item.quantity)}
                 </p>
 
                 {/* Remove (Desktop) */}
                 <button
-                  onClick={() => removeFromCart(item.product.id)}
+                  onClick={() => removeFromCart(product?.id)}
                   className="hidden md:flex items-center justify-center text-text-muted hover:text-text-primary transition-colors"
                   aria-label="Устгах"
                 >
@@ -139,7 +146,7 @@ export default function CartPage() {
                   </svg>
                 </button>
               </div>
-            ))}
+            )})}
           </div>
         </div>
 

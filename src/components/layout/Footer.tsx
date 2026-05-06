@@ -84,7 +84,7 @@ export default function Footer() {
                 <circle cx="12" cy="12" r="5" />
                 <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
               </svg>
-              @uj_cosmetic
+              @{settings.instagramUrl.split('/').pop() || 'uj_cosmetic'}
             </a>
           </div>
         </div>

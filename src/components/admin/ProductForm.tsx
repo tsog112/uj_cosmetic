@@ -32,19 +32,16 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
   const [outOfStock, setOutOfStock] = useState(initialData ? !initialData.inStock : false);
 
   // Media
-  const [images, setImages] = useState<{ url: string; progress?: number; isVideo?: boolean; _tempId?: string }[]>([]);
-  const [video, setVideo] = useState<{ url: string; progress?: number } | null>(null);
+  const [images, setImages] = useState<string[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<number[]>([]);
+  const [uploading, setUploading] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const storage = getStorage();
 
   // Initialization
   useEffect(() => {
     if (initialData?.images) {
-      setImages(initialData.images.map((url: string) => ({ url, progress: 100 })));
-    }
-    if (initialData?.videoUrl) {
-      setVideo({ url: initialData.videoUrl, progress: 100 });
+      setImages(initialData.images);
     }
   }, [initialData]);
 
@@ -58,82 +55,55 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
     setter(formatPriceInput(e.target.value));
   };
 
+  async function handleImageUpload(files: FileList | File[]) {
+    if (!files.length) return;
+    const slug = name_mn ? name_mn.toLowerCase().replace(/[\s\W]+/g, '-') : `product-${Date.now()}`;
+    setUploading(true);
+    
+    try {
+      const fileArray = Array.from(files).filter(f => f.type.startsWith('image/')).slice(0, 5); // max 5 images
+      if (fileArray.length === 0) return;
+      
+      setUploadProgress(new Array(fileArray.length).fill(0));
+      
+      const { uploadMultipleImages } = await import('@/lib/uploadImage');
+      const urls = await uploadMultipleImages(
+        fileArray,
+        slug,
+        (fileIndex, progress) => {
+          setUploadProgress(prev => {
+            const next = [...prev];
+            next[fileIndex] = progress;
+            return next;
+          });
+        }
+      );
+      
+      setImages(prev => [...prev, ...urls].slice(0, 5));
+    } catch (error) {
+      alert('Зураг оруулахад алдаа гарлаа. Дахин оролдоно уу.');
+    } finally {
+      setUploading(false);
+      setUploadProgress([]);
+    }
+  }
+
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files) return;
-    const files = Array.from(e.target.files);
-    await processFiles(files);
+    if (e.target.files) {
+      await handleImageUpload(e.target.files);
+    }
   };
 
-  const processFiles = async (files: File[]) => {
-    const slug = name_mn ? name_mn.toLowerCase().replace(/[\s\W]+/g, '-') : 'draft-product';
-
-    for (const file of files) {
-      if (file.type.startsWith('video/')) {
-        if (file.size > 50 * 1024 * 1024) {
-          alert('Бичлэг 50MB-аас бага байх ёстой.');
-          continue;
-        }
-        if (video || images.some(i => i.isVideo)) {
-          alert('Зөвхөн 1 бичлэг оруулах боломжтой.');
-          continue;
-        }
-        
-        const tempUrl = URL.createObjectURL(file);
-        setVideo({ url: tempUrl, progress: 0 });
-        
-        try {
-          const downloadUrl = await uploadFile(file, `products/${slug}/${Date.now()}_${file.name}`, (p) => {
-            setVideo(prev => prev ? { ...prev, progress: p } : null);
-          });
-          setVideo({ url: downloadUrl, progress: 100 });
-        } catch (err) {
-          alert("Зураг оруулахад алдаа гарлаа. Дахин оролдоно уу.");
-          setVideo(null);
-        }
-
-      } else if (file.type.startsWith('image/')) {
-        if (images.length >= 5) {
-          alert('Хамгийн ихдээ 5 зураг оруулах боломжтой.');
-          break;
-        }
-        if (file.size > 5 * 1024 * 1024) {
-          alert('Зураг 5MB-аас бага байх ёстой.');
-          continue;
-        }
-        
-        try {
-          const options = {
-            maxSizeMB: 1,
-            maxWidthOrHeight: 1080,
-            useWebWorker: true
-          };
-          const compressedFile = await imageCompression(file, options);
-          const tempUrl = URL.createObjectURL(compressedFile);
-          const tempId = Math.random().toString(36).substr(2, 9);
-          
-          setImages(prev => [...prev, { url: tempUrl, progress: 0, _tempId: tempId }]);
-          
-          const downloadUrl = await uploadFile(compressedFile, `products/${slug}/${Date.now()}_${compressedFile.name}`, (p) => {
-            setImages(prev => prev.map(img => img._tempId === tempId ? { ...img, progress: p } : img));
-          });
-          
-          setImages(prev => prev.map(img => img._tempId === tempId ? { url: downloadUrl, progress: 100 } : img));
-          
-        } catch (error) {
-          console.error("Upload error", error);
-          alert("Зураг оруулахад алдаа гарлаа. Дахин оролдоно уу.");
-          setImages(prev => prev.filter(img => img.progress === 100));
-        }
-      }
+  const handleDropUpload = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      await handleImageUpload(e.dataTransfer.files);
     }
   };
 
   const removeImage = (index: number) => {
     setImages(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const removeVideo = () => {
-    setVideo(null);
   };
 
   // Drag to reorder
@@ -154,37 +124,10 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
     setImages(items);
   };
 
-  const handleDropUpload = async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      await processFiles(Array.from(e.dataTransfer.files));
-    }
-  };
-
-  const uploadFile = (file: File, path: string, onProgress: (p: number) => void): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const storageRef = ref(storage, path);
-      const uploadTask = uploadBytesResumable(storageRef, file);
-
-      uploadTask.on('state_changed', 
-        (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          onProgress(progress);
-        }, 
-        (error) => reject(error), 
-        async () => {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          resolve(downloadURL);
-        }
-      );
-    });
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (images.some(img => img.progress !== undefined && img.progress < 100) || (video && video.progress !== undefined && video.progress < 100)) {
+    if (uploading) {
       alert("Файл хуулж дуустал хүлээнэ үү.");
       return;
     }
@@ -201,9 +144,6 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
       if (!productId) {
         productId = doc(collection(db, "products")).id;
       }
-
-      const uploadedImages = images.map(img => img.url);
-      const uploadedVideoUrl = video?.url || null;
 
       const numPrice = Number(priceStr.replace(/,/g, ''));
       const numSalePrice = salePriceStr ? Number(salePriceStr.replace(/,/g, '')) : null;
@@ -222,8 +162,7 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
         description_mn,
         ingredients,
         howToUse,
-        images: uploadedImages,
-        videoUrl: uploadedVideoUrl,
+        images: images,
         featured,
         published,
         inStock: !outOfStock,
@@ -279,13 +218,13 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
           
           {/* SECTION 1 - MEDIA */}
           <section>
-            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Зураг & Бичлэг</h3>
+            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Зураг</h3>
             
             <div 
               onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
               onDrop={handleDropUpload}
-              onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-[#FFB7D5] rounded-xl p-10 text-center cursor-pointer hover:bg-[#FFF0F6] transition-colors mb-4 group"
+              onClick={() => !uploading && fileInputRef.current?.click()}
+              className={`border-2 border-dashed border-[#FFB7D5] rounded-xl p-10 text-center cursor-pointer hover:bg-[#FFF0F6] transition-colors mb-4 group ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <div className="w-16 h-16 mx-auto bg-white rounded-full flex items-center justify-center text-[#FFB7D5] shadow-sm group-hover:scale-110 transition-transform mb-4">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -295,19 +234,19 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
                 </svg>
               </div>
               <p className="font-medium text-gray-700 mb-1">Зургаа энд чирж буулга эсвэл дарж сонго</p>
-              <p className="text-xs text-gray-500">JPG, PNG, WEBP (max 5MB), MP4 (max 50MB). Үсрээд 5 зураг, 1 бичлэг.</p>
+              <p className="text-xs text-gray-500">JPG, PNG, WEBP. Хамгийн ихдээ 5 зураг.</p>
               <input 
                 type="file" 
                 ref={fileInputRef} 
                 onChange={handleFileSelect} 
                 className="hidden" 
                 multiple 
-                accept="image/*,video/mp4" 
+                accept="image/*" 
               />
             </div>
 
             <div className="flex flex-wrap gap-4">
-              {images.map((img, idx) => (
+              {images.map((url, idx) => (
                 <div 
                   key={idx} 
                   draggable 
@@ -315,38 +254,25 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
                   onDragOver={(e) => handleDragOver(e, idx)}
                   className="relative w-24 h-24 rounded-lg overflow-hidden border border-gray-200 cursor-move group"
                 >
-                  <img src={img.url} alt="upload" className="w-full h-full object-cover" />
+                  <img src={url} alt="upload" className="w-full h-full object-cover" />
                   {idx === 0 && (
                     <span className="absolute bottom-0 left-0 right-0 bg-accent text-white text-[9px] font-bold text-center py-0.5">НҮҮР</span>
                   )}
                   <button type="button" onClick={() => removeImage(idx)} className="absolute top-1 right-1 bg-black/50 text-white w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                   </button>
-                  {img.progress !== undefined && img.progress < 100 && (
-                    <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
-                      <div className="w-8 h-1 bg-gray-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-accent" style={{width: `${img.progress}%`}} />
-                      </div>
-                    </div>
-                  )}
                 </div>
               ))}
-              {video && (
-                <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-gray-200 bg-black group">
-                  <video src={video.url} className="w-full h-full object-cover opacity-70" />
-                  <span className="absolute bottom-0 left-0 right-0 bg-blue-500 text-white text-[9px] font-bold text-center py-0.5">ВИДЕО</span>
-                  <button type="button" onClick={removeVideo} className="absolute top-1 right-1 bg-black/50 text-white w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                  </button>
-                  {video.progress !== undefined && video.progress < 100 && (
-                    <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
-                      <div className="w-8 h-1 bg-gray-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-blue-500" style={{width: `${video.progress}%`}} />
-                      </div>
-                    </div>
-                  )}
+
+              {/* Progress bars for currently uploading images */}
+              {uploading && uploadProgress.map((prog, idx) => (
+                <div key={`prog-${idx}`} className="relative w-24 h-24 rounded-lg overflow-hidden border border-gray-200 bg-gray-50 flex flex-col items-center justify-center">
+                   <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden mb-2">
+                     <div className="h-full bg-accent" style={{width: `${prog}%`}} />
+                   </div>
+                   <span className="text-[10px] text-gray-500 font-bold">{prog}%</span>
                 </div>
-              )}
+              ))}
             </div>
           </section>
 

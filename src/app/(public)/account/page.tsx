@@ -130,12 +130,15 @@ function AccountContent() {
                   </div>
                   
                   <div className="space-y-3">
-                    {order.items?.map((item: any, idx: number) => (
+                    {order.items?.map((item: any, idx: number) => {
+                      const name = item.name_mn ?? item.name ?? 'Нэргүй бараа';
+                      const price = item.price ?? 0;
+                      return (
                       <div key={idx} className="flex justify-between items-center text-sm">
-                        <span className="text-text-primary">{item.name} <span className="text-text-muted">x {item.quantity}</span></span>
-                        <span className="text-text-primary">{formatPrice(item.price * item.quantity)}</span>
+                        <span className="text-text-primary">{name} <span className="text-text-muted">x {item.quantity}</span></span>
+                        <span className="text-text-primary">{formatPrice(price * item.quantity)}</span>
                       </div>
-                    ))}
+                    )})}
                   </div>
                 </div>
               ))}
