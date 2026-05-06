@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore } from 'firebase/firestore';
 import { getAuth, GoogleAuthProvider, FacebookAuthProvider } from 'firebase/auth';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 
@@ -14,9 +14,16 @@ const firebaseConfig = {
 };
 
 // Robust Singleton Pattern for Next.js 14 RSC
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-const db = getFirestore(app);
+// Use long polling instead of gRPC to prevent Vercel SSG build 'offline' errors
+let db;
+try {
+  db = initializeFirestore(app, { experimentalForceLongPolling: true });
+} catch (e) {
+  db = getFirestore(app);
+}
+
 const auth = getAuth(app);
 
 const googleProvider = new GoogleAuthProvider();

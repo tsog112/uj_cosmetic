@@ -213,7 +213,22 @@ export async function getSiteSettings(): Promise<SiteSettings | null> {
     const snap = await getDoc(SETTINGS_DOC);
     if (!snap.exists()) return null;
     return snap.data() as SiteSettings;
-  } catch (e) { handleError(e, 'getSiteSettings'); }
+  } catch (e) {
+    console.error('[Firestore Error — getSiteSettings]:', e);
+    // Return safe fallback data during Next.js builds if the DB is unreachable
+    return {
+      announcementText: 'Монгол даяар хүргэлт хийдэг · 50,000₮-с дээш захиалгад үнэгүй хүргэлт',
+      announcementActive: true,
+      freeShippingThreshold: 50000,
+      shippingCost: 5000,
+      bankName: 'Хаан Банк',
+      bankAccount: 'ТАНЫ_ДАНСНЫ_ДУГААР',
+      bankAccountName: 'УЖ Косметик',
+      instagramUrl: 'https://instagram.com/uj_cosmetic',
+      phone: 'ТАНЫ_УТАСНЫ_ДУГААР',
+      email: 'ТАНЫ_ИМЭЙЛ',
+    };
+  }
 }
 
 export async function updateSiteSettings(data: Partial<SiteSettings>): Promise<void> {
