@@ -61,7 +61,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       // Subsequent updates
       snapshot.docChanges().forEach((change) => {
         if (change.type === 'added') {
-          const newOrder = { id: change.doc.id, ...change.doc.data(), isRead: false };
+          const newOrder: any = { id: change.doc.id, ...change.doc.data(), isRead: false };
           
           setNotifications(prev => [newOrder, ...prev]);
           setUnreadCount(prev => prev + 1);
