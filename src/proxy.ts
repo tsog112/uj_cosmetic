@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+export default function proxy(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith('/admin')) {
     // We use a helper cookie set by the client-side AdminLayout
     const isAdmin = request.cookies.get('is_admin')?.value;
