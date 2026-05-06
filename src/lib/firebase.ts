@@ -1,7 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth, GoogleAuthProvider, FacebookAuthProvider } from 'firebase/auth';
-import { getStorage } from 'firebase/storage';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 
 const firebaseConfig = {
@@ -19,12 +18,11 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 const db = getFirestore(app);
 const auth = getAuth(app);
-const storage = getStorage(app);
 
 const googleProvider = new GoogleAuthProvider();
 const facebookProvider = new FacebookAuthProvider();
 
-export { app, db, auth, storage, googleProvider, facebookProvider };
+export { app, db, auth, googleProvider, facebookProvider };
 
 // Initialize Analytics safely (only runs in browser environment)
 let analytics: any = null;
