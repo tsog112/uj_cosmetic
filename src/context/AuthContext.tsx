@@ -11,6 +11,8 @@ interface AuthContextType {
   user: User | null | undefined;
   loading: boolean;
   isAdmin: boolean;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signInWithFacebook: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -64,6 +66,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, [firebaseUser, authLoading]);
 
+  const signInWithEmail = async (email: string, password: string) => {
+    await authService.loginWithEmail(email, password);
+  };
+
+  const signUp = async (email: string, password: string, name: string) => {
+    await authService.registerWithEmail(email, password, name);
+  };
+
   const signInWithGoogle = async () => {
     await authService.loginWithGoogle();
   };
@@ -82,6 +92,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user: firebaseUser,
       loading: authLoading || customLoading,
       isAdmin,
+      signInWithEmail,
+      signUp,
       signInWithGoogle,
       signInWithFacebook,
       signOut

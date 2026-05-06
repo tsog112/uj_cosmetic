@@ -3,12 +3,54 @@ import {
   signOut as firebaseSignOut,
   User,
   GoogleAuthProvider,
-  FacebookAuthProvider
+  FacebookAuthProvider,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, googleProvider, facebookProvider } from '../firebase';
 
 export const authService = {
+  /**
+   * Login with Email and Password
+   */
+  async loginWithEmail(email: string, password: string): Promise<User | null> {
+    try {
+      if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
+        console.warn("Firebase not configured.");
+        return null;
+      }
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      await this.syncUserToFirestore(result.user);
+      return result.user;
+    } catch (error) {
+      console.error("Email login failed:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Register with Email, Password and Name
+   */
+  async registerWithEmail(email: string, password: string, name: string): Promise<User | null> {
+    try {
+      if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
+        console.warn("Firebase not configured.");
+        return null;
+      }
+      const result = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(result.user, { displayName: name });
+      
+      // Sync to Firestore
+      await this.syncUserToFirestore(auth.currentUser || result.user);
+      return result.user;
+    } catch (error) {
+      console.error("Email registration failed:", error);
+      throw error;
+    }
+  },
+
   /**
    * Opens Firebase popup for Google Login
    */
