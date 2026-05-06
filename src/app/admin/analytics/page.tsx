@@ -110,7 +110,7 @@ export default function AnalyticsPage() {
     const dayCounts = [0,0,0,0,0,0,0]; // Sun-Sat
 
     orders.forEach(o => {
-      if (o.status !== 'Ц??лагд?ан') {
+      if (o.status !== 'Цуцлагдсан') {
         totalRevenue += (o.total || 0);
       }
       statusCounts[o.status] = (statusCounts[o.status] || 0) + 1;
@@ -128,11 +128,11 @@ export default function AnalyticsPage() {
     const abandonedCartPct = totalCartAdds > 0 ? (((totalCartAdds - orders.length) / totalCartAdds) * 100).toFixed(1) : '0.0';
 
     const COLORS: Record<string, string> = {
-      'Хүл??гд?ж байна': '#FBBF24',
-      '?а?алгааж?ан': '#3B82F6',
-      'Хү?г?л??нд': '#8B5CF6',
-      'Хү?г?гд??н': '#10B981',
-      'Ц??лагд?ан': '#EF4444'
+      'Хүлээгдэж байна': '#FBBF24',
+      'Баталгаажсан': '#3B82F6',
+      'Хүргэлтэнд гарсан': '#8B5CF6',
+      'Хүргэгдсэн': '#10B981',
+      'Цуцлагдсан': '#EF4444'
     };
 
     const pieData = Object.keys(statusCounts).map(k => ({
@@ -141,7 +141,7 @@ export default function AnalyticsPage() {
       color: COLORS[k] || '#9CA3AF'
     }));
 
-    const daysOfWeek = ['??м', '?ав', '??г', '??а', '?ү?', '?аа', '??м'];
+    const daysOfWeek = ['Дав', 'Мяг', 'Лха', 'Пүр', 'Баа', 'Бям', 'Ням'];
     const barData = daysOfWeek.map((day, idx) => ({ day, count: dayCounts[idx] }));
 
     return { avgOrder, abandonedCartPct, pieData, barData };
@@ -153,21 +153,21 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-10 pb-24 max-w-7xl mx-auto">
-      <h2 className="text-2xl font-bold text-gray-900 border-b border-gray-200 pb-4">?нали?ик</h2>
+      <h2 className="text-2xl font-bold text-gray-900 border-b border-gray-200 pb-4">Аналитик</h2>
 
-      {/* 1. ????? ?ҮТЭЭ??ЭХҮҮ??? Т????? */}
+      {/* 1. БАРАА БҮТЭЭГДЭХҮҮНИЙ ТАЙЛАН */}
       <section>
-        <h3 className="text-lg font-bold text-gray-800 mb-4">?а?аа бү???гд??үүний ?айлан</h3>
+        <h3 className="text-lg font-bold text-gray-800 mb-4">Бараа бүтээгдэхүүний тайлан</h3>
         <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm whitespace-nowrap">
               <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
                 <tr>
-                  <th className="px-6 py-4 font-medium">?а?аан? н??</th>
-                  <th className="px-6 py-4 font-medium text-right">Үз??н ?оо</th>
-                  <th className="px-6 py-4 font-medium text-right">Саг?анд н?м??н</th>
-                  <th className="px-6 py-4 font-medium text-right">?а?иал?ан</th>
-                  <th className="px-6 py-4 font-medium text-right">Хө?вөл? %</th>
+                  <th className="px-6 py-4 font-medium">Барааны нэр</th>
+                  <th className="px-6 py-4 font-medium text-right">Үзсэн тоо</th>
+                  <th className="px-6 py-4 font-medium text-right">Сагсанд нэмсэн</th>
+                  <th className="px-6 py-4 font-medium text-right">Захиалсан</th>
+                  <th className="px-6 py-4 font-medium text-right">Хөрвөлт %</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -183,7 +183,7 @@ export default function AnalyticsPage() {
                   </tr>
                 ))}
                 {productTable.length === 0 && (
-                  <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-400">??д??л?л олд?онгүй</td></tr>
+                  <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-400">Мэдээлэл олдсонгүй</td></tr>
                 )}
               </tbody>
             </table>
@@ -193,27 +193,27 @@ export default function AnalyticsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
         
-        {/* 2. Х????Ц??Ч??? Т????? */}
+        {/* 2. ХАРИЛЦАГЧИЙН ТАЙЛАН */}
         <section>
-          <h3 className="text-lg font-bold text-gray-800 mb-4">Ха?ил?аг?ийн ?айлан</h3>
+          <h3 className="text-lg font-bold text-gray-800 mb-4">Харилцагчийн тайлан</h3>
           <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-6 space-y-8">
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-gray-50 p-4 rounded-lg text-center">
-                <p className="text-xs text-gray-500 uppercase font-bold mb-1">?ий? ????гл?г?</p>
+                <p className="text-xs text-gray-500 uppercase font-bold mb-1">Нийт хэрэглэгч</p>
                 <p className="text-2xl font-bold text-gray-900">{userMetrics.total}</p>
               </div>
               <div className="bg-blue-50 p-4 rounded-lg text-center">
-                <p className="text-xs text-blue-600 uppercase font-bold mb-1">Шин? (?а?)</p>
+                <p className="text-xs text-blue-600 uppercase font-bold mb-1">Шинэ (сар)</p>
                 <p className="text-2xl font-bold text-blue-900">{userMetrics.newThisMonth}</p>
               </div>
               <div className="bg-green-50 p-4 rounded-lg text-center">
-                <p className="text-xs text-green-600 uppercase font-bold mb-1">?а?ин за?иал?ан</p>
+                <p className="text-xs text-green-600 uppercase font-bold mb-1">Дахин захиалсан</p>
                 <p className="text-2xl font-bold text-green-900">{userMetrics.repeat}</p>
               </div>
             </div>
 
             <div>
-              <p className="text-sm font-bold text-gray-600 mb-4">?ү??г?л (Сүүлийн 6 ?а?)</p>
+              <p className="text-sm font-bold text-gray-600 mb-4">Өсөлт (Сүүлийн 6 сар)</p>
               <div className="h-48 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={userMetrics.chartData}>
@@ -228,24 +228,24 @@ export default function AnalyticsPage() {
           </div>
         </section>
 
-        {/* 3. ??Х????Ы? Т????? */}
+        {/* 3. ЗАХИАЛГЫН ТАЙЛАН */}
         <section>
-          <h3 className="text-lg font-bold text-gray-800 mb-4">?а?иалг?н ?айлан</h3>
+          <h3 className="text-lg font-bold text-gray-800 mb-4">Захиалгын тайлан</h3>
           <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-6 space-y-8">
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-gray-50 p-4 rounded-lg">
-                <p className="text-xs text-gray-500 uppercase font-bold mb-1">??ндаж за?иалг?н дүн</p>
+                <p className="text-xs text-gray-500 uppercase font-bold mb-1">Дундаж захиалгын дүн</p>
                 <p className="text-2xl font-bold text-gray-900">{formatPrice(orderMetrics.avgOrder)}</p>
               </div>
               <div className="bg-red-50 p-4 rounded-lg">
-                <p className="text-xs text-red-600 uppercase font-bold mb-1">Ха?гд?ан ?аг?</p>
+                <p className="text-xs text-red-600 uppercase font-bold mb-1">Хаягдсан сагс</p>
                 <p className="text-2xl font-bold text-red-900">{orderMetrics.abandonedCartPct}%</p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
               <div>
-                <p className="text-sm font-bold text-gray-600 mb-4 text-center">?а?иалг?н ?өлөв</p>
+                <p className="text-sm font-bold text-gray-600 mb-4 text-center">Захиалгын төлөв</p>
                 <div className="h-40 w-full relative">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -269,7 +269,7 @@ export default function AnalyticsPage() {
               </div>
 
               <div>
-                <p className="text-sm font-bold text-gray-600 mb-4 text-center">?д?в???й өд?үүд</p>
+                <p className="text-sm font-bold text-gray-600 mb-4 text-center">Идэвхтэй өдрүүд</p>
                 <div className="h-40 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={orderMetrics.barData} layout="vertical" margin={{top: 0, right: 0, left: -20, bottom: 0}}>

@@ -61,7 +61,7 @@ export default function AdminProductsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Эн? бү???гд??үүнийг ???га? ??? У??га?н? да?аа ???г??? боломжгүй.')) return;
+    if (!confirm('Энэ бүтээгдэхүүнийг устгах уу? Устгасны дараа сэргээх боломжгүй.')) return;
     try {
       if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
         await deleteDoc(doc(db, "products", id));
@@ -73,7 +73,7 @@ export default function AdminProductsPage() {
       setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n; });
     } catch (error) {
       console.error(error);
-      alert('У??га?ад алдаа га?лаа');
+      alert('Устгахад алдаа гарлаа');
     }
   };
 
@@ -96,7 +96,7 @@ export default function AdminProductsPage() {
     if (selectedIds.size === 0) return;
     
     if (action === 'delete') {
-      if (!confirm(`Сонго?он ${selectedIds.size} ба?ааг ???га? ???`)) return;
+      if (!confirm(`Сонгосон ${selectedIds.size} барааг устгах уу?`)) return;
     }
 
     try {
@@ -140,7 +140,7 @@ export default function AdminProductsPage() {
       fetchProducts();
     } catch (e) {
       console.error(e);
-      alert('?лдаа га?лаа');
+      alert('Алдаа гарлаа');
     }
   };
 
@@ -151,12 +151,12 @@ export default function AdminProductsPage() {
 
   const getSaleCountdown = (endDateStr: string) => {
     const end = new Date(endDateStr).getTime();
-    if (end < now) return "Х?га?аа д????ан";
+    if (end < now) return "Хугацаа дууссан";
     const diff = end - now;
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-    if (days > 0) return `${days} ?оног ${hours} ?аг үлдл??`;
-    return `${hours} ?аг үлдл??`;
+    if (days > 0) return `${days} хоног ${hours} цаг үлдлээ`;
+    return `${hours} цаг үлдлээ`;
   };
 
   const toggleSelect = (id: string) => {
@@ -200,7 +200,7 @@ export default function AdminProductsPage() {
     <div className="space-y-6 max-w-7xl mx-auto pb-24">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-200 pb-6">
         <div className="flex items-center gap-4">
-          <h2 className="text-2xl font-bold text-gray-900">?ү???гд??үүн</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Бүтээгдэхүүн</h2>
           <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
             <input 
               type="checkbox" 
@@ -211,14 +211,14 @@ export default function AdminProductsPage() {
                 else setSelectedIds(new Set());
               }}
             />
-            ?үгдийг ?онго?
+            Бүгдийг сонгох
           </label>
         </div>
         <button 
           onClick={() => handleOpenForm()}
           className="bg-[#FFB7D5] text-[#1A1A1A] px-6 py-3 rounded-lg shadow-sm text-sm font-bold hover:bg-[#e89ebf] transition-all transform hover:-translate-y-0.5 active:translate-y-0"
         >
-          + Шин? ба?аа н?м??
+          + Шинэ бараа нэмэх
         </button>
       </div>
 
@@ -231,9 +231,9 @@ export default function AdminProductsPage() {
           <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
           </div>
-          <p className="text-gray-500 font-medium text-lg mb-2">?ү???гд??үүн одоогоо? алга байна</p>
-          <p className="text-gray-400 text-sm max-w-sm mx-auto mb-6">????? ?ов?ийг да?ж д?лгүү???? ?ин? ба?аа н?м????й.</p>
-          <button onClick={() => handleOpenForm()} className="text-[#FFB7D5] font-bold hover:underline">Шин? ба?аа н?м??</button>
+          <p className="text-gray-500 font-medium text-lg mb-2">Бүтээгдэхүүн одоогоор алга байна</p>
+          <p className="text-gray-400 text-sm max-w-sm mx-auto mb-6">Нэмэх товчийг дарж дэлгүүртээ шинэ бараа нэмээрэй.</p>
+          <button onClick={() => handleOpenForm()} className="text-[#FFB7D5] font-bold hover:underline">Шинэ бараа нэмэх</button>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -263,10 +263,10 @@ export default function AdminProductsPage() {
 
               {/* Hover Quick Edit Overlay */}
               <div className={`absolute inset-0 z-20 bg-white/95 p-5 flex flex-col transition-opacity duration-200 ${quickEditId === docId ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-                <h4 className="font-bold text-gray-900 mb-4 border-b pb-2">Х??дан за?а?</h4>
+                <h4 className="font-bold text-gray-900 mb-4 border-b pb-2">Хурдан засах</h4>
                 <div className="space-y-4 flex-1">
                   <div>
-                    <label className="text-xs font-medium text-gray-500 mb-1 block">Үн? (??</label>
+                    <label className="text-xs font-medium text-gray-500 mb-1 block">Үнэ (₮)</label>
                     <input 
                       type="number"
                       value={quickEditData.price}
@@ -275,21 +275,21 @@ export default function AdminProductsPage() {
                     />
                   </div>
                   <label className="flex items-center justify-between cursor-pointer">
-                    <span className="text-sm font-medium text-gray-700">?өө???й</span>
+                    <span className="text-sm font-medium text-gray-700">Нөөцтэй</span>
                     <input type="checkbox" checked={quickEditData.inStock} onChange={e => setQuickEditData({...quickEditData, inStock: e.target.checked})} className="w-4 h-4 text-accent" />
                   </label>
                   <label className="flex items-center justify-between cursor-pointer">
-                    <span className="text-sm font-medium text-gray-700">?н?ло?</span>
+                    <span className="text-sm font-medium text-gray-700">Онцлох</span>
                     <input type="checkbox" checked={quickEditData.featured} onChange={e => setQuickEditData({...quickEditData, featured: e.target.checked})} className="w-4 h-4 text-accent" />
                   </label>
                   <label className="flex items-center justify-between cursor-pointer">
-                    <span className="text-sm font-medium text-gray-700">?ий?л?гд??н</span>
+                    <span className="text-sm font-medium text-gray-700">Нийтлэгдсэн</span>
                     <input type="checkbox" checked={quickEditData.published} onChange={e => setQuickEditData({...quickEditData, published: e.target.checked})} className="w-4 h-4 text-accent" />
                   </label>
                 </div>
                 <div className="flex gap-2 mt-4">
-                  <button onClick={(e) => {e.stopPropagation(); setQuickEditId(null);}} className="flex-1 py-2 bg-gray-100 text-gray-700 text-xs font-bold rounded">Ц??ла?</button>
-                  <button onClick={(e) => saveQuickEdit(docId, e)} className="flex-1 py-2 bg-accent text-white text-xs font-bold rounded">Хадгала?</button>
+                  <button onClick={(e) => {e.stopPropagation(); setQuickEditId(null);}} className="flex-1 py-2 bg-gray-100 text-gray-700 text-xs font-bold rounded">Цуцлах</button>
+                  <button onClick={(e) => saveQuickEdit(docId, e)} className="flex-1 py-2 bg-accent text-white text-xs font-bold rounded">Хадгалах</button>
                 </div>
               </div>
 
@@ -311,14 +311,14 @@ export default function AdminProductsPage() {
                   )}
                   {!p.published && (
                     <span className="bg-gray-800/80 text-white text-[11px] font-bold uppercase rounded-md px-2 py-1 shadow-sm backdrop-blur-md">
-                      ????лагд?ан
+                      Цуцлагдсан
                     </span>
                   )}
                 </div>
 
                 {isSaleActive && p.saleEndDate && (
                   <div className="absolute bottom-0 left-0 right-0 bg-red-600/90 backdrop-blur-sm text-white text-[10px] font-bold text-center py-1.5 pointer-events-none">
-                    Х?мд?ал: {getSaleCountdown(p.saleEndDate)}
+                    Хямдрал: {getSaleCountdown(p.saleEndDate)}
                   </div>
                 )}
               </div>
@@ -345,7 +345,7 @@ export default function AdminProductsPage() {
                 {/* Large Toggle for Stock */}
                 <div className="mt-auto border-t border-gray-100 pt-3 flex items-center justify-between">
                   <span className={`text-xs font-bold uppercase ${inStock ? 'text-green-600' : 'text-red-500'}`}>
-                    {inStock ? '?өө???й' : '?????ан'}
+                    {inStock ? 'Нөөцтэй' : 'Дууссан'}
                   </span>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" checked={inStock} onChange={() => updateProductField(docId, { inStock: !inStock })} className="sr-only peer" />
@@ -363,13 +363,13 @@ export default function AdminProductsPage() {
         <div className="fixed bottom-0 left-0 md:left-64 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] p-4 flex flex-col sm:flex-row items-center justify-between gap-4 z-40 animate-slide-up">
           <div className="flex items-center gap-4">
             <span className="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center font-bold">{selectedIds.size}</span>
-            <span className="font-medium text-gray-800">ба?аа ?онгогд?он</span>
+            <span className="font-medium text-gray-800">бараа сонгогдсон</span>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button onClick={() => handleBulkAction('outOfStock')} className="px-4 py-2 text-sm font-medium rounded border border-gray-300 hover:bg-gray-50 transition-colors">?өө? д???га?</button>
-            <button onClick={() => handleBulkAction('publish')} className="px-4 py-2 text-sm font-medium rounded border border-green-200 text-green-700 bg-green-50 hover:bg-green-100 transition-colors">?ий?л??</button>
-            <button onClick={() => handleBulkAction('hide')} className="px-4 py-2 text-sm font-medium rounded border border-gray-300 hover:bg-gray-50 transition-colors">????</button>
-            <button onClick={() => handleBulkAction('delete')} className="px-4 py-2 text-sm font-medium rounded border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 transition-colors">У??га?</button>
+            <button onClick={() => handleBulkAction('outOfStock')} className="px-4 py-2 text-sm font-medium rounded border border-gray-300 hover:bg-gray-50 transition-colors">Нөөц дуусгах</button>
+            <button onClick={() => handleBulkAction('publish')} className="px-4 py-2 text-sm font-medium rounded border border-green-200 text-green-700 bg-green-50 hover:bg-green-100 transition-colors">Нийтлэх</button>
+            <button onClick={() => handleBulkAction('hide')} className="px-4 py-2 text-sm font-medium rounded border border-gray-300 hover:bg-gray-50 transition-colors">Нуух</button>
+            <button onClick={() => handleBulkAction('delete')} className="px-4 py-2 text-sm font-medium rounded border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 transition-colors">Устгах</button>
           </div>
         </div>
       )}

@@ -77,7 +77,7 @@ export default function AdminUsersPage() {
   const makeAdmin = async (userId: string, currentRole: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const newRole = currentRole === 'admin' ? 'user' : 'admin';
-    if (!confirm(`Эн? ????гл?г?ийн ???ийг "${newRole}" болго? ???`)) return;
+    if (!confirm(`Энэ хэрэглэгчийн эрхийг "${newRole}" болгох уу?`)) return;
 
     try {
       if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
@@ -86,7 +86,7 @@ export default function AdminUsersPage() {
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
     } catch (error) {
       console.error(error);
-      alert('Э?? ?ин??л???д алдаа га?лаа');
+      alert('Эрх шинэчлэхэд алдаа гарлаа');
     }
   };
 
@@ -105,7 +105,7 @@ export default function AdminUsersPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <h2 className="text-2xl font-semibold text-gray-800">Х???гл?г?ид</h2>
+        <h2 className="text-2xl font-semibold text-gray-800">Хэрэглэгчид</h2>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -113,7 +113,7 @@ export default function AdminUsersPage() {
           <div className="relative w-full lg:w-96">
             <input 
               type="text" 
-              placeholder="??? ??в?л и-м?йл??? ?ай?..."
+              placeholder="Нэр эсвэл и-мэйлээр хайх..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:border-accent"
@@ -129,19 +129,19 @@ export default function AdminUsersPage() {
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-100">
               <tr>
-                <th className="px-6 py-4 font-medium">Х???гл?г?</th>
-                <th className="px-6 py-4 font-medium">?-м?йл</th>
-                <th className="px-6 py-4 font-medium">?гноо</th>
-                <th className="px-6 py-4 font-medium text-center">?а?иалга ?оо</th>
+                <th className="px-6 py-4 font-medium">Хэрэглэгч</th>
+                <th className="px-6 py-4 font-medium">И-мэйл</th>
+                <th className="px-6 py-4 font-medium">Огноо</th>
+                <th className="px-6 py-4 font-medium text-center">Захиалгын тоо</th>
                 <th className="px-6 py-4 font-medium text-center">Role</th>
-                <th className="px-6 py-4 font-medium text-right">Үйлд?л</th>
+                <th className="px-6 py-4 font-medium text-right">Үйлдэл</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-gray-700">
               {loading ? (
                 <tr><td colSpan={6} className="px-6 py-8 text-center"><div className="w-8 h-8 mx-auto border-2 border-gray-200 border-t-accent rounded-full animate-spin"/></td></tr>
               ) : filteredUsers.length === 0 ? (
-                <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-400">Х???гл?г? олд?онгүй.</td></tr>
+                <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-400">Хэрэглэгч олдсонгүй.</td></tr>
               ) : (
                 filteredUsers.map(u => (
                   <tr 
@@ -157,7 +157,7 @@ export default function AdminUsersPage() {
                           (u.displayName || u.email || 'U').charAt(0).toUpperCase()
                         )}
                       </div>
-                      <span className="font-medium text-gray-900">{u.displayName || '???гүй'}</span>
+                      <span className="font-medium text-gray-900">{u.displayName || 'Нэргүй'}</span>
                     </td>
                     <td className="px-6 py-3 text-gray-600">{u.email}</td>
                     <td className="px-6 py-3 text-gray-600">{formatDate(u.createdAt)}</td>
@@ -176,7 +176,7 @@ export default function AdminUsersPage() {
                           u.role === 'admin' ? 'text-red-600 hover:bg-red-50' : 'text-accent hover:bg-[#FFF0F6]'
                         }`}
                       >
-                        {u.role === 'admin' ? 'Э?? ?а?а?' : 'Admin болго?'}
+                        {u.role === 'admin' ? 'Эрх хасах' : 'Admin болгох'}
                       </button>
                     </td>
                   </tr>
@@ -200,11 +200,11 @@ export default function AdminUsersPage() {
             </div>
             
             <div className="flex-1 overflow-y-auto p-6">
-              <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">?а?иалг?н ?үү?</h4>
+              <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Захиалгын түүх</h4>
               
               <div className="space-y-4">
                 {(!ordersMap[selectedUser.id] || ordersMap[selectedUser.id].length === 0) ? (
-                  <p className="text-gray-500 text-sm">?а?иалга бай?гүй байна.</p>
+                  <p className="text-gray-500 text-sm">Захиалга байхгүй байна.</p>
                 ) : (
                   ordersMap[selectedUser.id].map((o: any) => (
                     <div key={o.id} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
@@ -215,9 +215,9 @@ export default function AdminUsersPage() {
                         </div>
                         <div className="text-right">
                           <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase mb-1 ${
-                            o.status === 'Хүл??гд?ж байна' ? 'bg-yellow-200 text-yellow-800' :
-                            o.status === '?а?алгааж?ан' ? 'bg-blue-200 text-blue-800' :
-                            o.status === 'Хү?г?гд??н' ? 'bg-green-200 text-green-800' :
+                            o.status === 'Хүлээгдэж байна' ? 'bg-yellow-200 text-yellow-800' :
+                            o.status === 'Баталгаажсан' ? 'bg-blue-200 text-blue-800' :
+                            o.status === 'Хүргэгдсэн' ? 'bg-green-200 text-green-800' :
                             'bg-gray-200 text-gray-800'
                           }`}>
                             {o.status}

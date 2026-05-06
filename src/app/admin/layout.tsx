@@ -72,8 +72,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           // Browser Notification Fallback (if FCM not backgrounded)
           if (Notification.permission === 'granted') {
-            new Notification('UJ Cosmetic ??Шин? за?иалга!', {
-              body: `Ха?ил?аг?: ${newOrder.customerName} · ?үн: ${formatPrice(newOrder.total)}`,
+            new Notification('UJ Cosmetic Шинэ захиалга!', {
+              body: `Харилцагч: ${newOrder.customerName} · Дүн: ${formatPrice(newOrder.total)}`,
               icon: '/favicon.ico'
             });
           }
@@ -188,17 +188,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               {isBellOpen && (
                 <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-100 rounded-xl shadow-xl overflow-hidden py-2 animate-fade-in">
                   <div className="px-4 py-2 border-b border-gray-100 flex justify-between items-center">
-                    <h3 className="font-bold text-gray-800">??д?гд?л</h3>
+                    <h3 className="font-bold text-gray-800">Мэдэгдэл</h3>
                     {unreadCount > 0 && (
                       <button onClick={() => {
                         setNotifications(prev => prev.map(n => ({...n, isRead: true})));
                         setUnreadCount(0);
-                      }} className="text-xs text-accent hover:underline">?үгдийг ?н??ан</button>
+                      }} className="text-xs text-accent hover:underline">Бүгдийг уншсан</button>
                     )}
                   </div>
                   <div className="max-h-[300px] overflow-y-auto">
                     {notifications.length === 0 ? (
-                      <p className="text-center text-sm text-gray-500 py-6">??д?гд?л алга байна</p>
+                      <p className="text-center text-sm text-gray-500 py-6">Мэдэгдэл алга байна</p>
                     ) : (
                       notifications.slice(0, 10).map(notif => (
                         <div 
@@ -207,9 +207,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                           className={`px-4 py-3 cursor-pointer hover:bg-gray-50 border-b border-gray-50 last:border-0 ${!notif.isRead ? 'bg-[#FFF0F6]/30' : ''}`}
                         >
                           <p className="text-sm text-gray-800">
-                            <span className="font-bold text-accent">Шин? за?иалга:</span> {notif.customerName} ??{formatPrice(notif.total)}
+                            <span className="font-bold text-accent">Шинэ захиалга:</span> {notif.customerName} - {formatPrice(notif.total)}
                           </p>
-                          <p className="text-[10px] text-gray-400 mt-1 uppercase">Са??ан</p>
+                          <p className="text-[10px] text-gray-400 mt-1 uppercase">Саяхан</p>
                         </div>
                       ))
                     )}
@@ -227,7 +227,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 )}
               </div>
               <div className="text-sm">
-                <p className="font-bold text-gray-900 leading-none mb-1">{user?.displayName || '?дмин'}</p>
+                <p className="font-bold text-gray-900 leading-none mb-1">{user?.displayName || 'Админ'}</p>
                 <p className="text-xs text-gray-500 leading-none">{user?.email}</p>
               </div>
             </div>
@@ -239,7 +239,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               }}
               className="text-sm font-bold text-gray-500 hover:text-red-500 transition-colors bg-gray-50 px-3 py-1.5 rounded"
             >
-              ?а?а?
+              Гарах
             </button>
           </div>
         </header>

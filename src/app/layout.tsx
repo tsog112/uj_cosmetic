@@ -38,6 +38,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="mn" className={`${playfair.variable} ${inter.variable}`}>
+      <head>
+        <meta charSet="utf-8" />
+      </head>
       <body className="min-h-screen flex flex-col">
         <AuthProvider>
           <CartProvider>

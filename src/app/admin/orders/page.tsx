@@ -9,7 +9,7 @@ export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('?үгд');
+  const [filter, setFilter] = useState('Бүгд');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -47,7 +47,7 @@ export default function AdminOrdersPage() {
     return orders.filter(o => {
       const matchSearch = o.id.toLowerCase().includes(search.toLowerCase()) || 
                           o.customerName?.toLowerCase().includes(search.toLowerCase());
-      const matchFilter = filter === '?үгд' || o.status === filter;
+      const matchFilter = filter === 'Бүгд' || o.status === filter;
       return matchSearch && matchFilter;
     });
   }, [orders, search, filter]);
@@ -61,11 +61,11 @@ export default function AdminOrdersPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Хүл??гд?ж байна': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case '?а?алгааж?ан': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'Хү?г?л??нд': return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'Хү?г?гд??н': return 'bg-green-100 text-green-800 border-green-200';
-      case 'Ц??лагд?ан': return 'bg-red-100 text-red-800 border-red-200';
+      case 'Хүлээгдэж байна': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'Баталгаажсан': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'Хүргэлтэнд гарсан': return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'Хүргэгдсэн': return 'bg-green-100 text-green-800 border-green-200';
+      case 'Цуцлагдсан': return 'bg-red-100 text-red-800 border-red-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
@@ -99,7 +99,7 @@ export default function AdminOrdersPage() {
       setSelectedOrder(null);
     } catch (e) {
       console.error(e);
-      alert('Төлөв ?ин??л???д алдаа га?лаа');
+      alert('Төлөв шинэчлэхэд алдаа гарлаа');
     }
   };
 
@@ -128,12 +128,12 @@ export default function AdminOrdersPage() {
     document.body.removeChild(link);
   };
 
-  const tabs = ['?үгд', 'Хүл??гд?ж байна', '?а?алгааж?ан', 'Хү?г?л??нд', 'Хү?г?гд??н', 'Ц??лагд?ан'];
+  const tabs = ['Бүгд', 'Хүлээгдэж байна', 'Баталгаажсан', 'Хүргэлтэнд гарсан', 'Хүргэгдсэн', 'Цуцлагдсан'];
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <h2 className="text-2xl font-semibold text-gray-800">?а?иалг??д</h2>
+        <h2 className="text-2xl font-semibold text-gray-800">Захиалгууд</h2>
         <button 
           onClick={exportCSV}
           className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded shadow-sm text-sm font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
@@ -143,7 +143,7 @@ export default function AdminOrdersPage() {
             <polyline points="7 10 12 15 17 10" />
             <line x1="12" y1="15" x2="12" y2="3" />
           </svg>
-          CSV Та?а?
+          CSV Татах
         </button>
       </div>
 
@@ -166,7 +166,7 @@ export default function AdminOrdersPage() {
           <div className="relative">
             <input 
               type="text" 
-              placeholder="??гаа? ??в?л н????? ?ай?..."
+              placeholder="Дугаар эсвэл нэрээр хайх..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
               className="w-full lg:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:border-accent"
@@ -197,7 +197,7 @@ export default function AdminOrdersPage() {
               {loading ? (
                 <tr><td colSpan={8} className="px-6 py-8 text-center"><div className="w-8 h-8 mx-auto border-2 border-gray-200 border-t-accent rounded-full animate-spin"/></td></tr>
               ) : paginatedOrders.length === 0 ? (
-                <tr><td colSpan={8} className="px-6 py-8 text-center text-gray-400">?а?иалга олд?онгүй.</td></tr>
+                <tr><td colSpan={8} className="px-6 py-8 text-center text-gray-400">Захиалга олдсонгүй.</td></tr>
               ) : (
                 paginatedOrders.map(o => (
                   <tr key={o.id} className="hover:bg-gray-50 transition-colors">
@@ -214,7 +214,7 @@ export default function AdminOrdersPage() {
                     </td>
                     <td className="px-6 py-3 text-center">
                       <button onClick={() => openDrawer(o)} className="text-accent hover:text-[#e89ebf] font-medium text-xs uppercase tracking-wider">
-                        ??лг???нгүй
+                        Дэлгэрэнгүй
                       </button>
                     </td>
                   </tr>
@@ -227,11 +227,11 @@ export default function AdminOrdersPage() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="p-4 border-t border-gray-100 flex items-center justify-between text-sm">
-            <span className="text-gray-500">?ий? {filteredOrders.length} за?иалга</span>
+            <span className="text-gray-500">Нийт {filteredOrders.length} захиалга</span>
             <div className="flex gap-1">
-              <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50">Өмнө?</button>
+              <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50">Өмнөх</button>
               <span className="px-4 py-1 font-medium">{currentPage} / {totalPages}</span>
-              <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50">?а?аа?</button>
+              <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50">Дараах</button>
             </div>
           </div>
         )}
@@ -243,7 +243,7 @@ export default function AdminOrdersPage() {
           <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setIsDrawerOpen(false)} />
           <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl flex flex-col animate-slide-in-right">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-              <h3 className="text-lg font-semibold text-gray-800">?а?иалга #{selectedOrder.id.slice(-6)}</h3>
+              <h3 className="text-lg font-semibold text-gray-800">Захиалга #{selectedOrder.id.slice(-6)}</h3>
               <button onClick={() => setIsDrawerOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
@@ -252,21 +252,21 @@ export default function AdminOrdersPage() {
             <div className="flex-1 overflow-y-auto p-6 space-y-8">
               {/* Customer Info */}
               <div>
-                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Ха?ил?аг?ийн м?д??л?л</h4>
+                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Харилцагчийн мэдээлэл</h4>
                 <div className="space-y-3 text-sm">
-                  <div className="flex justify-between"><span className="text-gray-500">???:</span><span className="font-medium text-gray-900">{selectedOrder.customerName}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">У?а?:</span><span className="font-medium text-gray-900">{selectedOrder.phone}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">?гноо:</span><span className="font-medium text-gray-900">{formatDate(selectedOrder.createdAt)}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">Ха?г:</span><span className="font-medium text-gray-900 text-right max-w-[200px]">{selectedOrder.address}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Нэр:</span><span className="font-medium text-gray-900">{selectedOrder.customerName}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Утас:</span><span className="font-medium text-gray-900">{selectedOrder.phone}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Огноо:</span><span className="font-medium text-gray-900">{formatDate(selectedOrder.createdAt)}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Хаяг:</span><span className="font-medium text-gray-900 text-right max-w-[200px]">{selectedOrder.address}</span></div>
                   {selectedOrder.note && (
-                    <div className="flex justify-between"><span className="text-gray-500">Т?мд?гл?л:</span><span className="font-medium text-gray-900 text-right max-w-[200px]">{selectedOrder.note}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500">Тэмдэглэл:</span><span className="font-medium text-gray-900 text-right max-w-[200px]">{selectedOrder.note}</span></div>
                   )}
                 </div>
               </div>
 
               {/* Items */}
               <div>
-                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">?ү???гд??үүнүүд</h4>
+                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Бүтээгдэхүүнүүд</h4>
                 <div className="space-y-4">
                   {selectedOrder.items?.map((item: any, idx: number) => (
                     <div key={idx} className="flex justify-between items-start">
@@ -279,38 +279,38 @@ export default function AdminOrdersPage() {
                   ))}
                 </div>
                 <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
-                  <span className="font-semibold text-gray-900">?ий? дүн:</span>
+                  <span className="font-semibold text-gray-900">Нийт дүн:</span>
                   <span className="text-lg font-bold text-accent">{formatPrice(selectedOrder.total)}</span>
                 </div>
               </div>
 
               {/* Status Update */}
               <div>
-                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Төлөв өө??лө?</h4>
+                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Төлөв өөрчлөх</h4>
                 <select 
                   value={newStatus}
                   onChange={(e) => setNewStatus(e.target.value)}
                   className="w-full p-3 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
                 >
-                  <option value="Хүл??гд?ж байна">Хүл??гд?ж байна</option>
-                  <option value="?а?алгааж?ан">?а?алгааж?ан</option>
-                  <option value="Хү?г?л??нд">Хү?г?л??нд</option>
-                  <option value="Хү?г?гд??н">Хү?г?гд??н</option>
-                  <option value="Ц??лагд?ан">Ц??лагд?ан</option>
+                  <option value="Хүлээгдэж байна">Хүлээгдэж байна</option>
+                  <option value="Баталгаажсан">Баталгаажсан</option>
+                  <option value="Хүргэлтэнд гарсан">Хүргэлтэнд гарсан</option>
+                  <option value="Хүргэгдсэн">Хүргэгдсэн</option>
+                  <option value="Цуцлагдсан">Цуцлагдсан</option>
                 </select>
               </div>
             </div>
 
             <div className="p-6 border-t border-gray-100 bg-gray-50 flex gap-4">
               <button onClick={() => setIsDrawerOpen(false)} className="flex-1 py-3 text-gray-600 font-medium hover:bg-gray-200 bg-gray-100 rounded-md transition-colors">
-                Ц??ла?
+                Цуцлах
               </button>
               <button 
                 onClick={handleUpdateStatus} 
                 disabled={newStatus === selectedOrder.status}
                 className="flex-1 py-3 bg-[#FFB7D5] text-white font-bold rounded-md hover:bg-[#e89ebf] transition-colors disabled:opacity-50"
               >
-                Хадгала?
+                Хадгалах
               </button>
             </div>
           </div>
