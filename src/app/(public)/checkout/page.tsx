@@ -70,6 +70,28 @@ function CheckoutContent() {
         bankTransferRef: '',
       });
 
+      // Call API to send admin email (fire-and-forget — don't block checkout on email failure)
+      try {
+        await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: orderId,
+            customerName: formData.customerName,
+            phone: formData.phone,
+            address: formData.address,
+            items: items.map(i => ({
+              name_mn: i.product.name_mn,
+              quantity: i.quantity,
+              price: i.product.salePrice ?? i.product.price,
+            })),
+            total: cartTotal,
+          }),
+        })
+      } catch (emailErr) {
+        console.warn('Admin email notification failed (non-blocking):', emailErr)
+      }
+
       clearCart();
       router.push(`/checkout/success?order=${orderId}`);
     } catch (error: any) {

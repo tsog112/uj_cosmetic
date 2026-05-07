@@ -59,13 +59,21 @@ export default function AdminOrdersPage() {
 
   const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
 
+  const STATUS_LABELS: Record<string, string> = {
+    pending: 'Хүлээгдэж байна',
+    confirmed: 'Баталгаажсан',
+    shipped: 'Хүргэлтэнд гарсан',
+    delivered: 'Хүргэгдсэн',
+    cancelled: 'Цуцлагдсан',
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Хүлээгдэж байна': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'Баталгаажсан': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'Хүргэлтэнд гарсан': return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'Хүргэгдсэн': return 'bg-green-100 text-green-800 border-green-200';
-      case 'Цуцлагдсан': return 'bg-red-100 text-red-800 border-red-200';
+      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'confirmed': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'shipped': return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'delivered': return 'bg-green-100 text-green-800 border-green-200';
+      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
@@ -87,7 +95,16 @@ export default function AdminOrdersPage() {
     if (!selectedOrder) return;
     try {
       if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-        await updateDoc(doc(db, "orders", selectedOrder.id), { status: newStatus });
+        // Route 'confirmed' and 'shipped' through API endpoints (triggers customer emails)
+        if (newStatus === 'confirmed') {
+          const res = await fetch(`/api/orders/${selectedOrder.id}/confirm`, { method: 'POST' })
+          if (!res.ok) throw new Error('Confirm API failed')
+        } else if (newStatus === 'shipped') {
+          const res = await fetch(`/api/orders/${selectedOrder.id}/ship`, { method: 'POST' })
+          if (!res.ok) throw new Error('Ship API failed')
+        } else {
+          await updateDoc(doc(db, "orders", selectedOrder.id), { status: newStatus });
+        }
         setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { ...o, status: newStatus } : o));
       } else {
         const mockOrders = JSON.parse(localStorage.getItem('mock_orders') || '[]');
@@ -128,7 +145,14 @@ export default function AdminOrdersPage() {
     document.body.removeChild(link);
   };
 
-  const tabs = ['Бүгд', 'Хүлээгдэж байна', 'Баталгаажсан', 'Хүргэлтэнд гарсан', 'Хүргэгдсэн', 'Цуцлагдсан'];
+  const tabs = [
+    { value: 'Бүгд', label: 'Бүгд' },
+    { value: 'pending', label: 'Хүлээгдэж байна' },
+    { value: 'confirmed', label: 'Баталгаажсан' },
+    { value: 'shipped', label: 'Хүргэлтэнд гарсан' },
+    { value: 'delivered', label: 'Хүргэгдсэн' },
+    { value: 'cancelled', label: 'Цуцлагдсан' },
+  ];
 
   return (
     <div className="space-y-6">
@@ -153,13 +177,13 @@ export default function AdminOrdersPage() {
           <div className="flex flex-wrap gap-2">
             {tabs.map(t => (
               <button
-                key={t}
-                onClick={() => { setFilter(t); setCurrentPage(1); }}
+                key={t.value}
+                onClick={() => { setFilter(t.value); setCurrentPage(1); }}
                 className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                  filter === t ? 'bg-[#FFF0F6] text-[#FFB7D5] border border-[#FFB7D5]' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-transparent'
+                  filter === t.value ? 'bg-[#FFF0F6] text-[#FFB7D5] border border-[#FFB7D5]' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-transparent'
                 }`}
               >
-                {t}
+                {t.label}
               </button>
             ))}
           </div>
@@ -209,7 +233,7 @@ export default function AdminOrdersPage() {
                     <td className="px-6 py-3">{formatDate(o.createdAt)}</td>
                     <td className="px-6 py-3 text-center">
                       <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(o.status)}`}>
-                        {o.status}
+                        {STATUS_LABELS[o.status] || o.status}
                       </span>
                     </td>
                     <td className="px-6 py-3 text-center">
@@ -292,11 +316,11 @@ export default function AdminOrdersPage() {
                   onChange={(e) => setNewStatus(e.target.value)}
                   className="w-full p-3 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
                 >
-                  <option value="Хүлээгдэж байна">Хүлээгдэж байна</option>
-                  <option value="Баталгаажсан">Баталгаажсан</option>
-                  <option value="Хүргэлтэнд гарсан">Хүргэлтэнд гарсан</option>
-                  <option value="Хүргэгдсэн">Хүргэгдсэн</option>
-                  <option value="Цуцлагдсан">Цуцлагдсан</option>
+                  <option value="pending">Хүлээгдэж байна</option>
+                  <option value="confirmed">Баталгаажсан</option>
+                  <option value="shipped">Хүргэлтэнд гарсан</option>
+                  <option value="delivered">Хүргэгдсэн</option>
+                  <option value="cancelled">Цуцлагдсан</option>
                 </select>
               </div>
             </div>

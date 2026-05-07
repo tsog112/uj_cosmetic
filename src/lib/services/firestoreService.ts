@@ -205,6 +205,15 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus): P
   } catch (e) { handleError(e, 'updateOrderStatus'); }
 }
 
+export async function getUserById(userId: string): Promise<{ email: string | null; displayName: string | null } | null> {
+  try {
+    const snap = await getDoc(doc(db, 'users', userId));
+    if (!snap.exists()) return null;
+    const data = snap.data();
+    return { email: data.email ?? null, displayName: data.displayName ?? null };
+  } catch (e) { handleError(e, `getUserById(${userId})`); }
+}
+
 // ─── SETTINGS (singleton: settings/main) ─────────────────────────
 const SETTINGS_DOC = doc(db, 'settings', 'main');
 
