@@ -82,6 +82,7 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
       setImages(prev => [...prev, ...urls].slice(0, 5));
     } catch (error) {
       alert('Зураг оруулахад алдаа гарлаа. Дахин оролдоно уу.');
+      console.error('[ProductForm] Image upload error:', error);
     } finally {
       setUploading(false);
       setUploadProgress([]);
