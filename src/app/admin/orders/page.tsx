@@ -95,15 +95,13 @@ export default function AdminOrdersPage() {
     if (!selectedOrder) return;
     try {
       if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-        // Route 'confirmed' and 'shipped' through API endpoints (triggers customer emails)
-        if (newStatus === 'confirmed') {
-          const res = await fetch(`/api/orders/${selectedOrder.id}/confirm`, { method: 'POST' })
-          if (!res.ok) throw new Error('Confirm API failed')
-        } else if (newStatus === 'shipped') {
-          const res = await fetch(`/api/orders/${selectedOrder.id}/ship`, { method: 'POST' })
-          if (!res.ok) throw new Error('Ship API failed')
-        } else {
-          await updateDoc(doc(db, "orders", selectedOrder.id), { status: newStatus });
+        await updateDoc(doc(db, "orders", selectedOrder.id), { status: newStatus });
+
+        // Email notification is best-effort only; status update must not fail because of API/email config.
+        if (newStatus === 'confirmed' || newStatus === 'shipped') {
+          const action = newStatus === 'confirmed' ? 'confirm' : 'ship';
+          fetch(`/api/orders/${selectedOrder.id}/${action}`, { method: 'POST' })
+            .catch((emailErr) => console.warn(`${action} email notification failed:`, emailErr));
         }
         setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { ...o, status: newStatus } : o));
       } else {

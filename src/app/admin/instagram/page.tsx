@@ -1,17 +1,16 @@
 'use client';
 
-import Image from 'next/image';
-import { ChangeEvent, DragEvent, useEffect, useRef, useState } from 'react';
-import { doc, getDocs, collection, orderBy, query, serverTimestamp, setDoc } from 'firebase/firestore';
+import { ChangeEvent, DragEvent, useEffect, useState } from 'react';
+import { collection, doc, getDocs, orderBy, query, serverTimestamp, setDoc } from 'firebase/firestore';
 import { getDownloadURL, getStorage, ref, uploadBytes } from 'firebase/storage';
 import { app, db } from '@/lib/firebase';
 
 type InstagramSlot = {
   id: string;
-  imageUrl: string;
   instagramUrl: string;
-  order: number;
-  createdAt?: unknown;
+  imageUrl: string;
+  loading: boolean;
+  error: string;
 };
 
 const SLOT_COUNT = 6;
@@ -20,9 +19,10 @@ const storage = getStorage(app);
 function createEmptySlots(): InstagramSlot[] {
   return Array.from({ length: SLOT_COUNT }, (_, index) => ({
     id: `slot-${index + 1}`,
-    imageUrl: '',
     instagramUrl: '',
-    order: index,
+    imageUrl: '',
+    loading: false,
+    error: '',
   }));
 }
 
@@ -30,88 +30,105 @@ export default function AdminInstagramPage() {
   const [slots, setSlots] = useState<InstagramSlot[]>(createEmptySlots);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [uploadingSlotId, setUploadingSlotId] = useState<string | null>(null);
-  const [toast, setToast] = useState('');
   const [draggedSlotId, setDraggedSlotId] = useState<string | null>(null);
-  const fileInputs = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
-    let mounted = true;
+    async function fetchSaved() {
+      try {
+        const snap = await getDocs(query(collection(db, 'instagramFeed'), orderBy('order', 'asc')));
+        if (snap.empty) return;
 
-    async function loadFeed() {
-      const snap = await getDocs(query(collection(db, 'instagramFeed'), orderBy('order', 'asc')));
-      if (!mounted) return;
+        const saved = snap.docs.slice(0, SLOT_COUNT).map(d => ({
+          id: d.id,
+          instagramUrl: d.data().instagramUrl || '',
+          imageUrl: d.data().imageUrl || '',
+          loading: false,
+          error: '',
+        }));
 
-      const nextSlots = createEmptySlots();
-      snap.docs.slice(0, SLOT_COUNT).forEach((docSnap, index) => {
-        const data = docSnap.data();
-        nextSlots[index] = {
-          id: data.id || docSnap.id,
-          imageUrl: data.imageUrl || '',
-          instagramUrl: data.instagramUrl || '',
-          order: Number(data.order ?? index),
-          createdAt: data.createdAt,
-        };
-      });
+        while (saved.length < SLOT_COUNT) {
+          saved.push({
+            id: `slot-${saved.length + 1}`,
+            instagramUrl: '',
+            imageUrl: '',
+            loading: false,
+            error: '',
+          });
+        }
 
-      setSlots(nextSlots.map((slot, index) => ({ ...slot, order: index })));
-      setLoading(false);
+        setSlots(saved);
+      } finally {
+        setLoading(false);
+      }
     }
 
-    loadFeed().catch(() => setLoading(false));
-
-    return () => {
-      mounted = false;
-    };
+    fetchSaved().catch(() => setLoading(false));
   }, []);
 
-  const saveSlot = async (slot: InstagramSlot, order = slot.order) => {
-    await setDoc(
-      doc(db, 'instagramFeed', slot.id),
-      {
-        id: slot.id,
-        imageUrl: slot.imageUrl,
-        instagramUrl: slot.instagramUrl,
-        order,
-        createdAt: slot.createdAt || serverTimestamp(),
-      },
-      { merge: true }
-    );
-  };
+  async function fetchInstagramPreview(slotIndex: number, url: string) {
+    if (!url || !url.includes('instagram.com')) return;
 
-  const handleUpload = async (slotId: string, event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+    setSlots(prev => prev.map((slot, index) =>
+      index === slotIndex ? { ...slot, loading: true, error: '' } : slot
+    ));
+
+    try {
+      const res = await fetch(`/api/instagram-preview?url=${encodeURIComponent(url)}`);
+      const data = await res.json();
+
+      if (data.thumbnailUrl) {
+        setSlots(prev => prev.map((slot, index) =>
+          index === slotIndex ? { ...slot, imageUrl: data.thumbnailUrl, loading: false } : slot
+        ));
+      } else {
+        setSlots(prev => prev.map((slot, index) =>
+          index === slotIndex
+            ? {
+                ...slot,
+                loading: false,
+                error: 'Зураг автоматаар татагдсангүй. Доороос зургаа гараар оруулна уу.',
+              }
+            : slot
+        ));
+      }
+    } catch {
+      setSlots(prev => prev.map((slot, index) =>
+        index === slotIndex ? { ...slot, loading: false, error: 'Алдаа гарлаа' } : slot
+      ));
+    }
+  }
+
+  useEffect(() => {
+    const timers = slots.map((slot, index) => {
+      if (!slot.instagramUrl) return null;
+      return setTimeout(() => fetchInstagramPreview(index, slot.instagramUrl), 800);
+    });
+
+    return () => timers.forEach(timer => timer && clearTimeout(timer));
+  }, [slots.map(slot => slot.instagramUrl).join(',')]);
+
+  async function handleManualUpload(slotIndex: number, file: File | undefined) {
     if (!file) return;
 
-    setUploadingSlotId(slotId);
+    setSlots(prev => prev.map((slot, index) =>
+      index === slotIndex ? { ...slot, loading: true, error: '' } : slot
+    ));
+
     try {
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const storageRef = ref(storage, `instagram/${Date.now()}_${safeName}`);
+      const storageRef = ref(storage, `instagram/slot-${slotIndex + 1}/${Date.now()}_${safeName}`);
       await uploadBytes(storageRef, file);
       const imageUrl = await getDownloadURL(storageRef);
 
-      const nextSlots = slots.map(slot =>
-        slot.id === slotId ? { ...slot, imageUrl } : slot
-      );
-      const updatedSlot = nextSlots.find(slot => slot.id === slotId);
-
-      setSlots(nextSlots);
-      if (updatedSlot) await saveSlot(updatedSlot);
-      setToast('Зураг хадгалагдлаа');
-      setTimeout(() => setToast(''), 2500);
-    } catch (error) {
-      alert('Зураг оруулахад алдаа гарлаа.');
-    } finally {
-      setUploadingSlotId(null);
-      event.target.value = '';
+      setSlots(prev => prev.map((slot, index) =>
+        index === slotIndex ? { ...slot, imageUrl, loading: false, error: '' } : slot
+      ));
+    } catch {
+      setSlots(prev => prev.map((slot, index) =>
+        index === slotIndex ? { ...slot, loading: false, error: 'Зураг оруулахад алдаа гарлаа.' } : slot
+      ));
     }
-  };
-
-  const handleUrlChange = (slotId: string, instagramUrl: string) => {
-    setSlots(prev =>
-      prev.map(slot => (slot.id === slotId ? { ...slot, instagramUrl } : slot))
-    );
-  };
+  }
 
   const handleDrop = (targetSlotId: string, event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -124,22 +141,33 @@ export default function AdminInstagramPage() {
     const nextSlots = [...slots];
     const [draggedSlot] = nextSlots.splice(draggedIndex, 1);
     nextSlots.splice(targetIndex, 0, draggedSlot);
-    setSlots(nextSlots.map((slot, index) => ({ ...slot, order: index })));
+    setSlots(nextSlots);
     setDraggedSlotId(null);
   };
 
-  const handleSave = async () => {
+  async function handleSave() {
     setSaving(true);
     try {
-      await Promise.all(slots.map((slot, index) => saveSlot({ ...slot, order: index }, index)));
-      setToast('Хадгалагдлаа');
-      setTimeout(() => setToast(''), 2500);
-    } catch (error) {
-      alert('Хадгалахад алдаа гарлаа.');
+      for (const [index, slot] of slots.entries()) {
+        await setDoc(
+          doc(db, 'instagramFeed', slot.id),
+          {
+            id: slot.id,
+            imageUrl: slot.imageUrl || '',
+            instagramUrl: slot.instagramUrl || '',
+            order: index + 1,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      }
+      alert('Хадгалагдлаа ✓');
+    } catch (e: any) {
+      alert(`Алдаа: ${e.message}`);
     } finally {
       setSaving(false);
     }
-  };
+  }
 
   if (loading) {
     return (
@@ -147,7 +175,7 @@ export default function AdminInstagramPage() {
         <div className="h-8 bg-gray-200 rounded w-56" />
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
           {Array.from({ length: SLOT_COUNT }, (_, index) => (
-            <div key={index} className="h-72 bg-gray-100 rounded-xl" />
+            <div key={index} className="h-80 bg-gray-100 rounded-xl" />
           ))}
         </div>
       </div>
@@ -167,12 +195,6 @@ export default function AdminInstagramPage() {
         </button>
       </div>
 
-      {toast && (
-        <div className="fixed top-6 right-6 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 text-sm font-medium">
-          {toast}
-        </div>
-      )}
-
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
         {slots.map((slot, index) => (
           <div
@@ -184,52 +206,71 @@ export default function AdminInstagramPage() {
             onDragEnd={() => setDraggedSlotId(null)}
             className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm"
           >
-            <button
-              type="button"
-              onClick={() => fileInputs.current[slot.id]?.click()}
-              className="relative aspect-square w-full overflow-hidden rounded-lg bg-[#FFD6E8] border border-dashed border-[#FFB7D5] flex items-center justify-center text-4xl font-light text-[#1A1A1A] hover:border-[#1A1A1A] transition-colors"
-              aria-label={`Instagram slot ${index + 1}`}
-            >
-              {slot.imageUrl ? (
-                <Image
+            <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-[#FFD6E8] border border-dashed border-[#FFB7D5] flex items-center justify-center">
+              {slot.loading && (
+                <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
+                  <div className="w-8 h-8 border-4 border-gray-200 border-t-[#FFB7D5] rounded-full animate-spin" />
+                </div>
+              )}
+
+              {slot.imageUrl && !slot.loading && (
+                <img
                   src={slot.imageUrl}
                   alt={`Instagram ${index + 1}`}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 1024px) 50vw, 33vw"
+                  className="h-full w-full object-cover"
                 />
-              ) : (
-                <span>+</span>
               )}
-              {uploadingSlotId === slot.id && (
-                <span className="absolute inset-0 bg-white/70 flex items-center justify-center text-sm font-bold">
-                  Оруулж байна...
-                </span>
+
+              {!slot.imageUrl && !slot.loading && (
+                <div className="text-center text-[#1A1A1A] px-4">
+                  <div className="text-4xl font-light leading-none mb-2">+</div>
+                  <p className="text-xs font-medium">Instagram URL оруулна уу</p>
+                </div>
               )}
-            </button>
+
+              {slot.error && (
+                <label className="absolute bottom-3 left-3 right-3 bg-white/95 border border-[#FFB7D5] text-[#1A1A1A] text-xs font-bold py-2 px-3 rounded cursor-pointer text-center hover:bg-[#FFF0F6]">
+                  📁 Зургаа оруулах
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(event: ChangeEvent<HTMLInputElement>) => handleManualUpload(index, event.target.files?.[0])}
+                  />
+                </label>
+              )}
+            </div>
+
+            {slot.error && (
+              <p className="text-xs text-red-500 mt-2">
+                {slot.error}
+              </p>
+            )}
 
             <input
-              ref={input => {
-                fileInputs.current[slot.id] = input;
+              type="url"
+              value={slot.instagramUrl}
+              onChange={event => {
+                const value = event.target.value;
+                setSlots(prev => prev.map((item, itemIndex) =>
+                  itemIndex === index ? { ...item, instagramUrl: value, error: '' } : item
+                ));
               }}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={event => handleUpload(slot.id, event)}
+              placeholder="https://instagram.com/p/xxx"
+              className="w-full mt-2 px-3 py-2 text-xs border border-pink-200 rounded focus:outline-none focus:border-pink-400"
             />
 
-            <div className="mt-4 space-y-2">
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">
-                Slot {index + 1}
-              </label>
-              <input
-                type="url"
-                value={slot.instagramUrl}
-                onChange={event => handleUrlChange(slot.id, event.target.value)}
-                placeholder="https://instagram.com/p/xxx"
-                className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#FFB7D5] focus:border-transparent"
-              />
-            </div>
+            {(slot.imageUrl || slot.instagramUrl) && (
+              <button
+                type="button"
+                onClick={() => setSlots(prev => prev.map((item, itemIndex) =>
+                  itemIndex === index ? { ...item, imageUrl: '', instagramUrl: '', error: '', loading: false } : item
+                ))}
+                className="text-xs text-gray-400 hover:text-red-400 mt-1"
+              >
+                × Цэвэрлэх
+              </button>
+            )}
           </div>
         ))}
       </div>

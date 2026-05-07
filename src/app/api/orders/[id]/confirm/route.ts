@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { sendOrderConfirmationToCustomer } from '@/lib/emailService'
 import {
   getOrderById,
-  updateOrderStatus,
   getUserById,
 } from '@/lib/services/firestoreService'
 
@@ -16,9 +15,6 @@ export async function POST(
     if (!order) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
-
-    // Update Firestore status
-    await updateOrderStatus(id, 'confirmed')
 
     // Email should not block the admin status update.
     try {
