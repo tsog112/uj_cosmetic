@@ -20,14 +20,18 @@ export async function POST(
     // Update Firestore status
     await updateOrderStatus(id, 'shipped')
 
-    // Get customer email and send shipping notification
-    const user = order.userId ? await getUserById(order.userId) : null
-    if (user?.email) {
-      await sendShippingNotification(user.email, {
-        id: order.id,
-        customerName: order.customerName,
-        address: order.address,
-      })
+    // Email should not block the admin status update.
+    try {
+      const user = order.userId ? await getUserById(order.userId) : null
+      if (user?.email) {
+        await sendShippingNotification(user.email, {
+          id: order.id,
+          customerName: order.customerName,
+          address: order.address,
+        })
+      }
+    } catch (emailError) {
+      console.warn('Order shipping email failed (non-blocking):', emailError)
     }
 
     return NextResponse.json({ success: true })

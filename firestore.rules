@@ -51,6 +51,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /instagramFeed/{slotId} {
+      // Public homepage can read Instagram feed slots
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     match /settings/{settingId} {
       // Everyone can read site settings (announcement, bank info, etc)
       allow read: if true;
