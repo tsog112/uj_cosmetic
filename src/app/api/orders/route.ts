@@ -5,20 +5,31 @@ import { getSiteSettings } from '@/lib/services/firestoreService'
 export async function POST(request: Request) {
   try {
     const orderData = await request.json()
-    const settings = await getSiteSettings()
+    console.log('Order API called with:', orderData.id)
 
-    const bankAccount = settings
-      ? `${settings.bankName}: ${settings.bankAccount}`
-      : 'Хаан Банк: —'
+    let settings: { bankName?: string; bankAccount?: string } | null = null
+    try {
+      settings = await getSiteSettings()
+    } catch (e) {
+      console.error('getSiteSettings failed:', e)
+      settings = { bankName: 'Банк', bankAccount: '-' }
+    }
 
-    await sendNewOrderNotificationToAdmin({
-      ...orderData,
-      bankAccount,
-    })
+    try {
+      await sendNewOrderNotificationToAdmin({
+        ...orderData,
+        bankAccount: `${settings?.bankName || 'Банк'}: ${settings?.bankAccount || '-'}`,
+      })
+      console.log('Admin email sent successfully')
+    } catch (emailError: any) {
+      console.error('Admin email failed:', emailError.message)
+    }
 
     return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error('Order notification error:', error)
-    return NextResponse.json({ error: 'Failed' }, { status: 500 })
+  } catch (error: any) {
+    console.error('Order route error:', error)
+    return NextResponse.json({
+      error: error.message,
+    }, { status: 500 })
   }
 }
