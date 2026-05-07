@@ -24,13 +24,23 @@ export function uploadProductImage(
           if (response.url) {
             resolve(response.url);
           } else {
+            console.error('[uploadImage] Server returned no URL:', response);
             reject(new Error(response.error || 'No URL returned'));
           }
         } catch (e) {
+          console.error('[uploadImage] Could not parse response:', xhr.responseText);
           reject(new Error('Invalid response'));
         }
       } else {
-        reject(new Error('Upload failed'));
+        // Log the actual server error so we can debug it
+        try {
+          const errBody = JSON.parse(xhr.responseText);
+          console.error(`[uploadImage] HTTP ${xhr.status} from /api/upload:`, errBody);
+          reject(new Error(errBody.error || `HTTP ${xhr.status}`));
+        } catch {
+          console.error(`[uploadImage] HTTP ${xhr.status} raw:`, xhr.responseText);
+          reject(new Error(`HTTP ${xhr.status}`));
+        }
       }
     };
 
