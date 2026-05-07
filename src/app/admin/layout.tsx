@@ -131,6 +131,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: 'Захиалгууд', href: '/admin/orders' },
     { name: 'Хэрэглэгчид', href: '/admin/users' },
     { name: 'Бүтээгдэхүүн', href: '/admin/products' },
+    { name: 'Ангилал', href: '/admin/categories' },
+    { name: 'Instagram', href: '/admin/instagram' },
     { name: 'Аналитик', href: '/admin/analytics' },
     { name: 'Тохиргоо', href: '/admin/settings' },
   ];
@@ -160,6 +162,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             );
           })}
         </nav>
+        <div className="border-t border-gray-800 px-4 py-4">
+          <Link
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-4 py-2 rounded-md text-xs font-bold text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+          >
+            <span aria-hidden="true">🏪</span>
+            <span>Дэлгүүр харах</span>
+          </Link>
+        </div>
       </aside>
 
       {/* Main Content */}
@@ -217,6 +230,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </div>
               )}
             </div>
+
+            <Link
+              href="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 border border-[#FFB7D5] text-[#1A1A1A] hover:bg-[#FFB7D5] px-4 py-2 rounded-md text-sm font-bold transition-colors"
+            >
+              <span aria-hidden="true">←</span>
+              <span>Дэлгүүр харах</span>
+            </Link>
 
             <div className="flex items-center gap-3 border-l pl-6 border-gray-200">
               <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center font-bold overflow-hidden border border-gray-200">

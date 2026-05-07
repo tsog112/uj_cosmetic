@@ -11,7 +11,7 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
-  const { addToCart } = useCart();
+  const { addToCart, buyNow } = useCart();
   const [isAdded, setIsAdded] = useState(false);
 
   const handleAddToCart = (e: React.MouseEvent) => {
@@ -21,6 +21,13 @@ export default function ProductCard({ product }: ProductCardProps) {
     addToCart(product);
     setIsAdded(true);
     setTimeout(() => setIsAdded(false), 1500);
+  };
+
+  const handleBuyNow = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!product.inStock) return;
+    buyNow({ product, quantity: 1 });
   };
 
   const displayPrice = product?.salePrice ?? product?.price ?? 0;
@@ -59,15 +66,23 @@ export default function ProductCard({ product }: ProductCardProps) {
           </div>
         )}
 
-        {/* Hover Add to Cart */}
+        {/* Hover Actions */}
         {product?.inStock && (
           <div className="absolute bottom-0 left-0 right-0 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-            <button
-              onClick={handleAddToCart}
-              className="w-full py-3 bg-accent hover:bg-accent-hover text-text-primary text-xs tracking-[0.1em] uppercase font-medium transition-colors"
-            >
-              {isAdded ? '✓ Нэмэгдлээ' : 'Сагсанд нэмэх'}
-            </button>
+            <div className="flex">
+              <button
+                onClick={handleAddToCart}
+                className="flex-1 py-3 bg-[#FFB7D5] hover:bg-[#f5a0c5] text-text-primary text-[11px] tracking-[0.08em] uppercase font-medium transition-colors"
+              >
+                {isAdded ? '✓ Нэмэгдлээ' : 'Сагсанд нэмэх'}
+              </button>
+              <button
+                onClick={handleBuyNow}
+                className="flex-1 py-3 bg-white/95 border border-text-primary text-text-primary hover:bg-text-primary hover:text-white text-[11px] tracking-[0.08em] uppercase font-medium transition-colors"
+              >
+                Худалдан авах →
+              </button>
+            </div>
           </div>
         )}
       </div>

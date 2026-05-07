@@ -13,7 +13,7 @@ import ProductCard from '@/components/ui/ProductCard';
 export default function ProductDetailPage() {
   const params = useParams();
   const slug = params.slug as string;
-  const { addToCart } = useCart();
+  const { addToCart, buyNow } = useCart();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [related, setRelated] = useState<Product[]>([]);
@@ -77,12 +77,19 @@ export default function ProductDetailPage() {
   const displayPrice = salePrice ?? price;
   const rawImages = product.images ?? [];
   const images = rawImages.length > 0 ? rawImages : ['/placeholder-product.svg'];
+  const stockQuantity = Number(product.stockQuantity ?? (product.inStock === false ? 0 : 999));
+  const isProductInStock = product.inStock !== false && stockQuantity > 0;
 
   const handleAddToCart = () => {
-    if (!product.inStock) return;
+    if (!isProductInStock) return;
     addToCart(product);
     setIsAdded(true);
     setTimeout(() => setIsAdded(false), 2000);
+  };
+
+  const handleBuyNow = () => {
+    if (!isProductInStock) return;
+    buyNow({ product, quantity: 1 });
   };
 
   return (
@@ -118,7 +125,7 @@ export default function ProductDetailPage() {
                   priority
                 />
               )}
-              {!product.inStock && (
+              {!isProductInStock && (
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                   <span className="bg-red-600 text-white text-sm font-bold px-4 py-2 uppercase tracking-wider">Дуусжээ</span>
                 </div>
@@ -169,6 +176,12 @@ export default function ProductDetailPage() {
               {product.description_mn}
             </p>
 
+            {isProductInStock && stockQuantity <= 5 && (
+              <p className="text-sm font-medium text-red-500 mb-6">
+                Нөөц: {stockQuantity} ширхэг үлдлээ
+              </p>
+            )}
+
             <div className="mb-8 pb-8 border-thin-b">
               <p className="text-xs tracking-[0.1em] uppercase text-text-muted mb-2">Гол найрлага</p>
               <p className="text-sm text-text-primary">
@@ -176,20 +189,30 @@ export default function ProductDetailPage() {
               </p>
             </div>
 
-            <button
-              onClick={handleAddToCart}
-              disabled={!product.inStock}
-              className={`w-full py-4 text-sm tracking-[0.1em] uppercase font-medium transition-all duration-300 ${
-                !product.inStock
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : isAdded
-                    ? 'bg-text-primary text-cream'
-                    : 'btn-gold'
-              }`}
-              id="add-to-cart-button"
-            >
-              {!product.inStock ? 'Дууссан байна' : isAdded ? '✓ Сагсанд нэмэгдлээ' : 'Сагсанд нэмэх'}
-            </button>
+            <div className="space-y-3">
+              <button
+                onClick={handleAddToCart}
+                disabled={!isProductInStock}
+                className={`w-full py-4 text-sm tracking-[0.1em] uppercase font-medium transition-all duration-300 ${
+                  !isProductInStock
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : isAdded
+                      ? 'bg-text-primary text-cream'
+                      : 'bg-[#FFB7D5] text-brand-black hover:bg-[#f5a0c5]'
+                }`}
+                id="add-to-cart-button"
+              >
+                {!isProductInStock ? 'Дуусжээ' : isAdded ? '✓ Сагсанд нэмэгдлээ' : 'Сагсанд нэмэх'}
+              </button>
+
+              <button
+                onClick={handleBuyNow}
+                disabled={!isProductInStock}
+                className="w-full py-4 border-2 border-brand-black bg-white text-brand-black text-sm font-medium tracking-[0.1em] uppercase hover:bg-brand-black hover:text-white transition-colors duration-200 disabled:border-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed disabled:hover:bg-white"
+              >
+                Шууд худалдан авах
+              </button>
+            </div>
 
             <div className="mt-10 border-thin-t">
               <Accordion title="Хэрхэн хэрэглэх">

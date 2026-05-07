@@ -4,7 +4,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import imageCompression from 'browser-image-compression';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db } from '@/lib/firebase';
-import { doc, collection, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, collection, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import type { Category } from '@/types';
 
 interface ProductFormProps {
   initialData?: any;
@@ -18,9 +19,13 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
   
   // Basic Fields
   const [name_mn, setNameMn] = useState(initialData?.name_mn || '');
-  const [category, setCategory] = useState(initialData?.category || 'Серум');
+  const [category, setCategory] = useState(initialData?.category || '');
+  const [categories, setCategories] = useState<Category[]>([]);
   const [priceStr, setPriceStr] = useState(initialData?.price?.toString() || '');
   const [salePriceStr, setSalePriceStr] = useState(initialData?.salePrice?.toString() || '');
+  const [stockQuantity, setStockQuantity] = useState<number>(
+    Number(initialData?.stockQuantity ?? initialData?.stock ?? (initialData?.inStock === false ? 0 : 50))
+  );
   const [saleEndDate, setSaleEndDate] = useState(initialData?.saleEndDate || '');
   const [description_mn, setDescriptionMn] = useState(initialData?.description_mn || '');
   const [ingredients, setIngredients] = useState(initialData?.ingredients || '');
@@ -45,6 +50,18 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
     }
   }, [initialData]);
 
+  useEffect(() => {
+    getDocs(query(collection(db, 'categories'), orderBy('order', 'asc')))
+      .then(snap => {
+        const fetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as Category));
+        setCategories(fetched);
+        if (!initialData?.category && fetched[0]?.slug) {
+          setCategory(fetched[0].slug);
+        }
+      })
+      .catch(() => setCategories([]));
+  }, [initialData?.category]);
+
   const formatPriceInput = (val: string) => {
     const num = val.replace(/\D/g, '');
     if (!num) return '';
@@ -53,6 +70,12 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
 
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<string>>) => {
     setter(formatPriceInput(e.target.value));
+  };
+
+  const handleStockQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const nextStock = parseInt(e.target.value, 10) || 0;
+    setStockQuantity(nextStock);
+    setOutOfStock(nextStock <= 0);
   };
 
   async function handleImageUpload(files: FileList | File[]) {
@@ -166,7 +189,8 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
         images: images,
         featured,
         published,
-        inStock: !outOfStock,
+        inStock: stockQuantity > 0 && !outOfStock,
+        stockQuantity: outOfStock ? 0 : stockQuantity,
         updatedAt: serverTimestamp(),
       };
 
@@ -298,16 +322,15 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
                   <select 
                     value={category} 
                     onChange={e => setCategory(e.target.value)} 
+                    required
                     className="w-full p-4 border border-gray-300 rounded-lg focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none bg-white text-gray-900"
                   >
-                    <option value="Серум">Серум</option>
-                    <option value="Тоник">Тоник</option>
-                    <option value="Нүүрний тос">Нүүрний тос</option>
-                    <option value="Нүүрний тосолгоо">Нүүрний тосолгоо</option>
-                    <option value="Наран хамгаалагч">Наран хамгаалагч</option>
-                    <option value="Арьс цэвэрлэгч">Арьс цэвэрлэгч</option>
-                    <option value="Маск">Маск</option>
-                    <option value="Бусад">Бусад</option>
+                    <option value="">Ангилал сонгоно уу</option>
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.slug}>
+                        {cat.name_mn}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 
@@ -323,6 +346,19 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
                     />
                     <span className="absolute right-4 top-4 text-gray-500 font-medium">₮</span>
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Нөөцийн тоо *</label>
+                  <input
+                    required
+                    type="number"
+                    min="0"
+                    value={stockQuantity}
+                    onChange={handleStockQuantityChange}
+                    placeholder="0"
+                    className="w-full p-4 border border-gray-300 rounded-lg focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none text-gray-900 font-medium"
+                  />
                 </div>
               </div>
 
@@ -427,7 +463,17 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
                 <div className={`w-12 h-6 rounded-full p-1 transition-colors ${outOfStock ? 'bg-red-500' : 'bg-gray-300'}`}>
                   <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform ${outOfStock ? 'translate-x-6' : 'translate-x-0'}`} />
                 </div>
-                <input type="checkbox" checked={outOfStock} onChange={e => setOutOfStock(e.target.checked)} className="hidden" />
+                <input
+                  type="checkbox"
+                  checked={outOfStock}
+                  onChange={e => {
+                    const checked = e.target.checked;
+                    setOutOfStock(checked);
+                    if (checked) setStockQuantity(0);
+                    else if (stockQuantity <= 0) setStockQuantity(1);
+                  }}
+                  className="hidden"
+                />
                 <div>
                   <p className="font-medium text-gray-900">Нөөц дууссан</p>
                   <p className="text-xs text-gray-500">"Дуусжээ" бичигтэй болж, сагсанд нэмэх боломжгүй болно</p>

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Product, CartItem, DEFAULT_SETTINGS } from '@/types';
 import { getSiteSettings } from '@/lib/services/firestoreService';
 
@@ -13,6 +14,7 @@ type CartAction =
   | { type: 'REMOVE_FROM_CART'; productId: string }
   | { type: 'UPDATE_QUANTITY'; productId: string; quantity: number }
   | { type: 'CLEAR_CART' }
+  | { type: 'BUY_NOW'; payload: CartItem }
   | { type: 'HYDRATE'; items: CartItem[] };
 
 function cartReducer(state: CartState, action: CartAction): CartState {
@@ -51,6 +53,8 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       };
     case 'CLEAR_CART':
       return { items: [] };
+    case 'BUY_NOW':
+      return { ...state, items: [action.payload] };
     case 'HYDRATE':
       return { items: action.items };
     default:
@@ -63,6 +67,7 @@ function cartReducer(state: CartState, action: CartAction): CartState {
 interface CartContextType {
   items: CartItem[];
   addToCart: (product: Product, quantity?: number) => void;
+  buyNow: (item: CartItem) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
@@ -76,6 +81,7 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const [state, dispatch] = useReducer(cartReducer, { items: [] });
   const [isHydrated, setIsHydrated] = useState(false);
   const [freeShippingThreshold, setFreeShippingThreshold] = useState(DEFAULT_SETTINGS.freeShippingThreshold);
@@ -116,6 +122,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'ADD_TO_CART', product, quantity });
   };
 
+  const buyNow = useCallback((item: CartItem) => {
+    dispatch({ type: 'BUY_NOW', payload: item });
+    router.push('/checkout');
+  }, [router]);
+
   const removeFromCart = (productId: string) => {
     dispatch({ type: 'REMOVE_FROM_CART', productId });
   };
@@ -138,6 +149,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       value={{
         items: state.items,
         addToCart,
+        buyNow,
         removeFromCart,
         updateQuantity,
         clearCart,

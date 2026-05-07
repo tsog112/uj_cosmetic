@@ -140,6 +140,17 @@ const products = [
   },
 ];
 
+const categories = [
+  { id: 'serum', name_mn: 'Серум', slug: 'serum', order: 1 },
+  { id: 'toner', name_mn: 'Тоник', slug: 'toner', order: 2 },
+  { id: 'oil', name_mn: 'Нүүрний тос', slug: 'oil', order: 3 },
+  { id: 'cream', name_mn: 'Нүүрний тосолгоо', slug: 'cream', order: 4 },
+  { id: 'sunscreen', name_mn: 'Наран хамгаалагч', slug: 'sunscreen', order: 5 },
+  { id: 'cleanser', name_mn: 'Нүүр угаалга', slug: 'cleanser', order: 6 },
+  { id: 'mask', name_mn: 'Нүүрний маск', slug: 'mask', order: 7 },
+  { id: 'other', name_mn: 'Бусад', slug: 'other', order: 8 },
+];
+
 // ─── Seed ────────────────────────────────────────────────────────
 async function seed() {
   console.log('🌱 Starting Firestore seed...\n');
@@ -165,6 +176,7 @@ async function seed() {
         videoUrl: null,
         published: true,
         inStock: true,
+        stockQuantity: 50,
         views: 0,
         orderCount: 0,
         createdAt: serverTimestamp(),
@@ -178,11 +190,33 @@ async function seed() {
 
   console.log(`\n   Total: ${productCount} products written\n`);
 
+  // 3. Categories
+  console.log('📦 Seeding categories...');
+  let categoryCount = 0;
+
+  for (const cat of categories) {
+    await setDoc(
+      doc(db, 'categories', cat.id),
+      {
+        ...cat,
+        imageUrl: '',
+        productCount: 0,
+        createdAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+    categoryCount++;
+    console.log(`   ✅ categories/${cat.id} → ${cat.name_mn}`);
+  }
+
+  console.log(`\n   Total: ${categoryCount} categories written\n`);
+
   // Summary
   console.log('─'.repeat(40));
   console.log('✅ Seeding complete!');
   console.log(`   • settings/main: 1 doc`);
   console.log(`   • products: ${productCount} docs`);
+  console.log(`   • categories: ${categoryCount} docs`);
   console.log("✅ Images updated for all 8 products");
   console.log('─'.repeat(40));
 

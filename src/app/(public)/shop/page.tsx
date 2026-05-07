@@ -3,9 +3,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { getAllProducts } from '@/lib/services/firestoreService';
-import { CATEGORIES, getCategoryName, formatPrice, Product } from '@/types';
+import { formatPrice, Product, Category } from '@/types';
 import ProductCard from '@/components/ui/ProductCard';
 import { Suspense } from 'react';
+import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 function ShopContent() {
   const searchParams = useSearchParams();
@@ -18,10 +20,11 @@ function ShopContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 200000]);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   const displayCategories = [
-    { id: 'all', name_mn: 'Бүгд', slug: 'all', image: '' },
-    ...CATEGORIES,
+    { id: 'all', name_mn: 'Бүгд', slug: 'all' },
+    ...categories,
   ];
 
   useEffect(() => {
@@ -31,6 +34,12 @@ function ShopContent() {
       .then(data => setProducts(data))
       .catch(() => setError(true))
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    getDocs(query(collection(db, 'categories'), orderBy('order', 'asc')))
+      .then(snap => setCategories(snap.docs.map(d => ({ id: d.id, ...d.data() } as Category))))
+      .catch(() => setCategories([]));
   }, []);
 
   const filteredProducts = useMemo(() => {
@@ -74,6 +83,7 @@ function ShopContent() {
   };
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const activeCategoryName = displayCategories.find(cat => cat.slug === activeCategory)?.name_mn || activeCategory;
 
   if (error) {
     return (
@@ -91,7 +101,7 @@ function ShopContent() {
         <h1 className="section-heading text-4xl md:text-5xl">Бүтээгдэхүүн</h1>
         <p className="text-sm text-text-muted mt-3">
           {loading ? '...' : `${filteredProducts.length} бүтээгдэхүүн`}
-          {activeCategory !== 'all' && ` · ${getCategoryName(activeCategory)}`}
+          {activeCategory !== 'all' && ` · ${activeCategoryName}`}
         </p>
       </div>
 

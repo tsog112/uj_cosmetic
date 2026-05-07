@@ -112,6 +112,7 @@ export async function deleteProduct(productId: string): Promise<void> {
 
 // ─── ORDERS ──────────────────────────────────────────────────────
 const ORDERS = 'orders';
+export const PAID_ORDER_STATUSES: OrderStatus[] = ['confirmed', 'shipped', 'delivered'];
 
 export async function createOrder(orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
   try {
@@ -136,8 +137,8 @@ export async function createOrder(orderData: Omit<Order, 'id' | 'createdAt' | 'u
 
       // Validate and calculate
       for (const pd of productDocs) {
-        const stock = pd.data.stock ?? (pd.data.inStock ? 999 : 0);
-        if (stock < pd.item.quantity) {
+        const stockQuantity = Number(pd.data.stockQuantity ?? pd.data.stock ?? (pd.data.inStock ? 999 : 0));
+        if (stockQuantity < pd.item.quantity) {
           throw new Error(`"${pd.data.name_mn}" бүтээгдэхүүний нөөц хүрэлцэхгүй байна.`);
         }
         const actualPrice = pd.data.salePrice ?? pd.data.price;
@@ -145,13 +146,12 @@ export async function createOrder(orderData: Omit<Order, 'id' | 'createdAt' | 'u
 
         verifiedItems.push({ ...pd.item, price: Math.round(actualPrice) });
 
-        // Deduct stock
-        if (typeof stock === 'number') {
-          transaction.update(pd.ref, {
-            stock: stock - pd.item.quantity,
-            orderCount: increment(pd.item.quantity),
-          });
-        }
+        const nextStockQuantity = Math.max(0, stockQuantity - pd.item.quantity);
+        transaction.update(pd.ref, {
+          stockQuantity: nextStockQuantity,
+          inStock: nextStockQuantity > 0,
+          orderCount: increment(pd.item.quantity),
+        });
       }
 
       const shippingCost = Math.round(orderData.shippingCost);
@@ -171,6 +171,53 @@ export async function createOrder(orderData: Omit<Order, 'id' | 'createdAt' | 'u
 
     return orderId;
   } catch (e) { handleError(e, 'createOrder'); }
+}
+
+function getPeriodStart(period: 'today' | '7days' | '30days' | 'month'): Date {
+  const now = new Date();
+  if (period === 'today') return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (period === '7days') return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  if (period === '30days') return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  return new Date(now.getFullYear(), now.getMonth(), 1);
+}
+
+export async function getRevenueStats(period: 'today' | '7days' | '30days' | 'month'): Promise<{ total: number; count: number }> {
+  try {
+    const ordersRef = collection(db, ORDERS);
+    const q = query(
+      ordersRef,
+      where('status', 'in', PAID_ORDER_STATUSES),
+      where('createdAt', '>=', Timestamp.fromDate(getPeriodStart(period)))
+    );
+    const snapshot = await getDocs(q);
+    const total = snapshot.docs.reduce((sum, docSnap) => sum + Number(docSnap.data().total || 0), 0);
+    return { total, count: snapshot.size };
+  } catch (e) { handleError(e, `getRevenueStats(${period})`); }
+}
+
+export async function getDashboardStats(): Promise<{
+  totalRevenue: number;
+  totalOrders: number;
+  pendingOrders: number;
+  todayOrders: number;
+}> {
+  try {
+    const ordersRef = collection(db, ORDERS);
+    const todayStart = Timestamp.fromDate(getPeriodStart('today'));
+    const [allOrdersSnap, paidOrdersSnap, pendingOrdersSnap, todayOrdersSnap] = await Promise.all([
+      getDocs(ordersRef),
+      getDocs(query(ordersRef, where('status', 'in', PAID_ORDER_STATUSES))),
+      getDocs(query(ordersRef, where('status', '==', 'pending'))),
+      getDocs(query(ordersRef, where('createdAt', '>=', todayStart))),
+    ]);
+
+    return {
+      totalRevenue: paidOrdersSnap.docs.reduce((sum, docSnap) => sum + Number(docSnap.data().total || 0), 0),
+      totalOrders: allOrdersSnap.size,
+      pendingOrders: pendingOrdersSnap.size,
+      todayOrders: todayOrdersSnap.size,
+    };
+  } catch (e) { handleError(e, 'getDashboardStats'); }
 }
 
 export async function getOrderById(orderId: string): Promise<Order | null> {

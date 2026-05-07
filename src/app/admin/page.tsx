@@ -9,6 +9,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import * as XLSX from 'xlsx';
 
 type Period = 'Өнөөдөр' | '7 хоног' | '30 хоног' | 'Энэ сар';
+const PAID_STATUSES = ['confirmed', 'shipped', 'delivered'];
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState({
@@ -54,8 +55,8 @@ export default function AdminDashboardPage() {
 
         oList.forEach(o => {
           tOrders++;
-          if (o.status === 'Хүлээгдэж байна') pOrders++;
-          if (o.status !== 'Цуцлагдсан') tRev += (o.total || 0);
+          if (o.status === 'pending') pOrders++;
+          if (PAID_STATUSES.includes(o.status)) tRev += (o.total || 0);
           if (o.orderTime >= startOfToday) todayO++;
         });
 
@@ -114,7 +115,7 @@ export default function AdminDashboardPage() {
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     
     return allOrders.filter(o => {
-      if (o.status === 'Цуцлагдсан') return false;
+      if (!PAID_STATUSES.includes(o.status)) return false;
       const t = o.orderTime;
       if (period === 'Өнөөдөр') return t >= startOfToday;
       if (period === '7 хоног') return t >= (now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -142,11 +143,18 @@ export default function AdminDashboardPage() {
 
       if (o.items) {
         o.items.forEach((item: any) => {
-          if (!productMap[item.id]) {
-            productMap[item.id] = { id: item.id, name: item.name, image: item.image || '', units: 0, revenue: 0 };
+          const productId = item.productId || item.id;
+          if (!productMap[productId]) {
+            productMap[productId] = {
+              id: productId,
+              name: item.name_mn || item.name,
+              image: item.imageUrl || item.image || '',
+              units: 0,
+              revenue: 0
+            };
           }
-          productMap[item.id].units += (item.quantity || 1);
-          productMap[item.id].revenue += ((item.price || 0) * (item.quantity || 1));
+          productMap[productId].units += (item.quantity || 1);
+          productMap[productId].revenue += ((item.price || 0) * (item.quantity || 1));
         });
       }
     });
@@ -220,8 +228,9 @@ export default function AdminDashboardPage() {
           <p className="text-3xl font-bold text-yellow-600">{stats.pendingOrders}</p>
         </div>
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-center">
-          <p className="text-sm font-medium text-gray-500 mb-1 uppercase tracking-wider">Нийт орлого</p>
+          <p className="text-sm font-medium text-gray-500 mb-1 uppercase tracking-wider">Баталгаажсан орлого</p>
           <p className="text-3xl font-bold text-green-600">{formatPrice(stats.totalRevenue)}</p>
+          <p className="text-xs text-gray-400 mt-2">(цуцлагдсан захиалга оруулаагүй)</p>
         </div>
       </div>
 

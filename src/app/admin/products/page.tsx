@@ -107,7 +107,10 @@ export default function AdminProductsPage() {
           }
         } else {
           let updates: any = {};
-          if (action === 'outOfStock') updates.inStock = false;
+          if (action === 'outOfStock') {
+            updates.inStock = false;
+            updates.stockQuantity = 0;
+          }
           if (action === 'publish') updates.published = true;
           if (action === 'hide') updates.published = false;
           
@@ -126,7 +129,10 @@ export default function AdminProductsPage() {
         } else {
           mockProds = mockProds.map((p:any) => {
             if (selectedIds.has(p.id) || selectedIds.has(p._id)) {
-              if (action === 'outOfStock') p.inStock = false;
+              if (action === 'outOfStock') {
+                p.inStock = false;
+                p.stockQuantity = 0;
+              }
               if (action === 'publish') p.published = true;
               if (action === 'hide') p.published = false;
             }
@@ -239,7 +245,13 @@ export default function AdminProductsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {products.map(p => {
             const docId = p._id || p.id;
-            const inStock = p.inStock !== false; // default true if undefined
+            const stockQuantity = Number(p.stockQuantity ?? p.stock ?? (p.inStock === false ? 0 : 999));
+            const inStock = stockQuantity > 0 && p.inStock !== false;
+            const stockBadgeClass = stockQuantity > 5
+              ? 'bg-green-100 text-green-700 border-green-200'
+              : stockQuantity > 0
+                ? 'bg-yellow-100 text-yellow-700 border-yellow-200'
+                : 'bg-red-100 text-red-700 border-red-200';
             
             // Auto expiry check
             let isSaleActive = !!p.salePrice;
@@ -314,6 +326,14 @@ export default function AdminProductsPage() {
                       Цуцлагдсан
                     </span>
                   )}
+                  <span className={`text-[11px] font-bold rounded-md px-2 py-1 shadow-sm border ${stockBadgeClass}`}>
+                    Нөөц: {stockQuantity} ширхэг
+                  </span>
+                  {stockQuantity === 0 && (
+                    <span className="bg-red-600 text-white text-[11px] font-bold uppercase rounded-md px-2 py-1 shadow-sm">
+                      Дуусжээ
+                    </span>
+                  )}
                 </div>
 
                 {isSaleActive && p.saleEndDate && (
@@ -348,7 +368,15 @@ export default function AdminProductsPage() {
                     {inStock ? 'Нөөцтэй' : 'Дууссан'}
                   </span>
                   <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" checked={inStock} onChange={() => updateProductField(docId, { inStock: !inStock })} className="sr-only peer" />
+                    <input
+                      type="checkbox"
+                      checked={inStock}
+                      onChange={() => updateProductField(docId, {
+                        inStock: !inStock,
+                        stockQuantity: !inStock ? Math.max(stockQuantity, 1) : 0
+                      })}
+                      className="sr-only peer"
+                    />
                     <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500 peer-not-checked:bg-red-500"></div>
                   </label>
                 </div>

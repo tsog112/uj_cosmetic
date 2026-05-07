@@ -111,6 +111,31 @@ function CheckoutContent() {
     <div className="max-w-[1100px] mx-auto px-6 lg:px-10 py-12 md:py-20">
       <h1 className="section-heading text-3xl md:text-4xl mb-10">Захиалга баталгаажуулах</h1>
 
+      <div className="mb-10 border border-border bg-white p-6">
+        <div className="flex items-center justify-between gap-4 mb-5">
+          <h2 className="text-xs font-medium tracking-[0.15em] uppercase text-text-muted">
+            Захиалгын хураангуй
+          </h2>
+          {items.length === 1 ? (
+            <span className="text-xs font-medium text-accent">Шууд худалдан авах</span>
+          ) : (
+            <span className="text-xs text-text-muted">{items.length} бүтээгдэхүүн</span>
+          )}
+        </div>
+        <div className="space-y-3">
+          {items.map(item => (
+            <div key={item.product.id} className="flex items-center justify-between gap-4 text-sm">
+              <span className="text-text-primary">
+                {item.product.name_mn} x {item.quantity}
+              </span>
+              <span className="font-medium text-text-primary">
+                {formatPrice((item.product.salePrice ?? item.product.price) * item.quantity)}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-10 lg:gap-16">
         {/* Form */}
         <div>

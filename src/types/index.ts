@@ -15,6 +15,7 @@ export interface Product {
   featured: boolean;
   published: boolean;
   inStock: boolean;
+  stockQuantity: number;
   views: number;
   orderCount: number;
   createdAt: Date;
@@ -30,7 +31,11 @@ export interface Category {
   id: string;
   name_mn: string;
   slug: string;
-  image: string;
+  image?: string;
+  imageUrl?: string;
+  order?: number;
+  productCount?: number;
+  createdAt?: Date;
 }
 
 export interface OrderItem {
