@@ -32,15 +32,19 @@ service cloud.firestore {
     match /products/{productId} {
       // Read access to everyone
       allow read: if true;
-      // Allow clients to decrement stock and increment orderCount during checkout
+      // Allow clients to decrement stockQuantity and increment orderCount during checkout
       // All other writes (create, delete, full update) remain admin-only
       allow update: if isAdmin() ||
         (
           request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['stock', 'orderCount']) &&
-          request.resource.data.stock is int &&
-          request.resource.data.stock >= 0 &&
-          request.resource.data.orderCount is int
+            .hasOnly(['stockQuantity', 'inStock', 'orderCount']) &&
+          request.resource.data.stockQuantity is int &&
+          request.resource.data.stockQuantity >= 0 &&
+          request.resource.data.stockQuantity <= resource.data.stockQuantity &&
+          request.resource.data.inStock is bool &&
+          request.resource.data.inStock == (request.resource.data.stockQuantity > 0) &&
+          request.resource.data.orderCount is int &&
+          request.resource.data.orderCount >= resource.data.orderCount
         );
       allow create, delete: if isAdmin();
     }
