@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -9,12 +8,20 @@ import { DEFAULT_SETTINGS, SiteSettings } from '@/types';
 
 type InstagramFeedItem = {
   id: string;
-  imageUrl: string;
-  instagramUrl?: string;
+  instagramUrl: string;
+  embedUrl: string | null;
   order: number;
 };
 
 const SLOT_COUNT = 6;
+
+function getEmbedUrl(instagramUrl: string): string | null {
+  const match = instagramUrl.match(
+    /instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/
+  );
+  if (!match) return null;
+  return `https://www.instagram.com/p/${match[1]}/embed/`;
+}
 
 export default function InstagramSection() {
   const [items, setItems] = useState<InstagramFeedItem[]>([]);
@@ -36,14 +43,14 @@ export default function InstagramSection() {
         feedSnap.docs
           .map(docSnap => {
             const data = docSnap.data();
+            const instagramUrl = data.instagramUrl || '';
             return {
               id: data.id || docSnap.id,
-              imageUrl: data.imageUrl || '',
-              instagramUrl: data.instagramUrl || '',
+              instagramUrl,
+              embedUrl: data.embedUrl || getEmbedUrl(instagramUrl),
               order: Number(data.order ?? 0),
             };
           })
-          .filter(item => item.imageUrl)
           .slice(0, SLOT_COUNT)
       );
     }
@@ -81,53 +88,40 @@ export default function InstagramSection() {
         </div>
 
         <div className="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-3">
-          {slots.map((item, index) => {
-            if (!item) {
-              return (
-                <div
-                  key={`instagram-placeholder-${index}`}
-                  className="aspect-square bg-[#FFD6E8] border border-[#FFB7D5]/40"
-                  aria-label="Instagram placeholder"
-                />
-              );
-            }
-
-            const image = (
-              <>
-                <Image
-                  src={item.imageUrl}
-                  alt={`UJ Cosmetic Instagram ${index + 1}`}
-                  fill
-                  className="object-cover transition-transform duration-500 group-hover:scale-110"
-                  sizes="(max-width: 768px) 33vw, 16vw"
-                />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
-              </>
-            );
-
-            if (!item.instagramUrl) {
-              return (
-                <div
-                  key={item.id}
-                  className="group relative aspect-square overflow-hidden bg-[#FFD6E8]"
-                >
-                  {image}
-                </div>
-              );
-            }
-
-            return (
+          {slots.map((slot, index) => (
+            slot?.embedUrl && slot.instagramUrl ? (
               <a
-                key={item.id}
-                href={item.instagramUrl}
+                key={slot.id}
+                href={slot.instagramUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group relative aspect-square overflow-hidden bg-[#FFD6E8]"
+                className="block aspect-square overflow-hidden relative group bg-pink-100"
               >
-                {image}
+                <iframe
+                  src={slot.embedUrl}
+                  className="w-full border-0 pointer-events-none"
+                  style={{
+                    height: '300%',
+                    marginTop: '-50%',
+                    transform: 'scale(1)',
+                  }}
+                  scrolling="no"
+                  allowTransparency={true}
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                  <span className="opacity-0 group-hover:opacity-100 text-white text-sm font-medium transition-opacity">
+                    Instagram-д үзэх ↗
+                  </span>
+                </div>
               </a>
-            );
-          })}
+            ) : (
+              <div
+                key={`instagram-placeholder-${index}`}
+                className="aspect-square bg-pink-100"
+                aria-label="Instagram placeholder"
+              />
+            )
+          ))}
         </div>
 
         <div className="mt-10 flex justify-center">
