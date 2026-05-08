@@ -76,7 +76,7 @@ function AuthContent() {
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center bg-cream px-6 py-12">
-      <div className="w-full max-w-[420px] bg-white p-8 md:p-10 border border-border shadow-sm">
+      <div className="w-full max-w-[420px] bg-sand p-8 md:p-10 border border-border shadow-sm">
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-block">
@@ -214,7 +214,7 @@ function AuthContent() {
             <div className="w-full border-t border-border"></div>
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-4 bg-white text-text-muted">эсвэл</span>
+            <span className="px-4 bg-sand text-text-muted">эсвэл</span>
           </div>
         </div>
 
@@ -223,7 +223,7 @@ function AuthContent() {
           <button
             onClick={handleGoogle}
             type="button"
-            className="w-full bg-white border border-[#E0E0E0] hover:bg-gray-50 text-[#333] font-medium py-3 text-sm flex items-center justify-center gap-3 transition-colors"
+            className="w-full bg-sand border border-[#E0E0E0] hover:bg-gray-50 text-[#333] font-medium py-3 text-sm flex items-center justify-center gap-3 transition-colors"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>

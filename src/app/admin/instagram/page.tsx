@@ -154,7 +154,7 @@ export default function AdminInstagramPage() {
             onDragOver={event => event.preventDefault()}
             onDrop={event => handleDrop(slot.id, event)}
             onDragEnd={() => setDraggedSlotId(null)}
-            className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm"
+            className="bg-sand border border-gray-200 rounded-xl p-4 shadow-sm"
           >
             <div className="aspect-square bg-pink-100 rounded-lg overflow-hidden relative">
               {slot.embedUrl ? (

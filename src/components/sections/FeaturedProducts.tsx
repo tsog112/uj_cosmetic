@@ -4,11 +4,10 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import ProductCard from '@/components/ui/ProductCard';
 import { getFeaturedProducts } from '@/lib/services/firestoreService';
-import { useFadeIn } from '@/hooks/useFadeIn';
+import { motion } from 'framer-motion';
 import type { Product } from '@/types';
 
 export default function FeaturedProducts() {
-  const ref = useFadeIn();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -20,62 +19,78 @@ export default function FeaturedProducts() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (error) {
-    return (
-      <section ref={ref} className="section-padding fade-in-section px-6 lg:px-10 bg-[#FFF0F6]" id="featured-products">
-        <div className="max-w-[1400px] mx-auto text-center">
-          <p className="text-sm text-red-500">Мэдээлэл ачаалахад алдаа гарлаа. Дахин оролдоно уу.</p>
-        </div>
-      </section>
-    );
-  }
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.2 }
+    }
+  };
+
+  const item = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" as const } }
+  };
+
+  if (error) return null;
 
   return (
-    <section ref={ref} className="section-padding fade-in-section px-6 lg:px-10 bg-[#FFF0F6]" id="featured-products">
-      <div className="max-w-[1400px] mx-auto">
-        <div className="text-center mb-16 md:mb-20">
-          <p className="label-eyebrow mb-4">Онцлох бүтээгдэхүүн</p>
-          <h2 className="font-serif text-heading md:text-display-sm font-normal text-[#1A1A1A]">
+    <section className="py-32 md:py-48 bg-sand" id="featured-products">
+      <div className="max-content">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 1.2, ease: "easeOut" as const }}
+          className="text-center mb-24 md:mb-32"
+        >
+          <span className="editorial-label block mb-6">Онцлох бүтээгдэхүүн</span>
+          <h2 className="editorial-heading text-4xl md:text-6xl text-charcoal">
             Шилдэг бүтээгдэхүүнүүд
           </h2>
-          <div className="w-16 h-px bg-[#F2A8C8] mx-auto mt-8" />
-        </div>
+          <div className="w-12 h-[1px] bg-border mx-auto mt-12" />
+        </motion.div>
 
         {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="animate-pulse">
-                <div className="aspect-[3/4] bg-[#FFD6E8] mb-4" />
-                <div className="h-3 bg-[#FFD6E8] w-20 mb-3" />
-                <div className="h-4 bg-[#FFD6E8] w-full mb-2" />
-                <div className="h-4 bg-[#FFD6E8] w-24" />
+                <div className="aspect-[4/5] bg-[#F9F8F6] mb-6" />
+                <div className="h-4 bg-[#F9F8F6] w-3/4 mx-auto mb-3" />
+                <div className="h-3 bg-[#F9F8F6] w-1/2 mx-auto" />
               </div>
             ))}
           </div>
-        ) : products.length === 0 ? (
-          <p className="text-center text-sm text-[#8B6B78]">Онцлох бүтээгдэхүүн олдсонгүй</p>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
-            {products.map((product, index) => (
-              <div
-                key={product.id}
-                className="opacity-0 animate-fadeInUp"
-                style={{ animationDelay: `${index * 0.12}s` }}
-              >
+          <motion.div 
+            variants={container}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-16 md:gap-x-12"
+          >
+            {products.map((product) => (
+              <motion.div key={product.id} variants={item} className="h-full">
                 <ProductCard product={product} />
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
 
-        <div className="mt-14 md:mt-18 text-center">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.5, duration: 1, ease: "easeOut" as const }}
+          className="mt-24 md:mt-32 text-center"
+        >
           <Link
             href="/shop"
-            className="inline-flex text-xs tracking-[0.2em] uppercase text-[#1A1A1A] border-b border-[#1A1A1A] pb-1 hover:text-[#8B6B78] hover:border-[#8B6B78] transition-colors"
+            className="btn-premium-outline min-w-[220px]"
           >
-            Бүх бүтээгдэхүүн үзэх →
+            Бүх бүтээгдэхүүн үзэх
           </Link>
-        </div>
+        </motion.div>
       </div>
     </section>
   );

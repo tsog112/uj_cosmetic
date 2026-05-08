@@ -45,7 +45,7 @@ export default function TestConnectionPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-8 font-sans">
-      <div className="max-w-xl w-full bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
+      <div className="max-w-xl w-full bg-sand p-8 rounded-2xl shadow-xl border border-gray-100">
         <h1 className="text-2xl font-bold text-gray-900 mb-6 text-center">
           Firebase Database Connection Test
         </h1>

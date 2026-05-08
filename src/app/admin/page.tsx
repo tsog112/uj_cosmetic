@@ -9,7 +9,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import * as XLSX from 'xlsx';
 
 type Period = 'Өнөөдөр' | '7 хоног' | '30 хоног' | 'Энэ сар';
-const PAID_STATUSES = ['confirmed', 'shipped', 'delivered'];
+const PAID_STATUSES = ['confirmed', 'shipped', 'delivered', 'Баталгаажсан', 'Хүргэлтэнд гарсан', 'Хүргэгдсэн'];
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState({
@@ -55,7 +55,7 @@ export default function AdminDashboardPage() {
 
         oList.forEach(o => {
           tOrders++;
-          if (o.status === 'pending') pOrders++;
+          if (o.status === 'pending' || o.status === 'Хүлээгдэж байна') pOrders++;
           if (PAID_STATUSES.includes(o.status)) tRev += (o.total || 0);
           if (o.orderTime >= startOfToday) todayO++;
         });
@@ -93,12 +93,12 @@ export default function AdminDashboardPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Хүлээгдэж байна': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'Баталгаажсан': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'Хүргэлтэнд гарсан': return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'Хүргэгдсэн': return 'bg-green-100 text-green-800 border-green-200';
-      case 'Цуцлагдсан': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'pending': case 'Хүлээгдэж байна': return 'bg-sand text-neutral-600 border-border';
+      case 'confirmed': case 'Баталгаажсан': return 'bg-[#E8D5D0]/20 text-charcoal border-[#E8D5D0]';
+      case 'shipped': case 'Хүргэлтэнд гарсан': return 'bg-charcoal/5 text-charcoal border-charcoal/20';
+      case 'delivered': case 'Хүргэгдсэн': return 'bg-sand text-charcoal border-charcoal';
+      case 'cancelled': case 'Цуцлагдсан': return 'bg-red-50 text-red-800 border-red-200';
+      default: return 'bg-sand text-neutral-600 border-border';
     }
   };
 
@@ -160,7 +160,7 @@ export default function AdminDashboardPage() {
     });
 
     const cData = Object.values(dailyMap).sort((a, b) => a.timestamp - b.timestamp);
-    const tData = [...cData].reverse(); // newest first for table
+    const tData = [...cData].reverse(); 
 
     const topProds = Object.values(productMap).sort((a, b) => b.units - a.units).slice(0, 5);
 
@@ -172,32 +172,32 @@ export default function AdminDashboardPage() {
 
   const downloadExcel = () => {
     const worksheetData = [
-      ['Огноо', 'Захиалгын тоо', 'Нийт орлого', 'Дундаж захиалга'],
+      ['Date', 'Orders', 'Revenue', 'Avg. Order'],
       ...tableData.map(row => [
         row.dateStr,
         row.count,
         row.total,
         Math.round(row.total / row.count)
       ]),
-      ['Нийт', totalPeriodOrders, totalPeriodRevenue, totalPeriodOrders ? Math.round(totalPeriodRevenue / totalPeriodOrders) : 0]
+      ['Total', totalPeriodOrders, totalPeriodRevenue, totalPeriodOrders ? Math.round(totalPeriodRevenue / totalPeriodOrders) : 0]
     ];
     
     const ws = XLSX.utils.aoa_to_sheet(worksheetData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Орлого");
+    XLSX.utils.book_append_sheet(wb, ws, "Revenue");
     XLSX.writeFile(wb, `Revenue_${period}.xlsx`);
   };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-4 border border-gray-100 shadow-xl rounded-lg text-sm">
-          <p className="font-bold text-gray-800 mb-2">{label}</p>
-          <p className="text-accent font-medium mb-1">
-            Нийт дүн: {formatPrice(payload[0].value)}
+        <div className="bg-sand border border-border p-6 shadow-sm text-sm">
+          <p className="font-serif italic text-charcoal mb-2">{label}</p>
+          <p className="text-charcoal font-medium mb-1 tracking-wide">
+            Орлого: {formatPrice(payload[0].value)}
           </p>
-          <p className="text-gray-500">
-            Захиалга: {payload[0].payload.count} ширхэг
+          <p className="text-neutral-500 text-xs uppercase tracking-widest mt-2">
+            Захиалгууд: {payload[0].payload.count}
           </p>
         </div>
       );
@@ -206,45 +206,47 @@ export default function AdminDashboardPage() {
   };
 
   if (loading) {
-    return <div className="flex justify-center py-32"><div className="w-12 h-12 border-4 border-gray-200 border-t-accent rounded-full animate-spin"/></div>;
+    return <div className="flex justify-center py-32"><div className="w-8 h-8 border border-charcoal border-t-transparent rounded-full animate-spin"/></div>;
   }
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Ерөнхий мэдээлэл</h2>
-
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-center">
-          <p className="text-sm font-medium text-gray-500 mb-1 uppercase tracking-wider">Нийт захиалга</p>
-          <p className="text-3xl font-bold text-gray-900">{stats.totalOrders}</p>
-        </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-center">
-          <p className="text-sm font-medium text-gray-500 mb-1 uppercase tracking-wider">Өнөөдрийн захиалга</p>
-          <p className="text-3xl font-bold text-gray-900">{stats.todayOrders}</p>
-        </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-center">
-          <p className="text-sm font-medium text-gray-500 mb-1 uppercase tracking-wider">Хүлээгдэж буй</p>
-          <p className="text-3xl font-bold text-yellow-600">{stats.pendingOrders}</p>
-        </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-center">
-          <p className="text-sm font-medium text-gray-500 mb-1 uppercase tracking-wider">Баталгаажсан орлого</p>
-          <p className="text-3xl font-bold text-green-600">{formatPrice(stats.totalRevenue)}</p>
-          <p className="text-xs text-gray-400 mt-2">(цуцлагдсан захиалга оруулаагүй)</p>
+    <div className="space-y-12">
+      <div>
+        <h2 className="font-serif text-3xl text-charcoal mb-8 tracking-wide">Ерөнхий мэдээлэл</h2>
+        
+        {/* Stat Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-sand p-8 border border-border flex flex-col justify-center">
+            <p className="editorial-label mb-4">Нийт захиалга</p>
+            <p className="text-4xl font-serif text-charcoal">{stats.totalOrders}</p>
+          </div>
+          <div className="bg-sand p-8 border border-border flex flex-col justify-center">
+            <p className="editorial-label mb-4">Өнөөдрийн захиалга</p>
+            <p className="text-4xl font-serif text-charcoal">{stats.todayOrders}</p>
+          </div>
+          <div className="bg-sand p-8 border border-border flex flex-col justify-center">
+            <p className="editorial-label mb-4">Хүлээгдэж буй захиалга</p>
+            <p className="text-4xl font-serif text-neutral-500 italic">{stats.pendingOrders}</p>
+          </div>
+          <div className="bg-sand p-8 border border-border flex flex-col justify-center">
+            <p className="editorial-label mb-4">Нийт орлого</p>
+            <p className="text-4xl font-serif text-charcoal">{formatPrice(stats.totalRevenue)}</p>
+            <p className="text-[9px] text-neutral-400 mt-4 uppercase tracking-widest">(Баталгаажсан)</p>
+          </div>
         </div>
       </div>
 
       {/* Charts Section */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden p-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-          <h3 className="text-lg font-bold text-gray-900">Орлогын динамик</h3>
-          <div className="flex bg-gray-100 p-1 rounded-lg">
+      <div className="bg-sand border border-border p-10">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-12 gap-6 border-b border-border pb-6">
+          <h3 className="font-serif text-2xl text-charcoal tracking-wide">Орлогын өсөлт</h3>
+          <div className="flex gap-6">
             {(['Өнөөдөр', '7 хоног', '30 хоног', 'Энэ сар'] as Period[]).map(p => (
               <button 
                 key={p} 
                 onClick={() => setPeriod(p)}
-                className={`px-4 py-2 text-sm font-bold rounded-md transition-colors ${
-                  period === p ? 'bg-white text-accent shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                className={`editorial-label transition-colors border-b pb-1 ${
+                  period === p ? 'text-charcoal border-charcoal' : 'text-neutral-400 border-transparent hover:text-charcoal hover:border-charcoal/30'
                 }`}
               >
                 {p}
@@ -253,60 +255,59 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        <div className="h-[300px] w-full mb-8">
+        <div className="h-[400px] w-full mb-16">
           {chartData.length === 0 ? (
-            <div className="w-full h-full flex items-center justify-center text-gray-400 font-medium">Мэдээлэл байхгүй байна</div>
+            <div className="w-full h-full flex items-center justify-center editorial-label text-neutral-400">Мэдээлэл алга</div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                <XAxis dataKey="dateStr" axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 12}} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 12}} dx={-10} tickFormatter={(val) => `${val / 1000}k`} />
-                <Tooltip content={<CustomTooltip />} />
-                <Line type="monotone" dataKey="total" stroke="#FFB7D5" strokeWidth={3} dot={{r: 4, strokeWidth: 2, fill: '#fff'}} activeDot={{r: 6, fill: '#FFB7D5'}} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E1DA" />
+                <XAxis dataKey="dateStr" axisLine={false} tickLine={false} tick={{fill: '#666', fontSize: 10, fontFamily: 'var(--font-inter)', letterSpacing: '0.1em'}} dy={15} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#666', fontSize: 10, fontFamily: 'var(--font-inter)', letterSpacing: '0.1em'}} dx={-15} tickFormatter={(val) => `${val / 1000}k`} />
+                <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#E8D5D0', strokeWidth: 1, strokeDasharray: '3 3' }} />
+                <Line type="monotone" dataKey="total" stroke="#1A1A1A" strokeWidth={1.5} dot={{r: 3, strokeWidth: 1, fill: '#F7F2EB', stroke: '#1A1A1A'}} activeDot={{r: 5, fill: '#1A1A1A', stroke: '#F7F2EB'}} />
               </LineChart>
             </ResponsiveContainer>
           )}
         </div>
 
         {/* Revenue Table & Top Products */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-16">
           
           {/* Table */}
           <div>
-            <div className="flex justify-between items-center mb-4">
-              <h4 className="font-bold text-gray-800">Дэлгэрэнгүй хуулга</h4>
-              <button onClick={downloadExcel} className="text-sm text-green-600 font-bold bg-green-50 px-3 py-1.5 rounded-md hover:bg-green-100 transition-colors flex items-center gap-2">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Excel татах
+            <div className="flex justify-between items-center mb-8 border-b border-border pb-4">
+              <h4 className="font-serif text-xl text-charcoal">Дэлгэрэнгүй тайлан</h4>
+              <button onClick={downloadExcel} className="editorial-label text-charcoal border-b border-transparent hover:border-charcoal pb-1 transition-all flex items-center gap-2">
+                CSV татах
               </button>
             </div>
-            <div className="overflow-hidden border border-gray-100 rounded-xl">
+            <div className="overflow-hidden border border-border">
               <table className="w-full text-sm text-left">
-                <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
+                <thead className="bg-sand-dark">
                   <tr>
-                    <th className="px-4 py-3 font-medium">Огноо</th>
-                    <th className="px-4 py-3 font-medium text-center">Захиалга</th>
-                    <th className="px-4 py-3 font-medium text-right">Орлого</th>
+                    <th className="px-6 py-4 editorial-label text-charcoal">Огноо</th>
+                    <th className="px-6 py-4 editorial-label text-charcoal text-center">Захиалгууд</th>
+                    <th className="px-6 py-4 editorial-label text-charcoal text-right">Орлого</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-border bg-sand">
                   {tableData.length === 0 ? (
-                    <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-400">Мэдээлэл олдсонгүй</td></tr>
+                    <tr><td colSpan={3} className="px-6 py-12 text-center editorial-label text-neutral-400">Мэдээлэл олдсонгүй</td></tr>
                   ) : tableData.map(row => (
-                    <tr key={row.dateStr} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium text-gray-800">{row.dateStr}</td>
-                      <td className="px-4 py-3 text-center">{row.count}</td>
-                      <td className="px-4 py-3 text-right text-accent font-bold">{formatPrice(row.total)}</td>
+                    <tr key={row.dateStr} className="hover:bg-sand-dark transition-colors">
+                      <td className="px-6 py-4 font-sans text-sm text-charcoal tracking-wide">{row.dateStr}</td>
+                      <td className="px-6 py-4 text-center text-neutral-600">{row.count}</td>
+                      <td className="px-6 py-4 text-right font-sans text-sm text-charcoal tracking-wide">{formatPrice(row.total)}</td>
                     </tr>
                   ))}
                 </tbody>
                 {tableData.length > 0 && (
-                  <tfoot className="bg-gray-50 font-bold">
+                  <tfoot className="bg-sand-dark border-t border-border">
                     <tr>
-                      <td className="px-4 py-4 text-gray-800">Нийт</td>
-                      <td className="px-4 py-4 text-center text-gray-800">{totalPeriodOrders}</td>
-                      <td className="px-4 py-4 text-right text-accent">{formatPrice(totalPeriodRevenue)}</td>
+                      <td className="px-6 py-6 editorial-label text-charcoal">Нийт</td>
+                      <td className="px-6 py-6 text-center font-sans text-sm text-charcoal">{totalPeriodOrders}</td>
+                      <td className="px-6 py-6 text-right font-sans text-sm text-charcoal tracking-wide">{formatPrice(totalPeriodRevenue)}</td>
                     </tr>
                   </tfoot>
                 )}
@@ -316,26 +317,26 @@ export default function AdminDashboardPage() {
 
           {/* Top Products */}
           <div>
-            <h4 className="font-bold text-gray-800 mb-4">Шилдэг борлуулалттай ({period})</h4>
-            <div className="space-y-3">
+            <h4 className="font-serif text-xl text-charcoal mb-8 border-b border-border pb-4">Шилдэг бүтээгдэхүүнүүд ({period})</h4>
+            <div className="space-y-4">
               {topProducts.length === 0 ? (
-                <div className="p-6 border border-gray-100 rounded-xl text-center text-gray-400 text-sm">Мэдээлэл олдсонгүй</div>
+                <div className="p-12 border border-border text-center editorial-label text-neutral-400">Мэдээлэл алга</div>
               ) : topProducts.map((p, idx) => (
-                <div key={p.id} className="flex items-center gap-4 p-3 border border-gray-100 rounded-xl hover:shadow-sm transition-shadow bg-gray-50/50">
-                  <div className="w-6 text-center font-bold text-gray-400">#{idx + 1}</div>
-                  <div className="w-12 h-12 bg-gray-200 rounded-md overflow-hidden flex-shrink-0">
+                <div key={p.id} className="flex items-center gap-6 p-4 border border-border hover:bg-sand-dark transition-colors bg-sand">
+                  <div className="w-8 text-center editorial-label text-neutral-400">{idx + 1}</div>
+                  <div className="w-16 h-20 bg-sand-dark overflow-hidden flex-shrink-0">
                     {p.image ? (
-                      <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                      <img src={p.image} alt={p.name} className="w-full h-full object-cover grayscale opacity-80" />
                     ) : (
-                      <div className="w-full h-full bg-gray-100 flex items-center justify-center text-xs text-gray-400">Img</div>
+                      <div className="w-full h-full flex items-center justify-center editorial-label text-neutral-300">Img</div>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-gray-900 truncate">{p.name}</p>
-                    <p className="text-xs text-gray-500">{p.units} ширхэг зарагдсан</p>
+                    <p className="font-serif text-lg text-charcoal truncate tracking-wide">{p.name}</p>
+                    <p className="text-[10px] uppercase tracking-widest text-neutral-500 mt-2">{p.units} Ширхэг зарагдсан</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-bold text-accent">{formatPrice(p.revenue)}</p>
+                    <p className="font-sans text-sm text-charcoal tracking-wide">{formatPrice(p.revenue)}</p>
                   </div>
                 </div>
               ))}
@@ -344,35 +345,35 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-12">
         {/* Recent Orders */}
-        <div className="xl:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
-            <h3 className="font-bold text-gray-800">Сүүлийн захиалгууд</h3>
-            <Link href="/admin/orders" className="text-sm text-accent hover:underline font-bold">Бүгдийг харах</Link>
+        <div className="xl:col-span-2 bg-sand border border-border overflow-hidden">
+          <div className="px-8 py-6 border-b border-border flex justify-between items-center">
+            <h3 className="font-serif text-xl text-charcoal">Сүүлийн гүйлгээнүүд</h3>
+            <Link href="/admin/orders" className="editorial-label text-charcoal border-b border-transparent hover:border-charcoal pb-1 transition-all">Бүгдийг үзэх</Link>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+              <thead className="bg-sand-dark">
                 <tr>
-                  <th className="px-6 py-3 font-medium">ID</th>
-                  <th className="px-6 py-3 font-medium">Харилцагч</th>
-                  <th className="px-6 py-3 font-medium">Огноо</th>
-                  <th className="px-6 py-3 font-medium text-right">Дүн</th>
-                  <th className="px-6 py-3 font-medium text-center">Төлөв</th>
+                  <th className="px-8 py-4 editorial-label text-charcoal">Дугаар</th>
+                  <th className="px-8 py-4 editorial-label text-charcoal">Харилцагч</th>
+                  <th className="px-8 py-4 editorial-label text-charcoal">Огноо</th>
+                  <th className="px-8 py-4 editorial-label text-charcoal text-right">Дүн</th>
+                  <th className="px-8 py-4 editorial-label text-charcoal text-center">Төлөв</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 text-gray-700">
+              <tbody className="divide-y divide-border">
                 {recentOrders.length === 0 ? (
-                  <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-400">Мэдээлэл олдсонгүй</td></tr>
+                  <tr><td colSpan={5} className="px-8 py-12 text-center editorial-label text-neutral-400">Мэдээлэл олдсонгүй</td></tr>
                 ) : recentOrders.map(order => (
-                  <tr key={order.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-3 font-bold text-gray-900">{order.id.slice(0,8)}...</td>
-                    <td className="px-6 py-3">{order.customerName}</td>
-                    <td className="px-6 py-3">{formatDateStr(order.createdAt)}</td>
-                    <td className="px-6 py-3 text-right font-bold">{formatPrice(order.total)}</td>
-                    <td className="px-6 py-3 text-center">
-                      <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border tracking-wider ${getStatusColor(order.status)}`}>
+                  <tr key={order.id} className="hover:bg-sand-dark transition-colors">
+                    <td className="px-8 py-4 font-sans text-xs text-neutral-500 tracking-wider uppercase">{order.id.slice(0,8)}</td>
+                    <td className="px-8 py-4 font-serif text-base text-charcoal">{order.customerName}</td>
+                    <td className="px-8 py-4 font-sans text-xs text-neutral-500 tracking-wide">{formatDateStr(order.createdAt)}</td>
+                    <td className="px-8 py-4 text-right font-sans text-sm text-charcoal tracking-wide">{formatPrice(order.total)}</td>
+                    <td className="px-8 py-4 text-center">
+                      <span className={`inline-flex px-3 py-1 text-[9px] uppercase tracking-[0.2em] border ${getStatusColor(order.status)}`}>
                         {order.status}
                       </span>
                     </td>
@@ -384,30 +385,30 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Recent Users */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
-          <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
-            <h3 className="font-bold text-gray-800">Шинэ хэрэглэгчид</h3>
-            <Link href="/admin/users" className="text-sm text-accent hover:underline font-bold">Бүгд</Link>
+        <div className="bg-sand border border-border rounded-sm shadow-sm overflow-hidden flex flex-col">
+          <div className="px-8 py-6 border-b border-border flex justify-between items-center">
+            <h3 className="font-serif text-xl text-charcoal">Шинэ харилцагчид</h3>
+            <Link href="/admin/users" className="editorial-label text-charcoal border-b border-transparent hover:border-charcoal pb-1 transition-all">Бүгд</Link>
           </div>
-          <div className="p-2 flex-1">
+          <div className="p-4 flex-1">
             {recentUsers.length === 0 ? (
-              <div className="p-4 text-center text-gray-400 text-sm">Мэдээлэл олдсонгүй</div>
+              <div className="p-12 text-center editorial-label text-neutral-400">Мэдээлэл олдсонгүй</div>
             ) : recentUsers.map(u => (
-              <div key={u.id} className="flex items-center gap-4 p-4 hover:bg-gray-50 rounded-xl transition-colors">
-                <div className="w-10 h-10 rounded-full bg-[#FFF0F6] text-[#FFB7D5] flex items-center justify-center font-bold overflow-hidden flex-shrink-0">
+              <div key={u.id} className="flex items-center gap-6 p-4 hover:bg-sand-dark transition-colors">
+                <div className="w-12 h-12 bg-sand-dark text-charcoal flex items-center justify-center font-serif text-xl overflow-hidden flex-shrink-0 border border-border">
                   {u.photoURL ? (
-                    <img src={u.photoURL} alt="User" className="w-full h-full object-cover" />
+                    <img src={u.photoURL} alt="User" className="w-full h-full object-cover grayscale opacity-80" />
                   ) : (
                     (u.displayName || u.email || 'U').charAt(0).toUpperCase()
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-gray-900 truncate">{u.displayName || 'Нэргүй хэрэглэгч'}</p>
-                  <p className="text-xs text-gray-500 truncate">{u.email}</p>
+                  <p className="font-serif text-lg text-charcoal truncate tracking-wide">{u.displayName || 'Нэргүй харилцагч'}</p>
+                  <p className="text-[10px] uppercase tracking-widest text-neutral-500 mt-1 truncate">{u.email}</p>
                 </div>
                 {u.role === 'admin' && (
-                  <span className="bg-gray-100 text-gray-600 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">
-                    Admin
+                  <span className="editorial-label text-[9px] border-b border-charcoal text-charcoal">
+                    Админ
                   </span>
                 )}
               </div>

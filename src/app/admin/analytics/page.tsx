@@ -39,7 +39,6 @@ export default function AnalyticsPage() {
           });
           setOrders(oList);
         } else {
-          // Mock data
           setProducts(JSON.parse(localStorage.getItem('mock_products') || '[]'));
           setUsers(JSON.parse(localStorage.getItem('mock_users') || '[]'));
           setOrders(JSON.parse(localStorage.getItem('mock_orders') || '[]'));
@@ -53,10 +52,9 @@ export default function AnalyticsPage() {
     fetchAnalytics();
   }, []);
 
-  // 1. PRODUCT METRICS
   const productTable = useMemo(() => {
     return products.map(p => {
-      const views = p.views || Math.floor(Math.random() * 500) + 50; // mock if undefined
+      const views = p.views || Math.floor(Math.random() * 500) + 50; 
       const cartAdds = p.cartAdds || Math.floor(views * 0.1);
       const ordered = p.orderCount || Math.floor(cartAdds * 0.4);
       const conversion = views > 0 ? ((ordered / views) * 100).toFixed(1) : '0.0';
@@ -64,7 +62,6 @@ export default function AnalyticsPage() {
     }).sort((a, b) => b.ordered - a.ordered);
   }, [products]);
 
-  // 2. USER METRICS
   const userMetrics = useMemo(() => {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
@@ -72,7 +69,6 @@ export default function AnalyticsPage() {
     let newUsersThisMonth = 0;
     let repeatCustomers = 0;
     
-    // Bar chart: registrations by month (last 6 months)
     const monthCounts: Record<string, number> = {};
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -103,17 +99,22 @@ export default function AnalyticsPage() {
     };
   }, [users]);
 
-  // 3. ORDER METRICS
   const orderMetrics = useMemo(() => {
     let totalRevenue = 0;
     const statusCounts: Record<string, number> = {};
-    const dayCounts = [0,0,0,0,0,0,0]; // Sun-Sat
+    const dayCounts = [0,0,0,0,0,0,0];
 
     orders.forEach(o => {
-      if (o.status !== 'Цуцлагдсан') {
+      const statusKey = o.status === 'pending' ? 'Хүлээгдэж байна' :
+                        o.status === 'confirmed' ? 'Баталгаажсан' :
+                        o.status === 'shipped' ? 'Хүргэлтэнд гарсан' :
+                        o.status === 'delivered' ? 'Хүргэгдсэн' :
+                        o.status === 'cancelled' ? 'Цуцлагдсан' : o.status;
+
+      if (statusKey !== 'Цуцлагдсан') {
         totalRevenue += (o.total || 0);
       }
-      statusCounts[o.status] = (statusCounts[o.status] || 0) + 1;
+      statusCounts[statusKey] = (statusCounts[statusKey] || 0) + 1;
       
       if (o.createdTime) {
         const day = new Date(o.createdTime).getDay();
@@ -123,67 +124,80 @@ export default function AnalyticsPage() {
 
     const avgOrder = orders.length > 0 ? Math.round(totalRevenue / orders.length) : 0;
     
-    // Calculate total cart adds across all products to mock abandoned cart
     const totalCartAdds = productTable.reduce((acc, p) => acc + p.cartAdds, 0);
     const abandonedCartPct = totalCartAdds > 0 ? (((totalCartAdds - orders.length) / totalCartAdds) * 100).toFixed(1) : '0.0';
 
     const COLORS: Record<string, string> = {
-      'Хүлээгдэж байна': '#FBBF24',
-      'Баталгаажсан': '#3B82F6',
-      'Хүргэлтэнд гарсан': '#8B5CF6',
-      'Хүргэгдсэн': '#10B981',
-      'Цуцлагдсан': '#EF4444'
+      'Хүлээгдэж байна': '#E5E1DA',
+      'Баталгаажсан': '#E8D5D0',
+      'Хүргэлтэнд гарсан': '#525252',
+      'Хүргэгдсэн': '#1A1A1A',
+      'Цуцлагдсан': '#FEE2E2'
     };
 
     const pieData = Object.keys(statusCounts).map(k => ({
       name: k,
       value: statusCounts[k],
-      color: COLORS[k] || '#9CA3AF'
+      color: COLORS[k] || '#E5E1DA'
     }));
 
-    const daysOfWeek = ['Дав', 'Мяг', 'Лха', 'Пүр', 'Баа', 'Бям', 'Ням'];
+    const daysOfWeek = ['Ням', 'Дав', 'Мяг', 'Лха', 'Пүр', 'Баа', 'Бям'];
     const barData = daysOfWeek.map((day, idx) => ({ day, count: dayCounts[idx] }));
 
     return { avgOrder, abandonedCartPct, pieData, barData };
   }, [orders, productTable]);
 
   if (loading) {
-    return <div className="flex justify-center py-32"><div className="w-12 h-12 border-4 border-gray-200 border-t-accent rounded-full animate-spin"/></div>;
+    return <div className="flex justify-center py-32"><div className="w-8 h-8 border border-charcoal border-t-transparent rounded-full animate-spin"/></div>;
   }
 
-  return (
-    <div className="space-y-10 pb-24 max-w-7xl mx-auto">
-      <h2 className="text-2xl font-bold text-gray-900 border-b border-gray-200 pb-4">Аналитик</h2>
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-sand border border-border p-4 shadow-sm text-sm">
+          <p className="font-serif italic text-charcoal mb-1">{label}</p>
+          <p className="text-charcoal font-medium">Тоо: {payload[0].value}</p>
+        </div>
+      );
+    }
+    return null;
+  };
 
-      {/* 1. БАРАА БҮТЭЭГДЭХҮҮНИЙ ТАЙЛАН */}
+  return (
+    <div className="space-y-12 pb-24">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-border pb-6">
+        <h2 className="font-serif text-3xl text-charcoal tracking-wide">Аналитик</h2>
+      </div>
+
+      {/* 1. PRODUCT METRICS */}
       <section>
-        <h3 className="text-lg font-bold text-gray-800 mb-4">Бараа бүтээгдэхүүний тайлан</h3>
-        <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
+        <h3 className="font-serif text-xl text-charcoal tracking-wide mb-6">Бүтээгдэхүүний тайлан</h3>
+        <div className="bg-sand border border-border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+              <thead className="bg-sand-dark border-b border-border">
                 <tr>
-                  <th className="px-6 py-4 font-medium">Барааны нэр</th>
-                  <th className="px-6 py-4 font-medium text-right">Үзсэн тоо</th>
-                  <th className="px-6 py-4 font-medium text-right">Сагсанд нэмсэн</th>
-                  <th className="px-6 py-4 font-medium text-right">Захиалсан</th>
-                  <th className="px-6 py-4 font-medium text-right">Хөрвөлт %</th>
+                  <th className="px-8 py-4 editorial-label text-charcoal">Барааны нэр</th>
+                  <th className="px-8 py-4 editorial-label text-charcoal text-right">Үзэлт</th>
+                  <th className="px-8 py-4 editorial-label text-charcoal text-right">Сагсанд нэмсэн</th>
+                  <th className="px-8 py-4 editorial-label text-charcoal text-right">Захиалсан</th>
+                  <th className="px-8 py-4 editorial-label text-charcoal text-right">Хөрвөлт</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-border">
                 {productTable.map((p, i) => (
-                  <tr key={p.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-3 text-gray-900 font-medium">{i+1}. {p.name}</td>
-                    <td className="px-6 py-3 text-right text-gray-600">{p.views}</td>
-                    <td className="px-6 py-3 text-right text-gray-600">{p.cartAdds}</td>
-                    <td className="px-6 py-3 text-right text-gray-900 font-bold">{p.ordered}</td>
-                    <td className="px-6 py-3 text-right">
-                      <span className="bg-green-50 text-green-700 px-2 py-1 rounded font-bold">{p.conversion}%</span>
+                  <tr key={p.id} className="hover:bg-sand-dark transition-colors">
+                    <td className="px-8 py-5 text-charcoal font-serif text-base tracking-wide">{i+1}. {p.name}</td>
+                    <td className="px-8 py-5 text-right font-sans text-sm text-neutral-600">{p.views}</td>
+                    <td className="px-8 py-5 text-right font-sans text-sm text-neutral-600">{p.cartAdds}</td>
+                    <td className="px-8 py-5 text-right font-sans text-sm text-charcoal font-medium">{p.ordered}</td>
+                    <td className="px-8 py-5 text-right">
+                      <span className="editorial-label border-b border-charcoal text-charcoal pb-0.5">{p.conversion}%</span>
                     </td>
                   </tr>
                 ))}
                 {productTable.length === 0 && (
-                  <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-400">Мэдээлэл олдсонгүй</td></tr>
+                  <tr><td colSpan={5} className="px-8 py-12 text-center editorial-label text-neutral-400">Мэдээлэл алга</td></tr>
                 )}
               </tbody>
             </table>
@@ -191,36 +205,36 @@ export default function AnalyticsPage() {
         </div>
       </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
         
-        {/* 2. ХАРИЛЦАГЧИЙН ТАЙЛАН */}
+        {/* 2. CUSTOMER METRICS */}
         <section>
-          <h3 className="text-lg font-bold text-gray-800 mb-4">Харилцагчийн тайлан</h3>
-          <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-6 space-y-8">
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-gray-50 p-4 rounded-lg text-center">
-                <p className="text-xs text-gray-500 uppercase font-bold mb-1">Нийт хэрэглэгч</p>
-                <p className="text-2xl font-bold text-gray-900">{userMetrics.total}</p>
+          <h3 className="font-serif text-xl text-charcoal tracking-wide mb-6">Хэрэглэгчийн тайлан</h3>
+          <div className="bg-sand border border-border p-8 space-y-10">
+            <div className="grid grid-cols-3 gap-6">
+              <div className="bg-sand border border-border p-6 text-center">
+                <p className="editorial-label mb-2">Нийт</p>
+                <p className="font-serif text-3xl text-charcoal">{userMetrics.total}</p>
               </div>
-              <div className="bg-blue-50 p-4 rounded-lg text-center">
-                <p className="text-xs text-blue-600 uppercase font-bold mb-1">Шинэ (сар)</p>
-                <p className="text-2xl font-bold text-blue-900">{userMetrics.newThisMonth}</p>
+              <div className="bg-sand border border-border p-6 text-center">
+                <p className="editorial-label mb-2">Шинэ (Сар)</p>
+                <p className="font-serif text-3xl text-charcoal">{userMetrics.newThisMonth}</p>
               </div>
-              <div className="bg-green-50 p-4 rounded-lg text-center">
-                <p className="text-xs text-green-600 uppercase font-bold mb-1">Дахин захиалсан</p>
-                <p className="text-2xl font-bold text-green-900">{userMetrics.repeat}</p>
+              <div className="bg-sand border border-border p-6 text-center">
+                <p className="editorial-label mb-2">Дахин захиалсан</p>
+                <p className="font-serif text-3xl text-charcoal">{userMetrics.repeat}</p>
               </div>
             </div>
 
             <div>
-              <p className="text-sm font-bold text-gray-600 mb-4">Өсөлт (Сүүлийн 6 сар)</p>
-              <div className="h-48 w-full">
+              <p className="editorial-label text-charcoal mb-6 border-b border-border pb-2">Өсөлт (6 сар)</p>
+              <div className="h-56 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={userMetrics.chartData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 12}} dy={10} />
-                    <Tooltip cursor={{fill: '#F3F4F6'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'}} />
-                    <Bar dataKey="count" fill="#3B82F6" radius={[4,4,0,0]} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E1DA" />
+                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#666', fontSize: 10, fontFamily: 'var(--font-inter)', letterSpacing: '0.1em'}} dy={10} />
+                    <Tooltip content={<CustomTooltip />} cursor={{fill: '#F9F8F6'}} />
+                    <Bar dataKey="count" fill="#1A1A1A" radius={[2,2,0,0]} barSize={24} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -228,40 +242,40 @@ export default function AnalyticsPage() {
           </div>
         </section>
 
-        {/* 3. ЗАХИАЛГЫН ТАЙЛАН */}
+        {/* 3. ORDER METRICS */}
         <section>
-          <h3 className="text-lg font-bold text-gray-800 mb-4">Захиалгын тайлан</h3>
-          <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-6 space-y-8">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <p className="text-xs text-gray-500 uppercase font-bold mb-1">Дундаж захиалгын дүн</p>
-                <p className="text-2xl font-bold text-gray-900">{formatPrice(orderMetrics.avgOrder)}</p>
+          <h3 className="font-serif text-xl text-charcoal tracking-wide mb-6">Захиалгын тайлан</h3>
+          <div className="bg-sand border border-border p-8 space-y-10">
+            <div className="grid grid-cols-2 gap-6">
+              <div className="bg-sand border border-border p-6">
+                <p className="editorial-label mb-2">Дундаж захиалгын дүн</p>
+                <p className="font-serif text-3xl text-charcoal">{formatPrice(orderMetrics.avgOrder)}</p>
               </div>
-              <div className="bg-red-50 p-4 rounded-lg">
-                <p className="text-xs text-red-600 uppercase font-bold mb-1">Хаягдсан сагс</p>
-                <p className="text-2xl font-bold text-red-900">{orderMetrics.abandonedCartPct}%</p>
+              <div className="bg-sand border border-border p-6">
+                <p className="editorial-label mb-2">Хаягдсан сагс</p>
+                <p className="font-serif text-3xl text-neutral-500 italic">{orderMetrics.abandonedCartPct}%</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
               <div>
-                <p className="text-sm font-bold text-gray-600 mb-4 text-center">Захиалгын төлөв</p>
-                <div className="h-40 w-full relative">
+                <p className="editorial-label text-charcoal mb-6 border-b border-border pb-2 text-center">Захиалгын төлөв</p>
+                <div className="h-48 w-full relative">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie data={orderMetrics.pieData} innerRadius={40} outerRadius={70} paddingAngle={2} dataKey="value">
+                      <Pie data={orderMetrics.pieData} innerRadius={45} outerRadius={75} paddingAngle={2} dataKey="value" stroke="none">
                         {orderMetrics.pieData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip />
+                      <Tooltip content={<CustomTooltip />} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="flex flex-wrap gap-2 justify-center mt-2">
+                <div className="flex flex-col gap-2 mt-4 items-center">
                   {orderMetrics.pieData.map((entry, i) => (
-                    <div key={i} className="flex items-center gap-1 text-[10px] text-gray-600">
-                      <div className="w-2 h-2 rounded-full" style={{backgroundColor: entry.color}}/>
+                    <div key={i} className="flex items-center gap-3 editorial-label text-neutral-600">
+                      <div className="w-2.5 h-2.5 border border-border" style={{backgroundColor: entry.color}}/>
                       {entry.name}
                     </div>
                   ))}
@@ -269,14 +283,14 @@ export default function AnalyticsPage() {
               </div>
 
               <div>
-                <p className="text-sm font-bold text-gray-600 mb-4 text-center">Идэвхтэй өдрүүд</p>
-                <div className="h-40 w-full">
+                <p className="editorial-label text-charcoal mb-6 border-b border-border pb-2 text-center">Идэвхтэй өдрүүд</p>
+                <div className="h-56 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={orderMetrics.barData} layout="vertical" margin={{top: 0, right: 0, left: -20, bottom: 0}}>
                       <XAxis type="number" hide />
-                      <YAxis dataKey="day" type="category" axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 11}} />
-                      <Tooltip cursor={{fill: '#F3F4F6'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'}} />
-                      <Bar dataKey="count" fill="#FFB7D5" radius={[0,4,4,0]} barSize={12} />
+                      <YAxis dataKey="day" type="category" axisLine={false} tickLine={false} tick={{fill: '#666', fontSize: 10, fontFamily: 'var(--font-inter)', letterSpacing: '0.1em'}} />
+                      <Tooltip content={<CustomTooltip />} cursor={{fill: '#F9F8F6'}} />
+                      <Bar dataKey="count" fill="#E8D5D0" radius={[0,2,2,0]} barSize={16} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

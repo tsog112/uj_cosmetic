@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import SearchOverlay from '@/components/ui/SearchOverlay';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -19,13 +20,11 @@ export default function Header() {
   const { user, isAdmin, signOut, loading } = useAuth();
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 60);
-    handleScroll();
+    const handleScroll = () => setIsScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -36,24 +35,12 @@ export default function Header() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Close mobile menu on route change
   useEffect(() => {
     setIsMobileMenuOpen(false);
     setIsDropdownOpen(false);
   }, [pathname]);
 
-  // Prevent body scroll when mobile menu is open
-  useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => { document.body.style.overflow = ''; };
-  }, [isMobileMenuOpen]);
-
   const navLinks = [
-    { href: '/', label: 'Нүүр' },
     { href: '/shop', label: 'Дэлгүүр' },
     { href: '/about', label: 'Бидний тухай' },
   ];
@@ -61,231 +48,164 @@ export default function Header() {
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-700 ease-in-out ${
           isScrolled
-            ? 'bg-white/95 backdrop-blur-sm shadow-[0_1px_0_0_#F2A8C8]'
-            : 'bg-cream/80 backdrop-blur-sm'
+            ? 'bg-sand/90 backdrop-blur-md py-4 border-b border-border'
+            : 'bg-transparent py-8'
         }`}
       >
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-10">
-          <div className="flex items-center justify-between h-16 md:h-20">
-            {/* Logo */}
-            <Link href="/" className="flex-shrink-0">
-              <span className="font-serif text-3xl font-light tracking-[0.05em] text-text-primary">
-                UJ
-              </span>
-            </Link>
+        <div className="max-content flex items-center justify-between">
+          {/* Mobile Menu Toggle */}
+          <button
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="md:hidden text-text-primary"
+            aria-label="Цэс"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
+              <path d="M4 8h16M4 16h16" />
+            </svg>
+          </button>
 
-            {/* Desktop Nav */}
-            <nav className="hidden md:flex items-center gap-10">
-              {navLinks.map(link => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`text-xs tracking-widest uppercase font-normal transition-colors duration-200 ${
-                    pathname === link.href
-                      ? 'text-text-primary'
-                      : 'text-text-muted hover:text-text-primary'
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
-
-            {/* Right Actions */}
-            <div className="flex items-center gap-5">
-              {/* Search */}
-              <button
-                onClick={() => setIsSearchOpen(true)}
-                className="text-text-primary hover:text-accent transition-colors"
-                aria-label="Хайх"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                  <circle cx="11" cy="11" r="7" />
-                  <path d="M21 21l-4.35-4.35" />
-                </svg>
-              </button>
-
-              {/* Cart */}
+          {/* Left Nav (Desktop) */}
+          <nav className="hidden md:flex items-center gap-12">
+            {navLinks.map(link => (
               <Link
-                href="/cart"
-                className="relative text-text-primary hover:text-accent transition-colors"
-                aria-label="Сагс"
+                key={link.href}
+                href={link.href}
+                className="editorial-label hover:text-text-primary transition-colors duration-500"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
-                  <line x1="3" y1="6" x2="21" y2="6" />
-                  <path d="M16 10a4 4 0 01-8 0" />
-                </svg>
-                {isHydrated && cartItemCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 w-[18px] h-[18px] bg-accent text-text-primary text-[10px] font-medium rounded-full flex items-center justify-center">
-                    {cartItemCount}
-                  </span>
-                )}
+                {link.label}
               </Link>
+            ))}
+          </nav>
 
-              {/* Auth */}
-              <div className="hidden md:block relative" ref={dropdownRef}>
-                {loading ? (
-                  <div className="w-8 h-8 rounded-full bg-border animate-pulse" />
-                ) : user ? (
-                  <button 
-                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                    className="w-8 h-8 rounded-full bg-accent text-text-primary flex items-center justify-center font-medium text-xs border border-accent overflow-hidden"
-                  >
-                    {user.photoURL ? (
-                      <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" />
-                    ) : (
-                      (user.displayName || user.email || 'U').charAt(0).toUpperCase()
-                    )}
-                  </button>
-                ) : (
-                  <Link href="/auth" className="text-[13px] tracking-wider uppercase text-text-muted hover:text-text-primary font-medium">
-                    Нэвтрэх
-                  </Link>
-                )}
+          {/* Logo */}
+          <Link href="/" className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center">
+            <span className="font-serif text-3xl font-light tracking-[0.2em] text-text-primary">
+              UJ
+            </span>
+            <span className="editorial-label text-[8px] tracking-[0.4em] -mt-1 opacity-60">
+              Cosmetic
+            </span>
+          </Link>
 
-                {/* Dropdown */}
+          {/* Right Actions */}
+          <div className="flex items-center gap-6 md:gap-8">
+            {/* Search */}
+            <button
+              onClick={() => setIsSearchOpen(true)}
+              className="text-text-primary hover:opacity-50 transition-opacity"
+              aria-label="Хайх"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M21 21l-4.35-4.35" />
+              </svg>
+            </button>
+
+            {/* User */}
+            <div className="hidden md:block relative" ref={dropdownRef}>
+              {user ? (
+                <button 
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="editorial-label hover:text-text-primary transition-colors"
+                >
+                  Бүртгэл
+                </button>
+              ) : (
+                <Link href="/auth" className="editorial-label hover:text-text-primary transition-colors">
+                  Нэвтрэх
+                </Link>
+              )}
+
+              <AnimatePresence>
                 {isDropdownOpen && user && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white border border-border shadow-lg py-2 z-50">
-                    <div className="px-4 py-2 border-b border-border mb-2">
-                      <p className="text-sm font-medium text-text-primary truncate">{user.displayName || 'Хэрэглэгч'}</p>
-                      <p className="text-xs text-text-muted truncate">{user.email}</p>
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="absolute right-0 mt-6 w-48 bg-sand border border-border py-4 shadow-sm"
+                  >
+                    <div className="px-6 py-2 border-b border-border mb-2">
+                      <p className="editorial-label text-[10px] text-text-primary truncate">{user.displayName || 'Хэрэглэгч'}</p>
                     </div>
-                    <Link href="/account" className="block px-4 py-2 text-sm text-text-primary hover:bg-cream transition-colors">
-                      Миний захиалгууд
+                    <Link href="/account" className="block px-6 py-2 text-[11px] uppercase tracking-widest text-text-muted hover:text-text-primary transition-colors">
+                      Захиалгууд
                     </Link>
                     {isAdmin && (
-                      <Link href="/admin" className="block px-4 py-2 text-sm text-accent font-medium hover:bg-cream transition-colors flex justify-between items-center">
-                        Admin 
-                        <span className="bg-accent/10 px-1.5 py-0.5 rounded text-[10px]">PRO</span>
+                      <Link href="/admin" className="block px-6 py-2 text-[11px] uppercase tracking-widest text-dusty-rose font-medium transition-colors">
+                        Хянах самбар
                       </Link>
                     )}
                     <button 
-                      onClick={() => {
-                        signOut();
-                        setIsDropdownOpen(false);
-                      }}
-                      className="w-full text-left px-4 py-2 text-sm text-text-primary hover:bg-cream transition-colors mt-2 border-t border-border"
+                      onClick={() => signOut()}
+                      className="w-full text-left px-6 py-2 text-[11px] uppercase tracking-widest text-text-muted hover:text-text-primary transition-colors mt-2 border-t border-border"
                     >
                       Гарах
                     </button>
-                  </div>
+                  </motion.div>
                 )}
-              </div>
-
-              {/* Mobile Menu Button */}
-              <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="md:hidden text-text-primary ml-1"
-                aria-label="Цэс"
-              >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  {isMobileMenuOpen ? (
-                    <path d="M6 6L18 18M18 6L6 18" />
-                  ) : (
-                    <>
-                      <path d="M4 7h16" />
-                      <path d="M4 12h16" />
-                      <path d="M4 17h16" />
-                    </>
-                  )}
-                </svg>
-              </button>
+              </AnimatePresence>
             </div>
+
+            {/* Cart */}
+            <Link
+              href="/cart"
+              className="relative text-text-primary hover:opacity-50 transition-opacity"
+              aria-label="Сагс"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
+                <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
+                <path d="M3 6h18M16 10a4 4 0 01-8 0" />
+              </svg>
+              {isHydrated && cartItemCount > 0 && (
+                <span className="absolute -top-1 -right-2 text-[9px] font-medium">
+                  ({cartItemCount})
+                </span>
+              )}
+            </Link>
           </div>
         </div>
       </header>
 
-      {/* Mobile Drawer */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-[60] md:hidden">
-          <div
-            className="absolute inset-0 bg-overlay"
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
-          <div className="absolute right-0 top-0 h-full w-[300px] bg-cream animate-slide-in-right overflow-y-auto">
-            <div className="p-6">
+      {/* Mobile Menu */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] md:hidden"
+          >
+            <div className="absolute inset-0 bg-sand" />
+            <div className="relative h-full flex flex-col p-8">
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="absolute top-6 right-6 text-text-primary"
-                aria-label="Хаах"
+                className="self-end text-text-primary p-2"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <path d="M6 6L18 18M18 6L6 18" />
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
+                  <path d="M6 6l12 12M18 6L6 18" />
                 </svg>
               </button>
 
-              <div className="mt-16 flex flex-col gap-1">
+              <nav className="mt-20 flex flex-col gap-12 items-center">
+                <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="editorial-heading text-4xl">Нүүр</Link>
+                <Link href="/shop" onClick={() => setIsMobileMenuOpen(false)} className="editorial-heading text-4xl">Дэлгүүр</Link>
+                <Link href="/about" onClick={() => setIsMobileMenuOpen(false)} className="editorial-heading text-4xl">Бидний тухай</Link>
                 {user ? (
-                  <div className="py-4 border-b border-border mb-2 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-accent text-text-primary flex items-center justify-center font-medium overflow-hidden">
-                      {user.photoURL ? (
-                        <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" />
-                      ) : (
-                        (user.displayName || user.email || 'U').charAt(0).toUpperCase()
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-text-primary truncate">{user.displayName || 'Хэрэглэгч'}</p>
-                      <p className="text-xs text-text-muted truncate">{user.email}</p>
-                    </div>
-                  </div>
+                  <Link href="/account" onClick={() => setIsMobileMenuOpen(false)} className="editorial-heading text-4xl">Бүртгэл</Link>
                 ) : (
-                  <Link
-                    href="/auth"
-                    className="block py-4 text-[15px] tracking-wider uppercase text-accent font-medium border-thin-b transition-colors"
-                  >
-                    Нэвтрэх / Бүртгүүлэх
-                  </Link>
+                  <Link href="/auth" onClick={() => setIsMobileMenuOpen(false)} className="editorial-heading text-4xl">Нэвтрэх</Link>
                 )}
+              </nav>
 
-                {navLinks.map(link => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`block py-3 text-[15px] tracking-wider uppercase border-thin-b transition-colors ${
-                      pathname === link.href
-                        ? 'text-text-primary font-medium'
-                        : 'text-text-muted hover:text-text-primary'
-                    }`}
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-                
-                {user && (
-                  <Link
-                    href="/account"
-                    className="block py-3 text-[15px] tracking-wider uppercase border-thin-b text-text-muted hover:text-text-primary transition-colors"
-                  >
-                    Миний захиалгууд
-                  </Link>
-                )}
-                
-                {user && isAdmin && (
-                  <Link
-                    href="/admin"
-                    className="block py-3 text-[15px] tracking-wider uppercase border-thin-b text-accent font-medium transition-colors"
-                  >
-                    Admin
-                  </Link>
-                )}
-
-                {user && (
-                  <button
-                    onClick={() => signOut()}
-                    className="text-left block py-3 text-[15px] tracking-wider uppercase text-text-muted hover:text-text-primary transition-colors"
-                  >
-                    Гарах
-                  </button>
-                )}
+              <div className="mt-auto text-center">
+                <p className="editorial-label opacity-40">UJ Cosmetic © {new Date().getFullYear()}</p>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Search Overlay */}
       {isSearchOpen && <SearchOverlay onClose={() => setIsSearchOpen(false)} />}

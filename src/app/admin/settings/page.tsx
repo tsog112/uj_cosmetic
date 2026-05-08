@@ -74,7 +74,7 @@ export default function AdminSettingsPage() {
 
       <div className="space-y-8">
         {/* Мэдэгдлийн мөр */}
-        <section className="bg-white border border-gray-200 rounded-xl p-6">
+        <section className="bg-sand border border-gray-200 rounded-xl p-6">
           <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4">Мэдэгдлийн мөр</h2>
           <div className="space-y-4">
             <div>
@@ -91,7 +91,7 @@ export default function AdminSettingsPage() {
         </section>
 
         {/* Хүргэлт */}
-        <section className="bg-white border border-gray-200 rounded-xl p-6">
+        <section className="bg-sand border border-gray-200 rounded-xl p-6">
           <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4">Хүргэлтийн тохиргоо</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -108,7 +108,7 @@ export default function AdminSettingsPage() {
         </section>
 
         {/* Банкны мэдээлэл */}
-        <section className="bg-white border border-gray-200 rounded-xl p-6">
+        <section className="bg-sand border border-gray-200 rounded-xl p-6">
           <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4">Банкны мэдээлэл</h2>
           <div className="space-y-4">
             <div>
@@ -130,7 +130,7 @@ export default function AdminSettingsPage() {
         </section>
 
         {/* Холбоо барих */}
-        <section className="bg-white border border-gray-200 rounded-xl p-6">
+        <section className="bg-sand border border-gray-200 rounded-xl p-6">
           <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4">Холбоо барих</h2>
           <div className="space-y-4">
             <div>

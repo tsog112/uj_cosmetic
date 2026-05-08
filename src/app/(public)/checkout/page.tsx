@@ -174,7 +174,7 @@ function CheckoutContent() {
     <div className="max-w-[1100px] mx-auto px-6 lg:px-10 py-12 md:py-20">
       <h1 className="section-heading text-3xl md:text-4xl mb-10">Захиалга баталгаажуулах</h1>
 
-      <div className="mb-10 border border-border bg-white p-6">
+      <div className="mb-10 border border-border bg-sand p-6">
         <div className="flex items-center justify-between gap-4 mb-5">
           <h2 className="text-xs font-medium tracking-[0.15em] uppercase text-text-muted">
             ТАНЫ ЗАХИАЛГА
@@ -207,7 +207,7 @@ function CheckoutContent() {
                   name="customerName"
                   value={formData.customerName}
                   onChange={handleChange}
-                  className={`w-full border p-3 text-sm focus:outline-none focus:border-accent bg-white ${formErrors.customerName ? 'border-red-400' : 'border-border'}`}
+                  className={`w-full border p-3 text-sm focus:outline-none focus:border-accent bg-sand ${formErrors.customerName ? 'border-red-400' : 'border-border'}`}
                   placeholder="Таны нэр"
                 />
                 {formErrors.customerName && (
@@ -223,7 +223,7 @@ function CheckoutContent() {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className={`w-full border p-3 text-sm focus:outline-none focus:border-accent bg-white ${formErrors.email ? 'border-red-400' : 'border-border'}`}
+                  className={`w-full border p-3 text-sm focus:outline-none focus:border-accent bg-sand ${formErrors.email ? 'border-red-400' : 'border-border'}`}
                   placeholder="example@mail.com"
                 />
                 {formErrors.email && (
@@ -240,7 +240,7 @@ function CheckoutContent() {
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
-                className={`w-full border p-3 text-sm focus:outline-none focus:border-accent bg-white ${formErrors.phone ? 'border-red-400' : 'border-border'}`}
+                className={`w-full border p-3 text-sm focus:outline-none focus:border-accent bg-sand ${formErrors.phone ? 'border-red-400' : 'border-border'}`}
                 placeholder="99112233"
               />
               {formErrors.phone && (
@@ -256,7 +256,7 @@ function CheckoutContent() {
                 value={formData.address}
                 onChange={handleChange}
                 rows={3}
-                className={`w-full border p-3 text-sm focus:outline-none focus:border-accent bg-white resize-none ${formErrors.address ? 'border-red-400' : 'border-border'}`}
+                className={`w-full border p-3 text-sm focus:outline-none focus:border-accent bg-sand resize-none ${formErrors.address ? 'border-red-400' : 'border-border'}`}
                 placeholder="Дүүрэг, хороо, байр, орц, тоот..."
               />
               {formErrors.address && (
@@ -272,7 +272,7 @@ function CheckoutContent() {
                 value={formData.note}
                 onChange={handleChange}
                 rows={2}
-                className="w-full border border-border p-3 text-sm focus:outline-none focus:border-accent bg-white resize-none"
+                className="w-full border border-border p-3 text-sm focus:outline-none focus:border-accent bg-sand resize-none"
                 placeholder="Нэмэлт мэдээлэл..."
               />
             </div>

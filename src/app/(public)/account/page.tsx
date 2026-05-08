@@ -63,7 +63,7 @@ function AccountContent() {
       <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-10">
         {/* Sidebar / Profile Info */}
         <div>
-          <div className="bg-white border border-border p-8 text-center sticky top-[120px]">
+          <div className="bg-sand border border-border p-8 text-center sticky top-[120px]">
             <div className="w-24 h-24 mx-auto bg-accent text-text-primary rounded-full flex items-center justify-center text-3xl font-medium mb-4 overflow-hidden">
               {user.photoURL ? (
                 <img src={user.photoURL} alt={user.displayName || 'Profile'} className="w-full h-full object-cover" />
@@ -94,7 +94,7 @@ function AccountContent() {
               <div className="h-32 bg-cream-dark w-full" />
             </div>
           ) : orders.length === 0 ? (
-            <div className="bg-white border border-border p-10 text-center">
+            <div className="bg-sand border border-border p-10 text-center">
               <p className="text-text-muted mb-4">Та одоогоор захиалга хийгээгүй байна.</p>
               <a href="/shop" className="text-accent hover:text-text-primary font-medium transition-colors">
                 Дэлгүүр рүү буцах
@@ -103,7 +103,7 @@ function AccountContent() {
           ) : (
             <div className="space-y-6">
               {orders.map((order) => (
-                <div key={order.id} className="bg-white border border-border p-6">
+                <div key={order.id} className="bg-sand border border-border p-6">
                   <div className="flex flex-wrap justify-between items-start gap-4 mb-6 pb-4 border-b border-border">
                     <div>
                       <p className="text-xs text-text-muted uppercase tracking-wider mb-1">Захиалгын дугаар</p>

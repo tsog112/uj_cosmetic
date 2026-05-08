@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, query, getDocs, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, getDocs, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { formatPrice } from '@/types';
 import ProductForm from '@/components/admin/ProductForm';
 
@@ -24,7 +24,7 @@ export default function AdminProductsPage() {
 
   useEffect(() => {
     fetchProducts();
-    const interval = setInterval(() => setNow(new Date().getTime()), 60000); // update every minute
+    const interval = setInterval(() => setNow(new Date().getTime()), 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -61,7 +61,7 @@ export default function AdminProductsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Энэ бүтээгдэхүүнийг устгах уу? Устгасны дараа сэргээх боломжгүй.')) return;
+    if (!confirm('Энэ барааг бүр мөсөн устгах уу?')) return;
     try {
       if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
         await deleteDoc(doc(db, "products", id));
@@ -73,7 +73,7 @@ export default function AdminProductsPage() {
       setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n; });
     } catch (error) {
       console.error(error);
-      alert('Устгахад алдаа гарлаа');
+      alert('Устгаж чадсангүй');
     }
   };
 
@@ -96,7 +96,7 @@ export default function AdminProductsPage() {
     if (selectedIds.size === 0) return;
     
     if (action === 'delete') {
-      if (!confirm(`Сонгосон ${selectedIds.size} барааг устгах уу?`)) return;
+      if (!confirm(`${selectedIds.size} барааг бүр мөсөн устгах уу?`)) return;
     }
 
     try {
@@ -116,8 +116,6 @@ export default function AdminProductsPage() {
           
           if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
             await updateDoc(doc(db, "products", id), updates);
-          } else {
-            // Mock handled below in bulk
           }
         }
       }
@@ -146,7 +144,7 @@ export default function AdminProductsPage() {
       fetchProducts();
     } catch (e) {
       console.error(e);
-      alert('Алдаа гарлаа');
+      alert('Үйлдэл амжилтгүй');
     }
   };
 
@@ -161,8 +159,8 @@ export default function AdminProductsPage() {
     const diff = end - now;
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-    if (days > 0) return `${days} хоног ${hours} цаг үлдлээ`;
-    return `${hours} цаг үлдлээ`;
+    if (days > 0) return `${days}х ${hours}ц үлдлээ`;
+    return `${hours}ц үлдлээ`;
   };
 
   const toggleSelect = (id: string) => {
@@ -203,14 +201,14 @@ export default function AdminProductsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-24">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-200 pb-6">
-        <div className="flex items-center gap-4">
-          <h2 className="text-2xl font-bold text-gray-900">Бүтээгдэхүүн</h2>
-          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+    <div className="space-y-12 pb-24">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div className="flex items-center gap-6">
+          <h2 className="font-serif text-3xl text-charcoal tracking-wide">Бүтээгдэхүүн</h2>
+          <label className="flex items-center gap-3 text-sm text-neutral-500 cursor-pointer editorial-label mt-1">
             <input 
               type="checkbox" 
-              className="w-4 h-4 text-accent border-gray-300 rounded focus:ring-accent"
+              className="w-4 h-4 text-charcoal border-border rounded-none focus:ring-0"
               checked={products.length > 0 && selectedIds.size === products.length}
               onChange={(e) => {
                 if (e.target.checked) setSelectedIds(new Set(products.map(p => p._id || p.id)));
@@ -222,150 +220,134 @@ export default function AdminProductsPage() {
         </div>
         <button 
           onClick={() => handleOpenForm()}
-          className="bg-[#FFB7D5] text-[#1A1A1A] px-6 py-3 rounded-lg shadow-sm text-sm font-bold hover:bg-[#e89ebf] transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+          className="btn-premium"
         >
-          + Шинэ бараа нэмэх
+          Бараа нэмэх
         </button>
       </div>
 
       {loading ? (
         <div className="flex justify-center py-32">
-          <div className="w-12 h-12 border-4 border-gray-200 border-t-[#FFB7D5] rounded-full animate-spin"/>
+          <div className="w-8 h-8 border border-charcoal border-t-transparent rounded-full animate-spin"/>
         </div>
       ) : products.length === 0 ? (
-        <div className="bg-white border border-gray-200 p-16 text-center rounded-2xl shadow-sm">
-          <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-          </div>
-          <p className="text-gray-500 font-medium text-lg mb-2">Бүтээгдэхүүн одоогоор алга байна</p>
-          <p className="text-gray-400 text-sm max-w-sm mx-auto mb-6">Нэмэх товчийг дарж дэлгүүртээ шинэ бараа нэмээрэй.</p>
-          <button onClick={() => handleOpenForm()} className="text-[#FFB7D5] font-bold hover:underline">Шинэ бараа нэмэх</button>
+        <div className="bg-sand border border-border p-24 text-center">
+          <p className="font-serif italic text-xl text-neutral-500 mb-6">Бүтээгдэхүүн олдсонгүй.</p>
+          <button onClick={() => handleOpenForm()} className="editorial-label border-b border-charcoal pb-1 text-charcoal hover:opacity-50 transition-opacity">Эхний барааг нэмэх</button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
           {products.map(p => {
             const docId = p._id || p.id;
             const stockQuantity = Number(p.stockQuantity ?? p.stock ?? (p.inStock === false ? 0 : 999));
             const inStock = stockQuantity > 0 && p.inStock !== false;
-            const stockBadgeClass = stockQuantity > 5
-              ? 'bg-green-100 text-green-700 border-green-200'
-              : stockQuantity > 0
-                ? 'bg-yellow-100 text-yellow-700 border-yellow-200'
-                : 'bg-red-100 text-red-700 border-red-200';
             
-            // Auto expiry check
             let isSaleActive = !!p.salePrice;
             if (isSaleActive && p.saleEndDate) {
               const end = new Date(p.saleEndDate).getTime();
-              if (end < now) isSaleActive = false; // client-side hide
+              if (end < now) isSaleActive = false;
             }
 
             return (
-            <div key={docId} className={`bg-white border rounded-2xl overflow-hidden shadow-sm transition-all group flex flex-col relative ${selectedIds.has(docId) ? 'border-accent ring-2 ring-accent/20' : 'border-gray-200 hover:shadow-md'}`}>
+            <div key={docId} className={`bg-sand border flex flex-col relative transition-all duration-300 ${selectedIds.has(docId) ? 'border-charcoal' : 'border-border'}`}>
               
               {/* Checkbox */}
-              <div className="absolute top-3 right-3 z-10">
+              <div className="absolute top-4 right-4 z-10">
                 <input 
                   type="checkbox" 
                   checked={selectedIds.has(docId)}
                   onChange={() => toggleSelect(docId)}
-                  className="w-5 h-5 text-accent border-gray-300 rounded shadow-sm focus:ring-accent cursor-pointer"
+                  className="w-4 h-4 text-charcoal border-border rounded-none shadow-none focus:ring-0 cursor-pointer"
                 />
               </div>
 
               {/* Hover Quick Edit Overlay */}
-              <div className={`absolute inset-0 z-20 bg-white/95 p-5 flex flex-col transition-opacity duration-200 ${quickEditId === docId ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-                <h4 className="font-bold text-gray-900 mb-4 border-b pb-2">Хурдан засах</h4>
-                <div className="space-y-4 flex-1">
+              <div className={`absolute inset-0 z-20 bg-sand/95 backdrop-blur-sm p-6 flex flex-col transition-opacity duration-300 ${quickEditId === docId ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+                <h4 className="font-serif text-xl text-charcoal mb-6 border-b border-border pb-2">Хурдан засах</h4>
+                <div className="space-y-6 flex-1">
                   <div>
-                    <label className="text-xs font-medium text-gray-500 mb-1 block">Үнэ (₮)</label>
+                    <label className="editorial-label block mb-2">Үнэ (₮)</label>
                     <input 
                       type="number"
                       value={quickEditData.price}
                       onChange={e => setQuickEditData({...quickEditData, price: e.target.value})}
-                      className="w-full p-2 border border-gray-300 rounded focus:border-accent outline-none text-sm font-medium"
+                      className="w-full p-3 bg-sand border border-border text-sm focus:outline-none focus:border-charcoal rounded-none"
                     />
                   </div>
                   <label className="flex items-center justify-between cursor-pointer">
-                    <span className="text-sm font-medium text-gray-700">Нөөцтэй</span>
-                    <input type="checkbox" checked={quickEditData.inStock} onChange={e => setQuickEditData({...quickEditData, inStock: e.target.checked})} className="w-4 h-4 text-accent" />
+                    <span className="font-sans text-sm text-charcoal">Нөөцтэй</span>
+                    <input type="checkbox" checked={quickEditData.inStock} onChange={e => setQuickEditData({...quickEditData, inStock: e.target.checked})} className="w-4 h-4 text-charcoal border-border rounded-none" />
                   </label>
                   <label className="flex items-center justify-between cursor-pointer">
-                    <span className="text-sm font-medium text-gray-700">Онцлох</span>
-                    <input type="checkbox" checked={quickEditData.featured} onChange={e => setQuickEditData({...quickEditData, featured: e.target.checked})} className="w-4 h-4 text-accent" />
+                    <span className="font-sans text-sm text-charcoal">Онцлох</span>
+                    <input type="checkbox" checked={quickEditData.featured} onChange={e => setQuickEditData({...quickEditData, featured: e.target.checked})} className="w-4 h-4 text-charcoal border-border rounded-none" />
                   </label>
                   <label className="flex items-center justify-between cursor-pointer">
-                    <span className="text-sm font-medium text-gray-700">Нийтлэгдсэн</span>
-                    <input type="checkbox" checked={quickEditData.published} onChange={e => setQuickEditData({...quickEditData, published: e.target.checked})} className="w-4 h-4 text-accent" />
+                    <span className="font-sans text-sm text-charcoal">Нийтлэгдсэн</span>
+                    <input type="checkbox" checked={quickEditData.published} onChange={e => setQuickEditData({...quickEditData, published: e.target.checked})} className="w-4 h-4 text-charcoal border-border rounded-none" />
                   </label>
                 </div>
-                <div className="flex gap-2 mt-4">
-                  <button onClick={(e) => {e.stopPropagation(); setQuickEditId(null);}} className="flex-1 py-2 bg-gray-100 text-gray-700 text-xs font-bold rounded">Цуцлах</button>
-                  <button onClick={(e) => saveQuickEdit(docId, e)} className="flex-1 py-2 bg-accent text-white text-xs font-bold rounded">Хадгалах</button>
+                <div className="flex gap-4 mt-6">
+                  <button onClick={(e) => {e.stopPropagation(); setQuickEditId(null);}} className="flex-1 py-3 border border-charcoal text-charcoal editorial-label hover:bg-charcoal hover:text-sand transition-colors">Цуцлах</button>
+                  <button onClick={(e) => saveQuickEdit(docId, e)} className="flex-1 py-3 bg-charcoal border border-charcoal text-sand editorial-label hover:bg-transparent hover:text-charcoal transition-colors">Хадгалах</button>
                 </div>
               </div>
 
-              <div className="aspect-[4/5] relative bg-gray-50 border-b border-gray-100 overflow-hidden cursor-pointer" onClick={() => handleOpenForm(p)}>
+              <div className="aspect-[4/5] relative bg-[#F9F8F6] border-b border-border overflow-hidden cursor-pointer" onClick={() => handleOpenForm(p)}>
                 {p.images?.[0] ? (
-                  <img src={p.images[0]} alt={p.name_mn} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <img src={p.images[0]} alt={p.name_mn} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out-expo" />
                 ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-300">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  <div className="w-full h-full flex flex-col items-center justify-center editorial-label text-neutral-400">
+                    Зураггүй
                   </div>
                 )}
                 
                 {/* Status Badges Overlay */}
-                <div className="absolute top-3 left-3 flex flex-col gap-2 items-start pointer-events-none">
+                <div className="absolute top-4 left-4 flex flex-col gap-2 items-start pointer-events-none">
                   {isSaleActive && (
-                    <span className="bg-red-500 text-white text-[11px] font-bold uppercase rounded-md px-2 py-1 shadow-sm">
-                      SALE
+                    <span className="bg-[#E8D5D0] text-charcoal editorial-label px-3 py-1">
+                      ХЯМДРАЛ
                     </span>
                   )}
                   {!p.published && (
-                    <span className="bg-gray-800/80 text-white text-[11px] font-bold uppercase rounded-md px-2 py-1 shadow-sm backdrop-blur-md">
-                      Цуцлагдсан
+                    <span className="bg-charcoal/80 backdrop-blur-md text-white editorial-label px-3 py-1">
+                      Нууцлагдсан
                     </span>
                   )}
-                  <span className={`text-[11px] font-bold rounded-md px-2 py-1 shadow-sm border ${stockBadgeClass}`}>
-                    Нөөц: {stockQuantity} ширхэг
+                  <span className={`editorial-label px-3 py-1 bg-sand border border-border ${stockQuantity === 0 ? 'text-red-500' : 'text-charcoal'}`}>
+                    Нөөц: {stockQuantity}
                   </span>
-                  {stockQuantity === 0 && (
-                    <span className="bg-red-600 text-white text-[11px] font-bold uppercase rounded-md px-2 py-1 shadow-sm">
-                      Дуусжээ
-                    </span>
-                  )}
                 </div>
 
                 {isSaleActive && p.saleEndDate && (
-                  <div className="absolute bottom-0 left-0 right-0 bg-red-600/90 backdrop-blur-sm text-white text-[10px] font-bold text-center py-1.5 pointer-events-none">
-                    Хямдрал: {getSaleCountdown(p.saleEndDate)}
+                  <div className="absolute bottom-0 left-0 right-0 bg-[#E8D5D0]/90 backdrop-blur-md text-charcoal editorial-label text-center py-2 pointer-events-none">
+                    {getSaleCountdown(p.saleEndDate)}
                   </div>
                 )}
               </div>
               
-              <div className="p-4 flex-1 flex flex-col">
-                <div className="flex justify-between items-start mb-1">
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{p.category}</p>
-                  <button onClick={(e) => openQuickEdit(p, e)} className="text-gray-400 hover:text-accent opacity-0 group-hover:opacity-100 transition-opacity">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              <div className="p-6 flex-1 flex flex-col group cursor-pointer" onClick={() => handleOpenForm(p)}>
+                <div className="flex justify-between items-start mb-2">
+                  <p className="editorial-label">{p.category || 'Ангилалгүй'}</p>
+                  <button onClick={(e) => openQuickEdit(p, e)} className="text-neutral-400 hover:text-charcoal transition-colors">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                   </button>
                 </div>
                 
-                <h3 className="font-semibold text-gray-900 leading-snug mb-3 flex-1">{p.name_mn}</h3>
+                <h3 className="font-serif text-lg text-charcoal leading-snug tracking-wide mb-4 flex-1">{p.name_mn}</h3>
                 
-                <div className="flex items-center gap-2 mb-4">
-                  <p className={`font-bold text-lg ${isSaleActive ? 'text-red-500' : 'text-gray-900'}`}>
+                <div className="flex items-center gap-3 mb-6">
+                  <p className="font-sans text-sm font-medium tracking-wide text-charcoal">
                     {formatPrice(isSaleActive ? p.salePrice : p.price)}
                   </p>
                   {isSaleActive && (
-                    <p className="text-sm text-gray-400 line-through">{formatPrice(p.price)}</p>
+                    <p className="font-sans text-xs text-neutral-400 line-through">{formatPrice(p.price)}</p>
                   )}
                 </div>
                 
-                {/* Large Toggle for Stock */}
-                <div className="mt-auto border-t border-gray-100 pt-3 flex items-center justify-between">
-                  <span className={`text-xs font-bold uppercase ${inStock ? 'text-green-600' : 'text-red-500'}`}>
-                    {inStock ? 'Нөөцтэй' : 'Дууссан'}
+                <div className="mt-auto border-t border-border pt-4 flex items-center justify-between" onClick={e => e.stopPropagation()}>
+                  <span className={`editorial-label ${inStock ? 'text-charcoal' : 'text-red-500'}`}>
+                    {inStock ? 'Боломжтой' : 'Дууссан'}
                   </span>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
@@ -377,7 +359,7 @@ export default function AdminProductsPage() {
                       })}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500 peer-not-checked:bg-red-500"></div>
+                    <div className="w-9 h-5 bg-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-sand after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-charcoal"></div>
                   </label>
                 </div>
               </div>
@@ -388,16 +370,16 @@ export default function AdminProductsPage() {
 
       {/* Bulk Action Bar */}
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-0 left-0 md:left-64 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] p-4 flex flex-col sm:flex-row items-center justify-between gap-4 z-40 animate-slide-up">
+        <div className="fixed bottom-0 left-0 md:left-64 right-0 bg-sand border-t border-border p-6 flex flex-col sm:flex-row items-center justify-between gap-6 z-40">
           <div className="flex items-center gap-4">
-            <span className="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center font-bold">{selectedIds.size}</span>
-            <span className="font-medium text-gray-800">бараа сонгогдсон</span>
+            <span className="font-serif italic text-xl text-charcoal">{selectedIds.size}</span>
+            <span className="editorial-label text-charcoal mt-1">Бараа сонгогдсон</span>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button onClick={() => handleBulkAction('outOfStock')} className="px-4 py-2 text-sm font-medium rounded border border-gray-300 hover:bg-gray-50 transition-colors">Нөөц дуусгах</button>
-            <button onClick={() => handleBulkAction('publish')} className="px-4 py-2 text-sm font-medium rounded border border-green-200 text-green-700 bg-green-50 hover:bg-green-100 transition-colors">Нийтлэх</button>
-            <button onClick={() => handleBulkAction('hide')} className="px-4 py-2 text-sm font-medium rounded border border-gray-300 hover:bg-gray-50 transition-colors">Нуух</button>
-            <button onClick={() => handleBulkAction('delete')} className="px-4 py-2 text-sm font-medium rounded border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 transition-colors">Устгах</button>
+          <div className="flex flex-wrap gap-4">
+            <button onClick={() => handleBulkAction('outOfStock')} className="editorial-label border-b border-transparent hover:border-charcoal pb-1 transition-all text-charcoal">Нөөц дуусгах</button>
+            <button onClick={() => handleBulkAction('publish')} className="editorial-label border-b border-transparent hover:border-charcoal pb-1 transition-all text-charcoal">Нийтлэх</button>
+            <button onClick={() => handleBulkAction('hide')} className="editorial-label border-b border-transparent hover:border-charcoal pb-1 transition-all text-charcoal">Нуух</button>
+            <button onClick={() => handleBulkAction('delete')} className="editorial-label border-b border-transparent hover:border-red-500 pb-1 transition-all text-red-500">Устгах</button>
           </div>
         </div>
       )}
@@ -405,7 +387,7 @@ export default function AdminProductsPage() {
       {/* Form Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
+          <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]" onClick={() => setIsModalOpen(false)} />
           <div className="relative z-10 w-full max-w-4xl flex justify-center max-h-full">
             <ProductForm 
               initialData={editingProduct} 

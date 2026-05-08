@@ -2,21 +2,54 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useFadeIn } from '@/hooks/useFadeIn';
-
-const brandStoryText = [
-  'UJ Cosmetic нь Монгол эмэгтэйчүүдийн арьсны онцлог, уур амьсгал, өдөр тутмын хэрэглээнд нийцсэн Солонгос арчилгааг сонгон хүргэдэг.',
-  'Бид үр дүнтэй найрлага, зөөлөн мэдрэмж, тогтвортой арчилгааг эрхэмлэж, арьсыг тайван, эрүүл, гэрэлтсэн байхад туслах бүтээгдэхүүнүүдийг санал болгодог.',
-];
+import { motion } from 'framer-motion';
 
 export default function AboutSection() {
-  const ref = useFadeIn();
-
   return (
-    <section ref={ref} className="section-padding fade-in-section border-thin-t bg-white" id="about-section">
-      <div className="max-w-[1400px] mx-auto px-6 lg:px-10">
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-10 lg:gap-16 items-center">
-          <div className="lg:col-span-3 relative aspect-[4/5] lg:aspect-[5/4] overflow-hidden bg-[#FFD6E8]">
+    <section className="py-32 md:py-48 bg-sand overflow-hidden" id="about-section">
+      <div className="max-content">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-32 items-center">
+          {/* Text Content */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 1.2, ease: "easeOut" as const }}
+            className="lg:col-span-5 order-2 lg:order-1"
+          >
+            <span className="editorial-label block mb-6">Бидний тухай</span>
+            <h2 className="editorial-heading text-5xl md:text-6xl text-charcoal mb-12">
+              Зөөлөн арчилгаа, <br />
+              Гэрэлтсэн арьс.
+            </h2>
+
+            <div className="space-y-8 font-sans text-sm text-neutral-600 leading-relaxed max-w-lg">
+              <p>
+                UJ Cosmetic нь Монгол орны уур амьсгал, орчин үеийн минималист хэв маягт нийцсэн Солонгосын шилдэг арьс арчилгааны бүтээгдэхүүнүүдийг сонгон хүргэж байна.
+              </p>
+              <p>
+                Бид үр дүнтэй найрлага, өдөр тутмын тууштай арчилгааны хүчинд итгэдэг. Таны арьс, илүү гэрэлтэнэ.
+              </p>
+            </div>
+
+            <div className="mt-16">
+              <Link
+                href="/about"
+                className="btn-premium min-w-[200px]"
+              >
+                Бидний түүхийг унших
+              </Link>
+            </div>
+          </motion.div>
+
+          {/* Image Content */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 1.8, delay: 0.2, ease: "easeOut" as const }}
+            className="lg:col-span-7 order-1 lg:order-2 relative aspect-[4/5] lg:aspect-[6/5] bg-[#F9F8F6] overflow-hidden"
+          >
             <Image
               src="/images/brand/about.png"
               alt="UJ Cosmetic brand story"
@@ -24,28 +57,7 @@ export default function AboutSection() {
               className="object-cover"
               sizes="(max-width: 1024px) 100vw, 60vw"
             />
-          </div>
-
-          <div className="lg:col-span-2 lg:pl-8">
-            <p className="label-eyebrow mb-5">Бидний тухай</p>
-            <h2 className="font-serif text-heading md:text-display-sm font-normal text-[#1A1A1A] mb-8">
-              Монгол эмэгтэйд<br />
-              зориулсан арчилгаа
-            </h2>
-
-            <div className="space-y-5 text-sm md:text-[15px] text-[#8B6B78] leading-8 max-w-[460px]">
-              {brandStoryText.map(text => (
-                <p key={text}>{text}</p>
-              ))}
-            </div>
-
-            <Link
-              href="/about"
-              className="inline-flex mt-10 text-xs tracking-[0.2em] uppercase text-[#1A1A1A] border-b border-[#1A1A1A] pb-1 hover:text-[#8B6B78] hover:border-[#8B6B78] transition-colors"
-            >
-              Дэлгэрэнгүй →
-            </Link>
-          </div>
+          </motion.div>
         </div>
       </div>
     </section>

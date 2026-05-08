@@ -249,7 +249,7 @@ export default function AdminCategoriesPage() {
       </div>
 
       {showForm && (
-        <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
+        <div className="bg-sand border border-gray-200 rounded-xl p-5 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm text-gray-600 mb-1">Ангилын нэр *</label>
@@ -300,7 +300,7 @@ export default function AdminCategoriesPage() {
         </div>
       )}
 
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div className="bg-sand border border-gray-200 rounded-xl overflow-hidden">
         {loading ? (
           <div className="p-10 text-center text-gray-400">Ачаалж байна...</div>
         ) : (

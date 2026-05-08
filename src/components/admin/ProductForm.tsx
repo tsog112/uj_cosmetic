@@ -230,8 +230,8 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
   };
 
   return (
-    <div className="bg-white max-w-4xl w-full rounded-xl shadow-2xl flex flex-col max-h-[90vh]">
-      <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-white z-10 rounded-t-xl">
+    <div className="bg-sand max-w-4xl w-full rounded-xl shadow-2xl flex flex-col max-h-[90vh]">
+      <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-sand z-10 rounded-t-xl">
         <h2 className="text-xl font-bold text-gray-800">{initialData ? 'Бараа засах' : 'Шинэ бараа нэмэх'}</h2>
         <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 transition-colors">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -251,7 +251,7 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
               onClick={() => !uploading && fileInputRef.current?.click()}
               className={`border-2 border-dashed border-[#FFB7D5] rounded-xl p-10 text-center cursor-pointer hover:bg-[#FFF0F6] transition-colors mb-4 group ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              <div className="w-16 h-16 mx-auto bg-white rounded-full flex items-center justify-center text-[#FFB7D5] shadow-sm group-hover:scale-110 transition-transform mb-4">
+              <div className="w-16 h-16 mx-auto bg-sand rounded-full flex items-center justify-center text-[#FFB7D5] shadow-sm group-hover:scale-110 transition-transform mb-4">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                   <polyline points="17 8 12 3 7 8" />
@@ -323,7 +323,7 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
                     value={category} 
                     onChange={e => setCategory(e.target.value)} 
                     required
-                    className="w-full p-4 border border-gray-300 rounded-lg focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none bg-white text-gray-900"
+                    className="w-full p-4 border border-gray-300 rounded-lg focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none bg-sand text-gray-900"
                   >
                     <option value="">Ангилал сонгоно уу</option>
                     {categories.map(cat => (
@@ -375,7 +375,7 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
                       value={salePriceStr} 
                       onChange={e => handlePriceChange(e, setSalePriceStr)} 
                       placeholder="Хямдарсан үнэ..." 
-                      className="w-full p-3 border border-red-200 rounded-md focus:border-red-400 focus:outline-none text-red-600 font-bold placeholder-red-300 bg-white"
+                      className="w-full p-3 border border-red-200 rounded-md focus:border-red-400 focus:outline-none text-red-600 font-bold placeholder-red-300 bg-sand"
                     />
                   </div>
                   <div>
@@ -384,7 +384,7 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
                       type="datetime-local"
                       value={saleEndDate}
                       onChange={e => setSaleEndDate(e.target.value)}
-                      className="w-full p-3 border border-red-200 rounded-md focus:border-red-400 focus:outline-none text-gray-700 bg-white"
+                      className="w-full p-3 border border-red-200 rounded-md focus:border-red-400 focus:outline-none text-gray-700 bg-sand"
                     />
                   </div>
                 </div>
@@ -439,7 +439,7 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
               
               <label className="flex items-center gap-4 p-4 border border-gray-100 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                 <div className={`w-12 h-6 rounded-full p-1 transition-colors ${featured ? 'bg-accent' : 'bg-gray-300'}`}>
-                  <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform ${featured ? 'translate-x-6' : 'translate-x-0'}`} />
+                  <div className={`w-4 h-4 bg-sand rounded-full shadow-md transform transition-transform ${featured ? 'translate-x-6' : 'translate-x-0'}`} />
                 </div>
                 <input type="checkbox" checked={featured} onChange={e => setFeatured(e.target.checked)} className="hidden" />
                 <div>
@@ -450,7 +450,7 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
 
               <label className="flex items-center gap-4 p-4 border border-gray-100 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                 <div className={`w-12 h-6 rounded-full p-1 transition-colors ${published ? 'bg-green-500' : 'bg-gray-300'}`}>
-                  <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform ${published ? 'translate-x-6' : 'translate-x-0'}`} />
+                  <div className={`w-4 h-4 bg-sand rounded-full shadow-md transform transition-transform ${published ? 'translate-x-6' : 'translate-x-0'}`} />
                 </div>
                 <input type="checkbox" checked={published} onChange={e => setPublished(e.target.checked)} className="hidden" />
                 <div>
@@ -461,7 +461,7 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
 
               <label className="flex items-center gap-4 p-4 border border-gray-100 rounded-lg cursor-pointer hover:bg-red-50 transition-colors">
                 <div className={`w-12 h-6 rounded-full p-1 transition-colors ${outOfStock ? 'bg-red-500' : 'bg-gray-300'}`}>
-                  <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform ${outOfStock ? 'translate-x-6' : 'translate-x-0'}`} />
+                  <div className={`w-4 h-4 bg-sand rounded-full shadow-md transform transition-transform ${outOfStock ? 'translate-x-6' : 'translate-x-0'}`} />
                 </div>
                 <input
                   type="checkbox"
@@ -491,7 +491,7 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
           onClick={onCancel}
           type="button"
           disabled={isSubmitting}
-          className="flex-1 py-4 text-gray-700 font-bold bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+          className="flex-1 py-4 text-gray-700 font-bold bg-sand border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
         >
           Цуцлах
         </button>

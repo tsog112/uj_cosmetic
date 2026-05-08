@@ -73,7 +73,7 @@ export default function InstagramSection() {
   const instaHandle = settings.instagramUrl.split('/').filter(Boolean).pop() || 'uj_cosmetic';
 
   return (
-    <section ref={ref} className="section-padding fade-in-section border-thin-t bg-white" id="instagram">
+    <section ref={ref} className="section-padding fade-in-section border-thin-t bg-sand" id="instagram">
       <div className="max-w-[1400px] mx-auto px-6 lg:px-10">
         <div className="text-center mb-14">
           <p className="section-label">Instagram</p>

@@ -4,10 +4,11 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getSiteSettings } from '@/lib/services/firestoreService';
 import { DEFAULT_SETTINGS, SiteSettings } from '@/types';
+import { motion } from 'framer-motion';
 
 const navLinks = [
   { href: '/', label: 'Нүүр' },
-  { href: '/shop', label: 'Бүтээгдэхүүн' },
+  { href: '/shop', label: 'Дэлгүүр' },
   { href: '/about', label: 'Бидний тухай' },
   { href: '/cart', label: 'Сагс' },
 ];
@@ -26,31 +27,33 @@ export default function Footer() {
   const instagramHandle = settings.instagramUrl.split('/').filter(Boolean).pop() || 'uj_cosmetic';
 
   return (
-    <footer className="bg-[#1A1A1A] text-white mt-auto">
-      <div className="max-w-[1400px] mx-auto px-6 lg:px-10 pt-20 pb-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-14 lg:gap-20">
-          <div>
-            <Link href="/" className="inline-block">
-              <span className="font-serif text-4xl font-light tracking-[0.08em] text-white">
+    <footer className="bg-charcoal text-white mt-auto">
+      <div className="max-content py-32 md:py-48">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-16 lg:gap-24">
+          <div className="md:col-span-5">
+            <Link href="/" className="inline-flex flex-col">
+              <span className="font-serif text-5xl font-light tracking-[0.2em] text-white uppercase">
                 UJ
               </span>
+              <span className="editorial-label text-[10px] tracking-[0.4em] -mt-1 opacity-60 text-white">
+                Cosmetic
+              </span>
             </Link>
-            <p className="mt-8 text-sm leading-8 text-white/60 max-w-[300px]">
-              Монгол арьсанд зориулсан<br />
-              Солонгос гоо сайхны арчилгаа
+            <p className="mt-12 font-serif italic text-lg text-white/60 max-w-[300px] leading-relaxed">
+              Орчин үеийн минималист хэв маягт нийцсэн өдөр тутмын арчилгаа.
             </p>
           </div>
 
-          <div>
-            <h4 className="text-[11px] font-medium tracking-[0.18em] uppercase text-[#FFB7D5] mb-6">
-              Дэлгүүр
+          <div className="md:col-span-3">
+            <h4 className="editorial-label text-white/40 mb-8 border-b border-white/10 pb-4">
+              Бүтээгдэхүүн
             </h4>
-            <nav className="space-y-4">
+            <nav className="space-y-6">
               {navLinks.map(link => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="block text-sm text-white/60 hover:text-white transition-colors"
+                  className="block font-sans text-sm text-white/80 hover:text-white transition-colors tracking-wide"
                 >
                   {link.label}
                 </Link>
@@ -58,11 +61,11 @@ export default function Footer() {
             </nav>
           </div>
 
-          <div>
-            <h4 className="text-[11px] font-medium tracking-[0.18em] uppercase text-[#FFB7D5] mb-6">
+          <div className="md:col-span-4">
+            <h4 className="editorial-label text-white/40 mb-8 border-b border-white/10 pb-4">
               Холбоо барих
             </h4>
-            <div className="space-y-4 text-sm text-white/60">
+            <div className="space-y-6 font-sans text-sm text-white/80 tracking-wide">
               <p>
                 <a href={`tel:${settings.phone.replace(/[\s-]/g, '')}`} className="hover:text-white transition-colors">
                   {settings.phone}
@@ -87,10 +90,14 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-18 pt-8 border-t border-white/10">
-          <p className="text-xs text-white/40 tracking-[0.08em]">
-            © 2025 UJ Cosmetic. Бүх эрх хуулиар хамгаалагдсан.
+        <div className="mt-32 pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-6">
+          <p className="editorial-label text-[9px] text-white/40">
+            © {new Date().getFullYear()} UJ Cosmetic. Бүх эрх хуулиар хамгаалагдсан.
           </p>
+          <div className="flex gap-6">
+             <Link href="/privacy" className="editorial-label text-[9px] text-white/40 hover:text-white transition-colors">Нууцлалын бодлого</Link>
+             <Link href="/terms" className="editorial-label text-[9px] text-white/40 hover:text-white transition-colors">Үйлчилгээний нөхцөл</Link>
+          </div>
         </div>
       </div>
     </footer>

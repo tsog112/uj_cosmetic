@@ -79,7 +79,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
             <button
               onClick={() => handleLogin('google')}
               disabled={loadingProvider !== null}
-              className={`w-full flex items-center justify-center gap-3 py-3.5 px-4 bg-white border border-border text-sm font-medium tracking-wide text-text-primary transition-all duration-200 
+              className={`w-full flex items-center justify-center gap-3 py-3.5 px-4 bg-sand border border-border text-sm font-medium tracking-wide text-text-primary transition-all duration-200 
                 ${loadingProvider === 'google' ? 'opacity-70 cursor-not-allowed' : 'hover:bg-gray-50 hover:border-gray-300'}`}
             >
               {loadingProvider === 'google' ? (

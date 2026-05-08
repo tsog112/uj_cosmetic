@@ -205,7 +205,7 @@ function ShopContent() {
               </button>
 
               {isSortOpen && (
-                <div className="absolute right-0 top-full z-20 mt-1 min-w-[150px] border border-[#F2A8C8] bg-white shadow-[0_10px_30px_rgba(26,26,26,0.08)]">
+                <div className="absolute right-0 top-full z-20 mt-1 min-w-[150px] border border-[#F2A8C8] bg-sand shadow-[0_10px_30px_rgba(26,26,26,0.08)]">
                   {sortOptions.map(option => (
                     <button
                       key={option.value}

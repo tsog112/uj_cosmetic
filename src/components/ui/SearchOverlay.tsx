@@ -77,7 +77,7 @@ export default function SearchOverlay({ onClose }: SearchOverlayProps) {
             type="text"
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Бүтээгдэхүүн хайх..."
+            placeholder="Бараа хайх..."
             className="w-full bg-transparent text-2xl md:text-3xl font-serif text-text-primary placeholder:text-text-muted/50 outline-none"
             id="search-input"
           />
