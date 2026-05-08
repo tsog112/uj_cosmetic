@@ -9,7 +9,11 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Content-Security-Policy',
-            value: "frame-src 'self' https://www.instagram.com;",
+            value: "frame-src 'self' https://www.instagram.com https://*.instagram.com https://*.firebaseapp.com https://apis.google.com https://accounts.google.com;",
+          },
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin-allow-popups',
           },
         ],
       },
