@@ -1,10 +1,10 @@
 'use client';
 
-import Link from 'next/link';
 import Image from 'next/image';
-import { Product, formatPrice } from '@/types';
-import { useCart } from '@/context/CartContext';
+import Link from 'next/link';
 import { useState } from 'react';
+import { useCart } from '@/context/CartContext';
+import { Product } from '@/types';
 
 interface ProductCardProps {
   product: Product;
@@ -14,95 +14,102 @@ export default function ProductCard({ product }: ProductCardProps) {
   const { addToCart, buyNow } = useCart();
   const [isAdded, setIsAdded] = useState(false);
 
-  const handleAddToCart = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!product.inStock) return;
+  const name = product.name_mn || 'Нэргүй бараа';
+  const image = product.images?.[0] || '/placeholder-product.svg';
+  const price = product.price || 0;
+  const salePrice = product.salePrice;
+  const inStock = product.inStock;
+
+  const handleAddToCart = () => {
+    if (!inStock) return;
     addToCart(product);
     setIsAdded(true);
     setTimeout(() => setIsAdded(false), 1500);
   };
 
-  const handleBuyNow = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!product.inStock) return;
+  const handleBuyNow = () => {
+    if (!inStock) return;
     buyNow({ product, quantity: 1 });
   };
 
-  const displayPrice = product?.salePrice ?? product?.price ?? 0;
-  const name = product?.name_mn ?? 'Нэргүй бараа';
-  const price = product?.price ?? 0;
-  const images = product?.images ?? [];
-  const image = images[0] ?? '/placeholder-product.svg';
-
   return (
     <Link
-      href={`/shop/${product?.slug}`}
-      className="group block bg-white border border-border h-full flex flex-col"
-      id={`product-card-${product?.slug}`}
+      href={`/shop/${product.slug}`}
+      className="group block"
+      id={`product-card-${product.slug}`}
     >
-      {/* Image */}
-      <div className="aspect-4-5 relative overflow-hidden bg-cream-dark mb-4">
+      <div className="relative aspect-[3/4] overflow-hidden bg-[#FFF0F6]">
         <Image
           src={image}
           alt={name}
           fill
-          className="object-cover transition-transform duration-700 group-hover:scale-105"
-          sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+          className="object-cover transition-transform duration-700 ease-out-expo group-hover:scale-[1.04]"
+          sizes="(max-width: 768px) 50vw, 33vw"
         />
 
-        {/* Sale badge */}
-        {product?.salePrice && (
-          <div className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 uppercase tracking-wide">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+        {salePrice && (
+          <span className="absolute top-3 left-3 bg-[#1A1A1A] text-white text-[9px] tracking-[0.18em] uppercase px-2 py-1 font-medium">
             Sale
+          </span>
+        )}
+
+        {!inStock && (
+          <div className="absolute inset-0 bg-white/70 backdrop-blur-[1px] flex items-center justify-center">
+            <span className="text-[#1A1A1A] text-[11px] tracking-[0.22em] uppercase font-medium border border-[#1A1A1A] px-4 py-2">
+              Дуусжээ
+            </span>
           </div>
         )}
 
-        {/* Out of stock overlay */}
-        {product && !product.inStock && (
-          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-            <span className="bg-red-600 text-white text-xs font-bold px-3 py-1 uppercase tracking-wider">Дуусжээ</span>
+        <div className="absolute bottom-0 left-0 right-0 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out-expo">
+          <div className="flex">
+            <button
+              onClick={(event) => {
+                event.preventDefault();
+                handleAddToCart();
+              }}
+              className="flex-1 bg-[#FFB7D5] text-[#1A1A1A] text-[11px] tracking-[0.15em] uppercase py-3.5 hover:bg-[#F2A8C8] transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!inStock}
+            >
+              {isAdded ? 'Нэмэгдлээ' : 'Сагс'}
+            </button>
+            <button
+              onClick={(event) => {
+                event.preventDefault();
+                handleBuyNow();
+              }}
+              className="flex-1 bg-[#1A1A1A] text-white text-[11px] tracking-[0.15em] uppercase py-3.5 hover:bg-[#333] transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!inStock}
+            >
+              Худалдан авах
+            </button>
           </div>
-        )}
-
-        {/* Hover Actions */}
-        {product?.inStock && (
-          <div className="absolute bottom-0 left-0 right-0 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-            <div className="flex">
-              <button
-                onClick={handleAddToCart}
-                className="flex-1 py-3 bg-[#FFB7D5] hover:bg-[#f5a0c5] text-text-primary text-[11px] tracking-[0.08em] uppercase font-medium transition-colors"
-              >
-                {isAdded ? '✓ Нэмэгдлээ' : 'Сагсанд нэмэх'}
-              </button>
-              <button
-                onClick={handleBuyNow}
-                className="flex-1 py-3 bg-white/95 border border-text-primary text-text-primary hover:bg-text-primary hover:text-white text-[11px] tracking-[0.08em] uppercase font-medium transition-colors"
-              >
-                Худалдан авах →
-              </button>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
 
-      {/* Info */}
-      <div className="px-4 pb-4 flex-1 flex flex-col">
-        <p className="text-[10px] tracking-[0.15em] uppercase text-accent mb-1.5">
+      <div className="pt-4">
+        <p className="text-[10px] tracking-[0.2em] uppercase text-[#8B6B78] mb-2">
           UJ Cosmetic
         </p>
-        <h3 className="text-sm font-normal text-text-primary leading-snug mb-2 group-hover:text-accent transition-colors flex-1">
+        <h3 className="font-sans text-sm md:text-[15px] font-normal leading-relaxed text-[#1A1A1A] group-hover:text-[#8B6B78] transition-colors min-h-[2.75rem]">
           {name}
         </h3>
-        <div className="mt-auto flex items-center gap-2">
-          {product?.salePrice ? (
+        <div className="mt-3 flex items-baseline gap-2">
+          {salePrice ? (
             <>
-              <span className="text-sm text-red-500 font-medium">{formatPrice(displayPrice)}</span>
-              <span className="text-xs text-text-muted line-through">{formatPrice(price)}</span>
+              <span className="text-sm font-medium text-[#1A1A1A]">
+                {salePrice.toLocaleString()}₮
+              </span>
+              <span className="text-xs text-[#8B6B78] line-through">
+                {price.toLocaleString()}₮
+              </span>
             </>
           ) : (
-            <span className="text-sm text-text-primary font-medium">{formatPrice(price)}</span>
+            <span className="text-sm font-medium text-[#1A1A1A]">
+              {price.toLocaleString()}₮
+            </span>
           )}
         </div>
       </div>

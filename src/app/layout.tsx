@@ -5,14 +5,14 @@ import { AuthProvider } from '@/context/AuthContext';
 import './globals.css';
 
 const playfair = Playfair_Display({
-  subsets: ['latin'],
+  subsets: ['latin', 'cyrillic'],
   variable: '--font-playfair',
   display: 'swap',
   weight: ['400', '500', '600', '700'],
 });
 
 const inter = Inter({
-  subsets: ['latin'],
+  subsets: ['latin', 'cyrillic'],
   variable: '--font-inter',
   display: 'swap',
   weight: ['300', '400', '500', '600'],

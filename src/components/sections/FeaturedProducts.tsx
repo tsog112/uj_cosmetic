@@ -1,25 +1,28 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import ProductCard from '@/components/ui/ProductCard';
 import { getFeaturedProducts } from '@/lib/services/firestoreService';
+import { useFadeIn } from '@/hooks/useFadeIn';
 import type { Product } from '@/types';
 
 export default function FeaturedProducts() {
+  const ref = useFadeIn();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
     getFeaturedProducts()
-      .then(data => setProducts(data))
+      .then(data => setProducts(data.slice(0, 4)))
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
 
   if (error) {
     return (
-      <section className="py-20 md:py-28 px-6 lg:px-10" id="featured-products">
+      <section ref={ref} className="section-padding fade-in-section px-6 lg:px-10 bg-[#FFF0F6]" id="featured-products">
         <div className="max-w-[1400px] mx-auto text-center">
           <p className="text-sm text-red-500">Мэдээлэл ачаалахад алдаа гарлаа. Дахин оролдоно уу.</p>
         </div>
@@ -28,35 +31,51 @@ export default function FeaturedProducts() {
   }
 
   return (
-    <section className="py-20 md:py-28 px-6 lg:px-10" id="featured-products">
+    <section ref={ref} className="section-padding fade-in-section px-6 lg:px-10 bg-[#FFF0F6]" id="featured-products">
       <div className="max-w-[1400px] mx-auto">
-        {/* Header */}
-        <div className="text-center mb-14">
-          <p className="section-label">Онцлох бүтээгдэхүүн</p>
-          <h2 className="section-heading">Шилдэг сонголтууд</h2>
+        <div className="text-center mb-16 md:mb-20">
+          <p className="label-eyebrow mb-4">Онцлох бүтээгдэхүүн</p>
+          <h2 className="font-serif text-heading md:text-display-sm font-normal text-[#1A1A1A]">
+            Шилдэг бүтээгдэхүүнүүд
+          </h2>
+          <div className="w-16 h-px bg-[#F2A8C8] mx-auto mt-8" />
         </div>
 
-        {/* Loading Skeleton */}
         {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-10">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="animate-pulse">
-                <div className="aspect-4-5 bg-cream-dark mb-4" />
-                <div className="h-3 bg-cream-dark w-16 mb-2" />
-                <div className="h-4 bg-cream-dark w-full mb-2" />
-                <div className="h-4 bg-cream-dark w-20" />
+                <div className="aspect-[3/4] bg-[#FFD6E8] mb-4" />
+                <div className="h-3 bg-[#FFD6E8] w-20 mb-3" />
+                <div className="h-4 bg-[#FFD6E8] w-full mb-2" />
+                <div className="h-4 bg-[#FFD6E8] w-24" />
               </div>
             ))}
           </div>
         ) : products.length === 0 ? (
-          <p className="text-center text-sm text-text-muted">Онцлох бүтээгдэхүүн олдсонгүй</p>
+          <p className="text-center text-sm text-[#8B6B78]">Онцлох бүтээгдэхүүн олдсонгүй</p>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-10">
-            {products.map(product => (
-              <ProductCard key={product.id} product={product} />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
+            {products.map((product, index) => (
+              <div
+                key={product.id}
+                className="opacity-0 animate-fadeInUp"
+                style={{ animationDelay: `${index * 0.12}s` }}
+              >
+                <ProductCard product={product} />
+              </div>
             ))}
           </div>
         )}
+
+        <div className="mt-14 md:mt-18 text-center">
+          <Link
+            href="/shop"
+            className="inline-flex text-xs tracking-[0.2em] uppercase text-[#1A1A1A] border-b border-[#1A1A1A] pb-1 hover:text-[#8B6B78] hover:border-[#8B6B78] transition-colors"
+          >
+            Бүх бүтээгдэхүүн үзэх →
+          </Link>
+        </div>
       </div>
     </section>
   );

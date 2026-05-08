@@ -3,6 +3,7 @@ import { sendShippingNotification } from '@/lib/emailService'
 import {
   getOrderById,
   getUserById,
+  updateOrderStatus,
 } from '@/lib/services/firestoreService'
 
 export async function POST(
@@ -16,23 +17,20 @@ export async function POST(
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    // Email should not block the admin status update.
-    try {
-      const user = order.userId ? await getUserById(order.userId) : null
-      if (user?.email) {
-        await sendShippingNotification(user.email, {
-          id: order.id,
-          customerName: order.customerName,
-          address: order.address,
-        })
-      }
-    } catch (emailError) {
-      console.warn('Order shipping email failed (non-blocking):', emailError)
+    await updateOrderStatus(id, 'shipped')
+
+    const user = order.userId ? await getUserById(order.userId) : null
+    if (user?.email) {
+      await sendShippingNotification(user.email, {
+        id: order.id,
+        customerName: order.customerName,
+        address: order.address,
+      })
     }
 
     return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error('Order ship error:', error)
-    return NextResponse.json({ error: 'Failed' }, { status: 500 })
+  } catch (error: any) {
+    console.error('Order ship error:', error.message)
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

@@ -5,6 +5,7 @@ import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getSiteSettings } from '@/lib/services/firestoreService';
 import { DEFAULT_SETTINGS, SiteSettings } from '@/types';
+import { useFadeIn } from '@/hooks/useFadeIn';
 
 type InstagramFeedItem = {
   id: string;
@@ -24,6 +25,7 @@ function getEmbedUrl(instagramUrl: string): string | null {
 }
 
 export default function InstagramSection() {
+  const ref = useFadeIn();
   const [items, setItems] = useState<InstagramFeedItem[]>([]);
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
 
@@ -71,7 +73,7 @@ export default function InstagramSection() {
   const instaHandle = settings.instagramUrl.split('/').filter(Boolean).pop() || 'uj_cosmetic';
 
   return (
-    <section className="py-20 md:py-28 border-thin-t bg-white" id="instagram">
+    <section ref={ref} className="section-padding fade-in-section border-thin-t bg-white" id="instagram">
       <div className="max-w-[1400px] mx-auto px-6 lg:px-10">
         <div className="text-center mb-14">
           <p className="section-label">Instagram</p>

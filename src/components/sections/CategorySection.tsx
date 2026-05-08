@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { useFadeIn } from '@/hooks/useFadeIn';
 
 type CategoryItem = {
   id: string;
@@ -16,6 +17,7 @@ type CategoryItem = {
 const SKELETON_COUNT = 5;
 
 export default function CategorySection() {
+  const ref = useFadeIn();
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -53,7 +55,7 @@ export default function CategorySection() {
   }, []);
 
   return (
-    <section className="py-20 md:py-28 border-thin-t" id="categories">
+    <section ref={ref} className="section-padding fade-in-section border-thin-t" id="categories">
       <div className="max-w-[1400px] mx-auto px-6 lg:px-10">
         <div className="text-center mb-14">
           <p className="section-label">Ангилал</p>

@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, query, orderBy, getDocs, doc, updateDoc } from 'firebase/firestore';
-import { formatPrice } from '@/types';
+import { collection, query, orderBy, getDocs } from 'firebase/firestore';
+import { formatPrice, OrderStatus } from '@/types';
+import { updateOrderStatus } from '@/lib/services/firestoreService';
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -14,6 +15,7 @@ export default function AdminOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [newStatus, setNewStatus] = useState('');
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const ITEMS_PER_PAGE = 20;
 
@@ -91,30 +93,48 @@ export default function AdminOrdersPage() {
     setIsDrawerOpen(true);
   };
 
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3500);
+  };
+
   const handleUpdateStatus = async () => {
     if (!selectedOrder) return;
+    const status = newStatus as OrderStatus;
     try {
       if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-        await updateDoc(doc(db, "orders", selectedOrder.id), { status: newStatus });
-
-        // Email notification is best-effort only; status update must not fail because of API/email config.
-        if (newStatus === 'confirmed' || newStatus === 'shipped') {
-          const action = newStatus === 'confirmed' ? 'confirm' : 'ship';
-          fetch(`/api/orders/${selectedOrder.id}/${action}`, { method: 'POST' })
-            .catch((emailErr) => console.warn(`${action} email notification failed:`, emailErr));
+        if (status === 'confirmed') {
+          const res = await fetch(`/api/orders/${selectedOrder.id}/confirm`, { method: 'POST' });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || 'Confirm API failed');
+          }
+        } else if (status === 'shipped') {
+          const res = await fetch(`/api/orders/${selectedOrder.id}/ship`, { method: 'POST' });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || 'Ship API failed');
+          }
+        } else {
+          await updateOrderStatus(selectedOrder.id, status);
         }
-        setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { ...o, status: newStatus } : o));
+        setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { ...o, status } : o));
       } else {
         const mockOrders = JSON.parse(localStorage.getItem('mock_orders') || '[]');
-        const updated = mockOrders.map((o:any) => o.id === selectedOrder.id ? { ...o, status: newStatus } : o);
+        const updated = mockOrders.map((o:any) => o.id === selectedOrder.id ? { ...o, status } : o);
         localStorage.setItem('mock_orders', JSON.stringify(updated));
-        setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { ...o, status: newStatus } : o));
+        setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { ...o, status } : o));
       }
+      showToast(
+        status === 'confirmed' ? 'Захиалга баталгаажлаа. Харилцагчид имэйл явлаа ✓' :
+        status === 'shipped' ? 'Хүргэлтэнд гарсан. Харилцагчид имэйл явлаа ✓' :
+        'Захиалгын статус шинэчлэгдлээ ✓'
+      );
       setIsDrawerOpen(false);
       setSelectedOrder(null);
-    } catch (e) {
-      console.error(e);
-      alert('Төлөв шинэчлэхэд алдаа гарлаа');
+    } catch (error: any) {
+      console.error('Status change error:', error);
+      showToast('Алдаа гарлаа: ' + error.message, 'error');
     }
   };
 
@@ -154,6 +174,16 @@ export default function AdminOrdersPage() {
 
   return (
     <div className="space-y-6">
+      {toast && (
+        <div className={`fixed top-6 right-6 z-[120] px-4 py-3 rounded-md shadow-lg text-sm font-medium ${
+          toast.type === 'error'
+            ? 'bg-red-50 text-red-700 border border-red-200'
+            : 'bg-green-50 text-green-700 border border-green-200'
+        }`}>
+          {toast.message}
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <h2 className="text-2xl font-semibold text-gray-800">Захиалгууд</h2>
         <button 

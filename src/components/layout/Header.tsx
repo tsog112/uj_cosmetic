@@ -19,7 +19,8 @@ export default function Header() {
   const { user, isAdmin, signOut, loading } = useAuth();
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 20);
+    const handleScroll = () => setIsScrolled(window.scrollY > 60);
+    handleScroll();
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -60,17 +61,17 @@ export default function Header() {
   return (
     <>
       <header
-        className={`sticky top-0 z-50 transition-all duration-300 ${
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           isScrolled
-            ? 'bg-cream/95 backdrop-blur-md shadow-[0_1px_0_0_var(--color-border)]'
-            : 'bg-cream shadow-[0_1px_0_0_var(--color-border)]'
+            ? 'bg-white/95 backdrop-blur-sm shadow-[0_1px_0_0_#F2A8C8]'
+            : 'bg-cream/80 backdrop-blur-sm'
         }`}
       >
         <div className="max-w-[1400px] mx-auto px-6 lg:px-10">
-          <div className="flex items-center justify-between h-[72px]">
+          <div className="flex items-center justify-between h-16 md:h-20">
             {/* Logo */}
             <Link href="/" className="flex-shrink-0">
-              <span className="font-serif text-2xl tracking-[0.05em] text-text-primary">
+              <span className="font-serif text-3xl font-light tracking-[0.05em] text-text-primary">
                 UJ
               </span>
             </Link>
@@ -81,9 +82,9 @@ export default function Header() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`text-[13px] tracking-[0.08em] uppercase transition-colors duration-200 ${
+                  className={`text-xs tracking-widest uppercase font-normal transition-colors duration-200 ${
                     pathname === link.href
-                      ? 'text-text-primary font-medium'
+                      ? 'text-text-primary'
                       : 'text-text-muted hover:text-text-primary'
                   }`}
                 >
