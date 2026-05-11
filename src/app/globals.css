@@ -1,16 +1,18 @@
 @import "tailwindcss";
 
 @theme inline {
-  /* Brand Colors - Soft Branded Minimalism Palette */
+  /* Brand Colors - Korea to Mongolia beauty & wellness palette */
   --color-sand: #FFF8FB;
   --color-blush: #FFF0F6;
   --color-sand-dark: #FFE6F0;
-  --color-dusty-rose: #F2A8C8;
-  --color-rose-gold: #FFB7D5;
-  --color-charcoal: #1A1A1A;
+  --color-dusty-rose: #D994B5;
+  --color-rose-gold: #D8A15D;
+  --color-charcoal: #241820;
+  --color-sage: #98A58F;
+  --color-ink: #3A2731;
   --color-text-primary: var(--color-charcoal);
-  --color-text-muted: #666666;
-  --color-border: #F2A8C866;
+  --color-text-muted: #7E6472;
+  --color-border: #D994B54D;
   --color-white: #FFFFFF;
   --color-overlay: rgba(26, 26, 26, 0.4);
   --color-neutral-600: #525252;
@@ -46,7 +48,7 @@ h1, h2, h3, h4, h5, h6 {
 .editorial-heading {
   font-family: var(--font-serif);
   font-weight: 300;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   line-height: 1.1;
 }
@@ -78,9 +80,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .btn-premium:hover {
-  background-color: var(--color-rose-gold);
-  color: var(--color-charcoal);
-  border-color: var(--color-rose-gold);
+  background-color: var(--color-dusty-rose);
+  color: #FFFFFF;
+  border-color: var(--color-dusty-rose);
 }
 
 .btn-premium-outline {
@@ -100,9 +102,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .btn-premium-outline:hover {
-  background-color: var(--color-rose-gold);
-  color: var(--color-charcoal);
-  border-color: var(--color-rose-gold);
+  background-color: var(--color-dusty-rose);
+  color: #FFFFFF;
+  border-color: var(--color-dusty-rose);
 }
 
 /* Scrollbar */

@@ -3,9 +3,18 @@ export function uploadProductImage(
   productSlug: string,
   onProgress?: (progress: number) => void
 ): Promise<string> {
+  return uploadImage(file, `products/${productSlug}`, onProgress);
+}
+
+export function uploadImage(
+  file: File,
+  folder = 'misc',
+  onProgress?: (progress: number) => void
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('folder', folder);
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', '/api/upload', true);

@@ -4,59 +4,76 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 
+const pillars = [
+  ['Сонголт', 'Солонгосоос авч үзэх үнэ цэнтэй бүтээгдэхүүнийг түүж оруулна.'],
+  ['Тайлбар', 'Хэрэглэхэд ойлгомжтой, хэт сүртэй биш, хэрэгтэй мэдээлэл өгнө.'],
+  ['Хүргэлт', 'Захиалгаа өгөөд төлөвөө харж, Монголдоо хүлээж авна.'],
+];
+
 export default function AboutSection() {
   return (
-    <section className="py-16 md:py-28 lg:py-36 bg-[#FFF8FB] overflow-hidden" id="about-section">
+    <section className="overflow-hidden bg-[#FFF0F6] py-16 md:py-28 lg:py-32" id="about-section">
       <div className="max-content">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16 xl:gap-24 items-center">
-          {/* Text Content */}
-          <motion.div 
+        <div className="grid grid-cols-1 items-center gap-9 lg:grid-cols-12 lg:gap-16 xl:gap-24">
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 1.2, ease: "easeOut" as const }}
-            className="lg:col-span-5 order-2 lg:order-1"
+            transition={{ duration: 0.9, ease: 'easeOut' as const }}
+            className="lg:col-span-5"
           >
-            <span className="editorial-label block mb-3 md:mb-6">Бидний тухай</span>
-            <h2 className="text-[30px] md:font-serif md:text-5xl lg:text-6xl font-semibold md:font-light md:tracking-[0.08em] lg:tracking-[0.14em] md:uppercase text-charcoal mb-6 md:mb-10 leading-tight md:leading-[1.1]">
-              Зөөлөн арчилгаа, <br />
-              Гэрэлтсэн арьс.
+            <span className="editorial-label mb-4 block text-[#D994B5]">UJ-ийн тухай</span>
+            <h2 className="font-serif text-4xl leading-tight text-[#241820] md:text-6xl">
+              Гоё харагдахаас гадна өөртөө зөөлөн хандах тухай
             </h2>
-
-            <div className="space-y-4 md:space-y-8 font-sans text-[15px] md:text-sm text-neutral-600 leading-7 md:leading-relaxed max-w-lg">
+            <div className="mt-7 max-w-xl space-y-5 text-sm leading-8 text-[#7E6472] md:text-base">
               <p>
-                UJ Cosmetic нь Монгол орны уур амьсгал, орчин үеийн минималист хэв маягт нийцсэн Солонгосын шилдэг арьс арчилгааны бүтээгдэхүүнүүдийг сонгон хүргэж байна.
+                UJ Cosmetic бол Солонгосын гоо сайхан, арьс арчилгаа, эрүүл мэндийн
+                нэмэлт бүтээгдэхүүнийг Монгол хэрэглэгчдэд илүү ойр болгох жижигхэн дэлгүүр.
               </p>
               <p>
-                Бид үр дүнтэй найрлага, өдөр тутмын тууштай арчилгааны хүчинд итгэдэг. Таны арьс, илүү гэрэлтэнэ.
+                Бид таны routine-г төвөгтэй болгохыг хүсдэггүй. Харин өөртөө анхаарах
+                мөчийг арай илүү тухтай, итгэлтэй, гоё мэдрэмжтэй болгохыг хүсдэг.
               </p>
             </div>
 
-            <div className="mt-8 md:mt-12">
-              <Link
-                href="/about"
-                className="btn-premium min-w-full md:min-w-[200px] min-h-12"
-              >
-                Бидний түүхийг унших
-              </Link>
+            <div className="mt-8 grid gap-3">
+              {pillars.map(([label, text]) => (
+                <div key={label} className="flex items-start gap-4 border-t border-[#E8BFD0] py-4">
+                  <span className="w-24 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#D8A15D]">{label}</span>
+                  <span className="text-sm leading-6 text-[#5F4A55]">{text}</span>
+                </div>
+              ))}
             </div>
+
+            <Link href="/about" className="mt-8 inline-flex min-h-12 w-full items-center justify-center bg-[#241820] px-8 text-sm font-semibold text-white transition-colors hover:bg-[#D994B5] md:w-auto">
+              Дэлгэрэнгүй унших
+            </Link>
           </motion.div>
 
-          {/* Image Content */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 1.8, delay: 0.2, ease: "easeOut" as const }}
-            className="lg:col-span-7 order-1 lg:order-2 relative aspect-[4/5] lg:aspect-[6/5] bg-[#FFF0F6] overflow-hidden rounded-[18px] md:rounded-[10px]"
+            transition={{ duration: 1, delay: 0.15, ease: 'easeOut' as const }}
+            className="relative lg:col-span-7"
           >
-            <Image
-              src="/images/brand/about.png"
-              alt="UJ Cosmetic brand story"
-              fill
-              className="object-cover"
-              sizes="(max-width: 1024px) 100vw, 60vw"
-            />
+            <div className="relative aspect-[4/5] overflow-hidden bg-[#FFF8FB] md:aspect-[6/5]">
+              <Image
+                src="/images/brand/about.png"
+                alt="UJ Cosmetic-ийн сонгосон Солонгос бүтээгдэхүүн"
+                fill
+                className="object-cover"
+                sizes="(max-width: 1024px) 100vw, 60vw"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#5B2E43]/34 via-transparent to-transparent" />
+            </div>
+            <div className="absolute bottom-5 left-5 right-5 bg-white/94 p-5 text-[#241820] shadow-[0_22px_60px_rgba(91,46,67,0.16)] backdrop-blur md:bottom-8 md:left-8 md:right-auto md:max-w-sm">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#D994B5]">UJ mood</p>
+              <p className="mt-3 font-serif text-2xl leading-snug">
+                Өөртөө анхаарах жижигхэн мөч бүр гоё байг.
+              </p>
+            </div>
           </motion.div>
         </div>
       </div>

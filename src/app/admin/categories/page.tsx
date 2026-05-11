@@ -2,8 +2,8 @@
 
 import { ChangeEvent, DragEvent, useEffect, useMemo, useState } from 'react';
 import { collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from 'firebase/firestore';
-import { getDownloadURL, getStorage, ref, uploadBytes } from 'firebase/storage';
-import { app, db } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
+import { uploadImage } from '@/lib/uploadImage';
 import type { Category } from '@/types';
 
 type CategoryFormState = {
@@ -18,7 +18,6 @@ type CategoryFormState = {
 };
 
 const emptyForm: CategoryFormState = { name_mn: '', slug: '', imageUrl: '' };
-const storage = getStorage(app);
 
 function transliterateName(value: string) {
   const map: Record<string, string> = {
@@ -96,9 +95,7 @@ export default function AdminCategoriesPage() {
     if (!file || !form.slug) return;
     setUploading(true);
     try {
-      const storageRef = ref(storage, `categories/${form.slug}/image`);
-      await uploadBytes(storageRef, file);
-      const imageUrl = await getDownloadURL(storageRef);
+      const imageUrl = await uploadImage(file, `categories/${form.slug}`);
       setForm(prev => ({ ...prev, imageUrl }));
     } finally {
       setUploading(false);

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { collection, getDocs, orderBy, query } from 'firebase/firestore';
@@ -57,29 +57,22 @@ export default function InstagramSection() {
     };
   }, []);
 
-  const slots = useMemo(
-    () => Array.from({ length: SLOT_COUNT }, (_, index) => items[index] || null),
-    [items]
-  );
+  const slots = useMemo(() => Array.from({ length: SLOT_COUNT }, (_, index) => items[index] || null), [items]);
   const instaHandle = settings.instagramUrl.split('/').filter(Boolean).pop() || 'uj_cosmetic';
 
   return (
-    <section ref={ref} className="py-16 md:py-28 lg:py-32 fade-in-section border-t border-[#F2A8C8]/40 bg-[#FFF0F6]" id="instagram">
-      <div className="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-10">
-        <div className="text-center mb-8 md:mb-12">
-          <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-[#8B6B78] mb-4">
-            Instagram
-          </p>
-          <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl font-light text-[#1A1A1A]">
-            <a
-              href={settings.instagramUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="transition-colors hover:text-[#D86FA0]"
-            >
+    <section ref={ref} className="fade-in-section border-t border-[#F2C7D8] bg-[#FFF0F6] py-16 md:py-28 lg:py-32" id="instagram">
+      <div className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-10">
+        <div className="mb-8 text-center md:mb-12">
+          <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#D994B5]">Instagram</p>
+          <h2 className="font-serif text-4xl font-light text-[#241820] md:text-5xl lg:text-6xl">
+            <a href={settings.instagramUrl} target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-[#D994B5]">
               @{instaHandle}
             </a>
           </h2>
+          <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-[#7E6472]">
+            Шинэ ирэлт, хэрэглээний санаа, өөртөө анхаарах жижигхэн мөчүүдийг эндээс хараарай.
+          </p>
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6 md:gap-4">
@@ -94,12 +87,14 @@ export default function InstagramSection() {
                     className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                   />
                 ) : (
-                  <div className="h-full w-full bg-gradient-to-br from-[#FFF8FB] via-[#FFD6E8] to-[#FFF0F6]" />
+                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#FFF8FB] via-[#FFE6F0] to-[#FFF0F6]">
+                    <span className="font-serif text-3xl text-[#D994B5]">UJ</span>
+                  </div>
                 )}
-                <div className="absolute inset-0 bg-[#1A1A1A]/0 transition-colors duration-300 group-hover:bg-[#1A1A1A]/18" />
+                <div className="absolute inset-0 bg-[#241820]/0 transition-colors duration-300 group-hover:bg-[#241820]/18" />
                 <div className="absolute inset-x-3 bottom-3 translate-y-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-                  <span className="flex min-h-9 items-center justify-center rounded-[10px] bg-white/90 px-3 text-[11px] font-medium text-[#1A1A1A] shadow-[0_10px_24px_rgba(26,26,26,0.12)]">
-                    Instagram-д үзэх
+                  <span className="flex min-h-9 items-center justify-center rounded-[8px] bg-white/92 px-3 text-[11px] font-semibold text-[#241820] shadow-[0_10px_24px_rgba(91,46,67,0.12)]">
+                    Instagram дээр үзэх
                   </span>
                 </div>
               </>
@@ -111,14 +106,14 @@ export default function InstagramSection() {
                 href={slot.instagramUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group relative block aspect-square overflow-hidden rounded-[14px] border border-white/60 bg-white shadow-[0_12px_28px_rgba(216,111,160,0.1)] md:rounded-[4px]"
+                className="group relative block aspect-square overflow-hidden rounded-[12px] border border-white/70 bg-white shadow-[0_12px_28px_rgba(91,46,67,0.08)] md:rounded-[4px]"
               >
                 {content}
               </a>
             ) : (
               <div
                 key={`instagram-placeholder-${index}`}
-                className="group relative aspect-square overflow-hidden rounded-[14px] border border-white/60 bg-white shadow-[0_12px_28px_rgba(216,111,160,0.08)] md:rounded-[4px]"
+                className="group relative aspect-square overflow-hidden rounded-[12px] border border-white/70 bg-white shadow-[0_12px_28px_rgba(91,46,67,0.06)] md:rounded-[4px]"
                 aria-label="Instagram placeholder"
               >
                 {content}
@@ -132,9 +127,9 @@ export default function InstagramSection() {
             href={settings.instagramUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-12 w-full items-center justify-center rounded-[12px] bg-[#1A1A1A] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#FFB7D5] hover:text-[#1A1A1A] md:w-auto md:min-w-[240px]"
+            className="inline-flex min-h-12 w-full items-center justify-center rounded-[8px] bg-[#241820] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#D994B5] md:w-auto md:min-w-[240px]"
           >
-            @{instaHandle} дагаарай
+            @{instaHandle} дагах
           </a>
         </div>
       </div>

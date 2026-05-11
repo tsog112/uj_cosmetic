@@ -22,7 +22,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
 
-  const name = product.name_mn || 'Нэргүй бараа';
+  const name = product.name_mn || product.name_en || 'Бүтээгдэхүүн';
   const image = product.images?.[0] || '/placeholder-product.svg';
   const price = product.price || 0;
   const salePrice = product.salePrice;
@@ -63,115 +63,97 @@ export default function ProductCard({ product }: ProductCardProps) {
   };
 
   return (
-    <div 
-      className="group flex flex-col h-full relative"
+    <div
+      className="group relative flex h-full flex-col"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <Link
-        href={`/shop/${product.slug}`}
-        className="block w-full flex-grow relative"
-      >
-        {/* Image Container with 4:5 Aspect Ratio */}
-        <motion.div 
-          className="relative aspect-[4/5] w-full overflow-hidden bg-[#FFF0F6] border border-[#F2A8C8]/40 rounded-[14px] md:rounded-[10px] shadow-sm"
+      <Link href={`/shop/${product.slug}`} className="block w-full flex-grow">
+        <motion.div
+          className="relative aspect-[4/5] w-full overflow-hidden rounded-[12px] border border-[#F2C7D8] bg-[#FFF0F6] shadow-sm"
           animate={{
-            boxShadow: isHovered ? "0 20px 40px -10px rgba(0,0,0,0.08)" : "0 1px 2px 0 rgba(0, 0, 0, 0.05)"
+            boxShadow: isHovered ? '0 22px 48px -18px rgba(91,46,67,0.28)' : '0 1px 2px rgba(91,46,67,0.06)',
           }}
-          transition={{ duration: 0.6, ease: "easeOut" as const }}
+          transition={{ duration: 0.45, ease: 'easeOut' as const }}
         >
           <motion.div
-            animate={{ scale: isHovered ? 1.05 : 1 }}
-            transition={{ duration: 0.6, ease: "easeOut" as const }}
-            className="relative w-full h-full"
+            animate={{ scale: isHovered ? 1.045 : 1 }}
+            transition={{ duration: 0.55, ease: 'easeOut' as const }}
+            className="relative h-full w-full"
           >
             <Image
               src={image}
               alt={name}
               fill
               className="object-cover"
-              sizes="(max-width: 768px) 50vw, 33vw"
+              sizes="(max-width: 768px) 50vw, 25vw"
             />
           </motion.div>
 
-          {/* Availability Badge */}
           {salePrice && inStock && (
-            <span className="absolute top-3 left-3 bg-charcoal text-sand text-[9px] tracking-[0.14em] uppercase px-2 py-1 rounded-[6px]">
+            <span className="absolute left-3 top-3 rounded-full bg-[#D994B5] px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-white">
               Sale
             </span>
           )}
+
           {!inStock && (
-            <div className="absolute inset-0 bg-[#F9F8F6]/40 backdrop-blur-[2px] flex items-center justify-center">
-              <span className="editorial-label bg-sand px-4 py-2 shadow-sm text-[10px] rounded-[8px]">
+            <div className="absolute inset-0 flex items-center justify-center bg-[#FFF8FB]/55 backdrop-blur-[2px]">
+              <span className="rounded-full bg-white px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#7B6670] shadow-sm">
                 Дууссан
               </span>
             </div>
           )}
 
-          {/* Subtle Overlay on Hover */}
-          <div 
-            className={`absolute inset-0 bg-black/5 transition-opacity duration-700 ${
-              isHovered ? 'opacity-100' : 'opacity-0'
-            }`} 
-          />
+          <div className={`absolute inset-0 bg-[#D994B5]/10 transition-opacity duration-500 ${isHovered ? 'opacity-100' : 'opacity-0'}`} />
         </motion.div>
 
-        {/* Product Info */}
-        <div className="mt-3 md:mt-6 flex flex-col items-start md:items-center md:text-center px-0 md:px-2">
-          <p className="hidden md:block editorial-label text-[9px] mb-2">UJ Cosmetic</p>
-          <h3 className="text-[14px] md:font-serif md:text-xl font-medium md:font-light text-charcoal mb-1 md:mb-2 leading-snug tracking-normal md:tracking-[0.05em] group-hover:opacity-70 transition-opacity duration-500 line-clamp-2">
+        <div className="mt-3 px-0 md:mt-5 md:px-1">
+          <p className="hidden text-[9px] font-semibold uppercase tracking-[0.22em] text-[#D994B5] md:block">
+            UJ selection
+          </p>
+          <h3 className="mt-1 line-clamp-2 text-[14px] font-medium leading-snug text-[#1F191C] transition-opacity duration-300 group-hover:opacity-70 md:text-[16px]">
             {name}
           </h3>
-          <div className="flex flex-col md:items-center gap-1 mt-auto">
-            <span className="hidden md:block font-serif italic text-sm text-neutral-600 tracking-[0.05em]">
-              Арьс арчилгаа
-            </span>
-            <div className="flex items-center gap-2">
-              <span className="font-sans text-sm font-semibold md:font-medium tracking-wide text-charcoal mt-1">
-                {displayPrice.toLocaleString()} ₮
-              </span>
-              {salePrice && (
-                <span className="text-xs text-neutral-500 line-through mt-1">
-                  {price.toLocaleString()} ₮
-                </span>
-              )}
-            </div>
+          <p className="mt-2 hidden text-xs italic text-[#7E6472] md:block">Өдөр тутмын зөөлөн арчилгаа</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold text-[#1F191C]">{displayPrice.toLocaleString()} ₮</span>
+            {salePrice && (
+              <span className="text-xs text-[#9A7D88] line-through">{price.toLocaleString()} ₮</span>
+            )}
           </div>
         </div>
       </Link>
 
-      {/* Wishlist Button - Moved outside Link to ensure click capture */}
       <button
         onClick={handleWishlist}
         disabled={wishlistLoading}
-        className={`absolute right-3 top-3 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-[#F2A8C8]/70 bg-white/90 shadow-sm backdrop-blur-sm transition-colors ${
-          isWishlisted ? 'text-[#D86FA0]' : 'text-[#1A1A1A]'
+        className={`absolute right-3 top-3 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-[#F2C7D8] bg-white/92 shadow-sm backdrop-blur-sm transition-colors ${
+          isWishlisted ? 'text-[#D994B5]' : 'text-[#1F191C]'
         } hover:bg-[#FFF0F6]`}
-        aria-label={isWishlisted ? 'Дуртайгаас хасах' : 'Дуртайд нэмэх'}
+        aria-label={isWishlisted ? 'Хадгалснаас хасах' : 'Хадгалах'}
       >
         <svg width="19" height="19" viewBox="0 0 24 24" fill={isWishlisted ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
           <path d="M20.8 4.6a5.4 5.4 0 0 0-7.6 0L12 5.8l-1.2-1.2a5.4 5.4 0 1 0-7.6 7.6L12 21l8.8-8.8a5.4 5.4 0 0 0 0-7.6Z" />
         </svg>
       </button>
 
-      {/* Quick Add - visible on touch screens, subtle reveal on desktop */}
-      <div className="mt-3 md:mt-6 grid grid-cols-2 gap-2 md:flex md:justify-center md:opacity-0 md:group-hover:opacity-100 md:transition-all md:duration-700 md:translate-y-2 md:group-hover:translate-y-0">
+      <div className="mt-3 grid grid-cols-2 gap-2 md:mt-5 md:opacity-0 md:transition-all md:duration-500 md:group-hover:opacity-100">
         <button
-          onClick={(e) => {
-            e.preventDefault();
+          onClick={event => {
+            event.preventDefault();
             if (inStock) addToCart(product);
           }}
-          className="min-h-10 rounded-[10px] md:rounded-[8px] bg-blush md:bg-[#FFF0F6] border border-[#F2A8C8]/60 md:border-[#F2A8C8] px-2 text-[11px] md:text-[10px] md:tracking-[0.12em] md:uppercase font-medium hover:bg-[#FFB7D5] hover:text-charcoal hover:border-[#FFB7D5] transition-colors disabled:opacity-30"
+          className="min-h-10 rounded-[8px] border border-[#F2C7D8] bg-[#FFF0F6] px-2 text-[11px] font-semibold transition-colors hover:border-[#D994B5] hover:bg-[#D994B5] hover:text-white disabled:opacity-30 md:text-[10px] md:uppercase md:tracking-[0.12em]"
           disabled={!inStock}
         >
           Сагс
         </button>
         <button
-          onClick={(e) => {
-            e.preventDefault();
+          onClick={event => {
+            event.preventDefault();
             if (inStock) buyNow({ product, quantity: 1 });
           }}
-          className="min-h-10 rounded-[10px] md:rounded-[8px] bg-charcoal text-white border border-charcoal px-2 text-[11px] md:text-[10px] md:tracking-[0.12em] md:uppercase font-medium hover:bg-[#FFB7D5] hover:text-charcoal hover:border-[#FFB7D5] transition-colors disabled:opacity-30"
+          className="min-h-10 rounded-[8px] border border-[#241820] bg-[#241820] px-2 text-[11px] font-semibold text-white transition-colors hover:border-[#D994B5] hover:bg-[#D994B5] disabled:opacity-30 md:text-[10px] md:uppercase md:tracking-[0.12em]"
           disabled={!inStock}
         >
           Авах

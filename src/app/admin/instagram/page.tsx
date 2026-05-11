@@ -2,8 +2,8 @@
 
 import { ChangeEvent, DragEvent, useEffect, useState } from 'react';
 import { collection, doc, getDocs, orderBy, query, serverTimestamp, setDoc } from 'firebase/firestore';
-import { getDownloadURL, getStorage, ref, uploadBytes } from 'firebase/storage';
-import { app, db } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
+import { uploadImage } from '@/lib/uploadImage';
 
 type InstagramSlot = {
   id: string;
@@ -12,7 +12,6 @@ type InstagramSlot = {
 };
 
 const SLOT_COUNT = 6;
-const storage = getStorage(app);
 
 function createEmptySlots(): InstagramSlot[] {
   return Array.from({ length: SLOT_COUNT }, (_, index) => ({
@@ -68,10 +67,7 @@ export default function AdminInstagramPage() {
 
     setUploadingSlot(slotIndex);
     try {
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
-      const storageRef = ref(storage, `instagram/slot-${slotIndex + 1}/${Date.now()}_${safeName}`);
-      await uploadBytes(storageRef, file);
-      const imageUrl = await getDownloadURL(storageRef);
+      const imageUrl = await uploadImage(file, `instagram/slot-${slotIndex + 1}`);
       setSlots(prev => prev.map((slot, index) => index === slotIndex ? { ...slot, imageUrl } : slot));
     } catch (error: any) {
       setToast(`Зураг оруулахад алдаа гарлаа: ${error.message}`);

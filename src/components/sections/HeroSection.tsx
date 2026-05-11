@@ -4,79 +4,92 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 
+const highlights = [
+  'Солонгосоос сонгосон',
+  'Гоо сайхан',
+  'Эрүүл мэндийн нэмэлт',
+  'Монголд хүргэлттэй',
+];
+
 export default function HeroSection() {
   return (
-    <section className="relative w-full min-h-[100svh] overflow-hidden bg-[#FFF0F6]" id="hero">
-      {/* Background Image/Video Container */}
-      <motion.div 
-        initial={{ scale: 1.1, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 2.5, ease: "easeOut" as const }}
-        className="absolute inset-0"
-      >
-        <Image
-          src="/images/brand/hero.png"
-          alt="UJ Cosmetic Editorial"
-          fill
-          className="object-cover object-center"
-          priority
-          sizes="100vw"
-        />
-        {/* Soft elegant overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#1A1A1A]/20 via-[#8B6B78]/10 to-[#1A1A1A]/35 md:from-[#1A1A1A]/12 md:via-[#FFB7D5]/10 md:to-[#1A1A1A]/20" />
-      </motion.div>
-
-      {/* Content Container */}
-      <div className="relative z-10 min-h-[100svh] max-content flex flex-col items-center justify-center text-center pt-24 pb-28">
+    <section className="relative w-full overflow-hidden bg-[#FFF8FB]" id="hero">
+      <div className="relative min-h-[92svh]">
         <motion.div
-          initial={{ y: 60, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 1.5, delay: 0.5, ease: "easeOut" as const }}
-          className="max-w-[800px] w-full"
+          initial={{ scale: 1.06, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 1.8, ease: 'easeOut' as const }}
+          className="absolute inset-0"
         >
-          <h2 className="editorial-label text-white/80 mb-4 md:mb-6 block tracking-[0.24em] md:tracking-[0.4em] text-[10px]">
-            Арьс арчилгааны хэв маяг
-          </h2>
-          <h1 className="editorial-heading text-[3.25rem] leading-[0.95] md:text-7xl lg:text-[8rem] xl:text-[9rem] text-white mb-8 md:mb-10">
-            Цэвэр тунгалаг
-          </h1>
-          <p className="font-serif text-base md:text-xl lg:text-2xl text-white/90 font-light tracking-wide mb-10 md:mb-12 italic opacity-90">
-            "Хамгийн энгийн нь хамгийн төгс."
-          </p>
-          
-          <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8">
-            <Link
-              href="/shop"
-              className="btn-premium min-w-[220px] min-h-12"
-            >
-              Дэлгүүр үзэх
-            </Link>
-            <Link
-              href="/about"
-              className="min-h-11 inline-flex items-center justify-center editorial-label text-white border-b border-white/30 pb-1 hover:border-white transition-colors"
-            >
-              Бидний тухай
-            </Link>
-          </div>
+          <Image
+            src="/images/brand/hero.png"
+            alt="Солонгосын гоо сайхан болон эрүүл мэндийн бүтээгдэхүүн"
+            fill
+            className="object-cover object-center"
+            priority
+            sizes="100vw"
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(36,24,32,0.76)_0%,rgba(91,46,67,0.54)_45%,rgba(217,148,181,0.20)_100%)]" />
+          <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#FFF8FB] via-[#FFF8FB]/72 to-transparent" />
         </motion.div>
+
+        <div className="relative z-10 min-h-[92svh] max-content flex items-center pt-28 pb-24">
+          <motion.div
+            initial={{ y: 36, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 1, delay: 0.25, ease: 'easeOut' as const }}
+            className="max-w-[760px] text-white"
+          >
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/76">
+              Korean beauty & wellness for Mongolia
+            </p>
+            <h1 className="mt-6 font-serif text-[3.1rem] leading-[1.02] md:text-7xl lg:text-[7.4rem]">
+              Солонгосын арчилгааг илүү ойр
+            </h1>
+            <p className="mt-7 max-w-2xl text-base leading-8 text-white/88 md:text-xl md:leading-9">
+              Өөртөө өдөр бүр тавих жижигхэн анхааралд тань зориулж Солонгосын
+              гоо сайхан, арьс арчилгаа, эрүүл мэндийн нэмэлт бүтээгдэхүүнийг
+              нэг дороос сонгон хүргэнэ.
+            </p>
+
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+              <Link href="/shop" className="btn-premium min-h-12 min-w-[220px] bg-white text-charcoal border-white">
+                Дэлгүүр үзэх
+              </Link>
+              <Link
+                href="/about"
+                className="inline-flex min-h-12 min-w-[200px] items-center justify-center border border-white/45 px-8 text-sm font-semibold text-white transition-colors hover:bg-white hover:text-charcoal"
+              >
+                Бидний сонголт
+              </Link>
+            </div>
+
+            <div className="mt-10 flex flex-wrap gap-2">
+              {highlights.map(item => (
+                <span key={item} className="border border-white/24 bg-white/10 px-3 py-2 text-[11px] font-medium tracking-[0.08em] backdrop-blur">
+                  {item}
+                </span>
+              ))}
+            </div>
+          </motion.div>
+        </div>
       </div>
 
-      {/* Scroll Indicator */}
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 2, duration: 1 }}
-        className="absolute bottom-20 md:bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 md:gap-4"
-      >
-        <span className="editorial-label text-[8px] md:text-[9px] text-white/60 tracking-[0.24em] md:tracking-[0.3em]">Доошлуулах</span>
-        <div className="w-[1px] h-8 md:h-12 bg-sand/20 relative overflow-hidden">
-          <motion.div 
-            animate={{ y: [0, 48, 0] }}
-            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute top-0 left-0 w-full h-4 bg-sand/60"
-          />
+      <div className="relative z-20 max-content -mt-14 pb-10">
+        <div className="grid gap-3 bg-white/94 p-3 shadow-[0_24px_70px_rgba(91,46,67,0.14)] backdrop-blur md:grid-cols-3 md:p-5">
+          {[
+            ['01', 'Зөөлөн боловч итгэлтэй сонголт', 'Арьсанд хүрэх зүйлээ яаран биш, найрлага хэрэглээг нь харж сонгоход тань тусална.'],
+            ['02', 'Гоо сайхан ба wellness хамтдаа', 'Арьс арчилгаа, body care, supplement гээд өдөр тутмын routine-д хэрэгтэй зүйлс.'],
+            ['03', 'Танд ойлгомжтой, ойрхон', 'Бүтээгдэхүүн бүрийг энгийнээр тайлбарлаж, захиалгыг Монголд хүргэнэ.'],
+          ].map(([num, title, text]) => (
+            <div key={num} className="border border-[#F2C7D8] bg-[#FFF8FB] p-5">
+              <p className="text-[11px] font-semibold tracking-[0.2em] text-[#D8A15D]">{num}</p>
+              <h3 className="mt-3 font-serif text-2xl text-[#241820]">{title}</h3>
+              <p className="mt-2 text-sm leading-6 text-[#7E6472]">{text}</p>
+            </div>
+          ))}
         </div>
-      </motion.div>
+      </div>
     </section>
   );
 }

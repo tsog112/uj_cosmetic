@@ -30,6 +30,11 @@ export async function POST(req: Request) {
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File;
+    const folder = String(formData.get("folder") || "misc")
+      .replace(/[^a-zA-Z0-9/_-]/g, "-")
+      .replace(/\/+/g, "/")
+      .replace(/^\/|\/$/g, "");
+
     if (!file) {
       return Response.json({ error: "No file provided" }, { status: 400 });
     }
@@ -39,7 +44,7 @@ export async function POST(req: Request) {
 
     const result = await new Promise<{ secure_url: string }>((resolve, reject) => {
       cloudinary.uploader
-        .upload_stream({ folder: "uj-cosmetic/products" }, (error, result) => {
+        .upload_stream({ folder: `uj-cosmetic/${folder || "misc"}` }, (error, result) => {
           if (error || !result) {
             console.error("[upload] Cloudinary upload_stream error:", error);
             reject(error ?? new Error("No result from Cloudinary"));
@@ -59,4 +64,3 @@ export async function POST(req: Request) {
     );
   }
 }
-

@@ -21,11 +21,11 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: 'UJ Cosmetic — Premium Skin Rituals',
-  description: 'Curated Korean skincare for the modern minimalist. High-performance formulas, editorial-grade rituals.',
-  keywords: 'UJ Cosmetic, Luxury Korean Skincare, Minimalist Beauty, Serum, Toner, Mongolia',
+  description: 'Солонгосын чанартай гоо сайхан болон эрүүл мэндийн нэмэлт бүтээгдэхүүнийг Монгол хэрэглэгчдэд.',
+  keywords: 'UJ Cosmetic, Korean beauty Mongolia, wellness supplements, skincare Mongolia, Солонгос бүтээгдэхүүн',
   openGraph: {
     title: 'UJ Cosmetic — Premium Skin Rituals',
-    description: 'The intersection of nature and science. Elevate your daily ritual.',
+    description: 'Солонгос чанартай бүтээгдэхүүнийг таны гарт.',
     type: 'website',
     locale: 'mn_MN',
     siteName: 'UJ Cosmetic',

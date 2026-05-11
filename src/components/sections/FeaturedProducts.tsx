@@ -19,78 +19,71 @@ export default function FeaturedProducts() {
       .finally(() => setLoading(false));
   }, []);
 
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.2 }
-    }
-  };
-
-  const item = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" as const } }
-  };
-
   if (error) return null;
 
   return (
-    <section className="py-16 md:py-28 lg:py-36 bg-[#FFF8FB]" id="featured-products">
+    <section className="bg-[#FFF8FB] py-16 md:py-28" id="featured-products">
       <div className="max-content">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 1.2, ease: "easeOut" as const }}
-          className="text-left md:text-center mb-10 md:mb-20"
+          transition={{ duration: 0.9, ease: 'easeOut' as const }}
+          className="mb-10 grid gap-8 md:mb-16 md:grid-cols-[1.1fr_0.9fr] md:items-end"
         >
-          <span className="editorial-label block mb-3 md:mb-6">Онцлох бүтээгдэхүүн</span>
-          <h2 className="text-[28px] md:font-serif md:text-5xl lg:text-6xl font-semibold md:font-light md:tracking-[0.08em] lg:tracking-[0.14em] md:uppercase text-charcoal leading-tight md:leading-[1.1]">
-            Шилдэг бүтээгдэхүүнүүд
-          </h2>
-          <div className="w-14 h-[1px] bg-[#F2A8C8] mt-6 md:mx-auto md:mt-8" />
+          <div>
+            <span className="editorial-label block mb-4 text-[#D994B5]">Санал болгох бүтээгдэхүүн</span>
+            <h2 className="max-w-3xl font-serif text-4xl leading-tight text-[#241820] md:text-6xl">
+              Өдөр тутамдаа хайртай болох жижиг арчилгаанууд
+            </h2>
+          </div>
+          <p className="max-w-xl text-sm leading-7 text-[#7E6472] md:justify-self-end">
+            Зарим өдөр арьсандаа чийг хэрэгтэй, зарим өдөр биеэ дотроос нь дэмжмээр санагддаг.
+            Тийм өдөр бүрт ойр байх Солонгос бүтээгдэхүүнүүдийг эндээс сонгоорой.
+          </p>
         </motion.div>
 
         {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-12">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-8">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="animate-pulse">
-                <div className="aspect-[4/5] bg-[#F9F8F6] mb-6" />
-                <div className="h-4 bg-[#F9F8F6] w-3/4 mx-auto mb-3" />
-                <div className="h-3 bg-[#F9F8F6] w-1/2 mx-auto" />
+                <div className="aspect-[4/5] bg-white" />
+                <div className="mt-5 h-4 w-3/4 bg-white" />
+                <div className="mt-3 h-3 w-1/2 bg-white" />
               </div>
             ))}
           </div>
         ) : (
-          <motion.div 
-            variants={container}
+          <motion.div
             initial="hidden"
             whileInView="show"
             viewport={{ once: true }}
-            className="grid grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-8 md:gap-x-12 md:gap-y-16"
+            variants={{
+              hidden: { opacity: 0 },
+              show: { opacity: 1, transition: { staggerChildren: 0.12 } },
+            }}
+            className="grid grid-cols-2 gap-x-3 gap-y-9 md:grid-cols-4 md:gap-x-8 md:gap-y-14"
           >
-            {products.map((product) => (
-              <motion.div key={product.id} variants={item} className="h-full">
+            {products.map(product => (
+              <motion.div
+                key={product.id}
+                variants={{
+                  hidden: { opacity: 0, y: 18 },
+                  show: { opacity: 1, y: 0, transition: { duration: 0.7, ease: 'easeOut' as const } },
+                }}
+                className="h-full"
+              >
                 <ProductCard product={product} />
               </motion.div>
             ))}
           </motion.div>
         )}
 
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.5, duration: 1, ease: "easeOut" as const }}
-          className="mt-10 md:mt-20 text-center"
-        >
-          <Link
-            href="/shop"
-            className="btn-premium-outline min-w-full md:min-w-[220px] min-h-12"
-          >
+        <div className="mt-12 flex justify-center md:mt-18">
+          <Link href="/shop" className="btn-premium-outline min-h-12 w-full md:w-auto md:min-w-[260px]">
             Бүх бүтээгдэхүүн үзэх
           </Link>
-        </motion.div>
+        </div>
       </div>
     </section>
   );
