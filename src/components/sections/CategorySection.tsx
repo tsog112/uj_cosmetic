@@ -17,7 +17,7 @@ type CategoryItem = {
 const fallbackCategories: CategoryItem[] = [
   { id: 'skincare', name_mn: 'Арьс арчилгаа', slug: 'serum', imageUrl: '/images/categories/serum.png', order: 1 },
   { id: 'sun', name_mn: 'Нарны хамгаалалт', slug: 'sunscreen', imageUrl: '/images/categories/sunscreen.png', order: 2 },
-  { id: 'wellness', name_mn: 'Wellness нэмэлт', slug: 'other', imageUrl: '/images/brand/about_hero.png', order: 3 },
+  { id: 'wellness', name_mn: 'Wellness нэмэлт', slug: 'other', imageUrl: '/images/brand/about_hero.jpg', order: 3 },
 ];
 
 function cleanCategoryName(value: string) {

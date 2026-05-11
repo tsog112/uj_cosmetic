@@ -60,7 +60,7 @@ export default function AboutSection() {
           >
             <div className="relative aspect-[4/5] overflow-hidden bg-[#FFF8FB] md:aspect-[6/5]">
               <Image
-                src="/images/brand/about.png"
+                src="/images/brand/about.jpg"
                 alt="UJ Cosmetic-ийн сонгосон Солонгос бүтээгдэхүүн"
                 fill
                 className="object-cover"

@@ -22,7 +22,7 @@ export default function HeroSection() {
           className="absolute inset-0"
         >
           <Image
-            src="/images/brand/hero.png"
+            src="/images/brand/hero.jpg"
             alt="Солонгосын гоо сайхан болон эрүүл мэндийн бүтээгдэхүүн"
             fill
             className="object-cover object-center"

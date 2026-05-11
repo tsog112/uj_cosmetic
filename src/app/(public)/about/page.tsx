@@ -48,7 +48,7 @@ export default function AboutPage() {
       {/* Hero */}
       <section className="relative h-[50vh] min-h-[400px] max-h-[600px] overflow-hidden">
         <Image
-          src="/images/brand/about_hero.png"
+          src="/images/brand/about_hero.jpg"
           alt="UJ Cosmetic бидний тухай"
           fill
           className="object-cover"
@@ -91,7 +91,7 @@ export default function AboutPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
             <div className="relative aspect-[4/3] overflow-hidden bg-cream-dark">
               <Image
-                src="/images/brand/about.png"
+                src="/images/brand/about.jpg"
                 alt="UJ Cosmetic laboratory"
                 fill
                 className="object-cover"
