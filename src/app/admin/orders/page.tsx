@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, orderBy, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { updateOrderStatus } from '@/lib/services/firestoreService';
 import { formatPrice, OrderStatus } from '@/types';
@@ -139,10 +139,22 @@ export default function AdminOrdersPage() {
     setNewStatus((order.status || 'pending') as OrderStatus);
   };
 
+  async function getCustomerEmail(order: any) {
+    if (order.customerEmail || order.email) return order.customerEmail || order.email;
+    if (!order.userId) return '';
+
+    const userSnap = await getDoc(doc(db, 'users', order.userId));
+    if (!userSnap.exists()) return '';
+    return userSnap.data().email || '';
+  }
+
   async function sendStatusEmail(order: any, status: OrderStatus) {
     if (!['confirmed', 'shipped', 'delivered', 'cancelled'].includes(status)) return;
 
-    const customerEmail = order.customerEmail || order.email || '';
+    const customerEmail = await getCustomerEmail(order);
+    if (!customerEmail) {
+      throw new Error('Харилцагчийн имэйл олдсонгүй');
+    }
 
     const res = await fetch(`/api/orders/${order.id}/status-email`, {
       method: 'POST',
@@ -174,6 +186,7 @@ export default function AdminOrdersPage() {
         if (newStatus === 'pending') {
           await updateOrderStatus(selectedOrder.id, newStatus);
         } else {
+          await updateOrderStatus(selectedOrder.id, newStatus);
           try {
             await sendStatusEmail(selectedOrder, newStatus);
           } catch (error: any) {
