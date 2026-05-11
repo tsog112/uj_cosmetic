@@ -21,8 +21,11 @@ service cloud.firestore {
       // Validate incoming order payload
       function isValidOrder() {
         let data = request.resource.data;
-        return data.keys().hasAll(['total', 'items', 'customerName', 'status']) &&
-               data.status == 'pending' &&
+        let hasRequiredFields = data.keys().hasAll(['total', 'items', 'customerName', 'status', 'userId']);
+        let isStatusPending = data.status == 'pending';
+        let isAuthConsistent = request.auth == null || data.userId == request.auth.uid;
+        
+        return hasRequiredFields && isStatusPending && isAuthConsistent &&
                data.total is number &&
                data.items is list &&
                data.items.size() > 0;
@@ -30,8 +33,7 @@ service cloud.firestore {
 
       // Allow everyone to create an order securely with validation
       allow create: if isValidOrder();
-      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow read, write: if isAdmin();
+      allow read: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
     }
     
     match /products/{productId} {

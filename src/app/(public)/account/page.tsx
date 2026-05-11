@@ -59,17 +59,43 @@ function AccountContent() {
           where('userId', '==', user.uid),
           orderBy('createdAt', 'desc')
         );
-        const [ordersSnap, userReviews, userWishlist] = await Promise.all([
-          getDocs(ordersQuery),
-          getUserReviews(user.uid),
-          getUserWishlist(user.uid),
+
+        // Fetch each data source independently to avoid one failure breaking everything
+        const fetchOrders = async () => {
+          try {
+            const snap = await getDocs(ordersQuery);
+            setOrders(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+          } catch (err) {
+            console.error('Error fetching orders:', err);
+          }
+        };
+
+        const fetchReviews = async () => {
+          try {
+            const data = await getUserReviews(user.uid);
+            setReviews(data);
+          } catch (err) {
+            console.error('Error fetching reviews:', err);
+          }
+        };
+
+        const fetchWishlist = async () => {
+          try {
+            const data = await getUserWishlist(user.uid);
+            setWishlist(data);
+          } catch (err) {
+            console.error('Error fetching wishlist:', err);
+          }
+        };
+
+        await Promise.allSettled([
+          fetchOrders(),
+          fetchReviews(),
+          fetchWishlist()
         ]);
 
-        setOrders(ordersSnap.docs.map(orderDoc => ({ id: orderDoc.id, ...orderDoc.data() })));
-        setReviews(userReviews);
-        setWishlist(userWishlist);
       } catch (error) {
-        console.error('Error fetching account data:', error);
+        console.error('Error in account data orchestration:', error);
       } finally {
         setLoading(false);
       }
