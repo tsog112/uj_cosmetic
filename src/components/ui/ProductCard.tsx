@@ -83,7 +83,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           <motion.div
             animate={{ scale: isHovered ? 1.05 : 1 }}
             transition={{ duration: 0.6, ease: "easeOut" as const }}
-            className="w-full h-full"
+            className="relative w-full h-full"
           >
             <Image
               src={image}

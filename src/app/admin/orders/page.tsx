@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, orderBy, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { updateOrderStatus } from '@/lib/services/firestoreService';
 import { formatPrice, OrderStatus } from '@/types';
@@ -139,25 +139,56 @@ export default function AdminOrdersPage() {
     setNewStatus((order.status || 'pending') as OrderStatus);
   };
 
+  async function getCustomerEmail(order: any) {
+    if (order.customerEmail || order.email) return order.customerEmail || order.email;
+    if (!order.userId) return '';
+
+    const userSnap = await getDoc(doc(db, 'users', order.userId));
+    if (!userSnap.exists()) return '';
+    return userSnap.data().email || '';
+  }
+
+  async function sendStatusEmail(order: any, status: OrderStatus) {
+    if (!['confirmed', 'shipped', 'delivered', 'cancelled'].includes(status)) return;
+
+    const customerEmail = await getCustomerEmail(order);
+    if (!customerEmail) {
+      throw new Error('Харилцагчийн имэйл олдсонгүй');
+    }
+
+    const res = await fetch(`/api/orders/${order.id}/status-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status,
+        customerEmail,
+        customerName: order.customerName,
+        items: order.items || [],
+        total: order.total,
+        shippingCost: order.shippingCost,
+        address: order.address,
+      }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || 'Имэйл илгээхэд алдаа гарлаа');
+    }
+  }
+
   async function handleStatusChange() {
     if (!selectedOrder) return;
 
+    let emailError = '';
+
     try {
       if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-        if (newStatus === 'confirmed') {
-          const res = await fetch(`/api/orders/${selectedOrder.id}/confirm`, { method: 'POST' });
-          if (!res.ok) {
-            const data = await res.json().catch(() => ({}));
-            throw new Error(data.error || 'Confirm API failed');
-          }
-        } else if (newStatus === 'shipped') {
-          const res = await fetch(`/api/orders/${selectedOrder.id}/ship`, { method: 'POST' });
-          if (!res.ok) {
-            const data = await res.json().catch(() => ({}));
-            throw new Error(data.error || 'Ship API failed');
-          }
-        } else {
-          await updateOrderStatus(selectedOrder.id, newStatus);
+        await updateOrderStatus(selectedOrder.id, newStatus);
+        try {
+          await sendStatusEmail(selectedOrder, newStatus);
+        } catch (error: any) {
+          emailError = error?.message || 'Имэйл илгээхэд алдаа гарлаа';
+          console.error('Status email error:', error);
         }
       } else {
         const mockOrders = JSON.parse(localStorage.getItem('mock_orders') || '[]');
@@ -169,6 +200,10 @@ export default function AdminOrdersPage() {
 
       setOrders(prev => prev.map(order => order.id === selectedOrder.id ? { ...order, status: newStatus } : order));
       setSelectedOrder(null);
+      if (emailError) {
+        showToast('Төлөв шинэчлэгдлээ. Гэхдээ имэйл илгээхэд алдаа гарлаа: ' + emailError, 'error');
+        return;
+      }
       showToast(
         newStatus === 'confirmed'
           ? 'Захиалга баталгаажлаа. Харилцагчид имэйл явлаа.'

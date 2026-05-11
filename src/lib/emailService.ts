@@ -303,3 +303,68 @@ export async function sendShippingNotification(
     }),
   })
 }
+
+export async function sendOrderStatusNotification(
+  customerEmail: string,
+  order: {
+    id: string
+    customerName: string
+    items?: EmailItem[]
+    total?: number
+    shippingCost?: number
+    address?: string
+    status: 'confirmed' | 'shipped' | 'delivered' | 'cancelled'
+  }
+) {
+  const code = orderCode(order.id)
+  const copy = {
+    confirmed: {
+      subject: `Захиалга баталгаажлаа #${code}`,
+      eyebrow: 'Захиалга баталгаажлаа',
+      title: `Баярлалаа, ${order.customerName}`,
+      subtitle: `Таны #${code} дугаартай захиалга баталгаажлаа. Бид захиалгыг бэлтгээд хүргэлтийн явцыг дахин мэдэгдэнэ.`,
+    },
+    shipped: {
+      subject: `Захиалга хүргэлтэнд гарлаа #${code}`,
+      eyebrow: 'Хүргэлтийн мэдээлэл',
+      title: 'Таны захиалга замдаа гарлаа',
+      subtitle: `${order.customerName}, таны #${code} дугаартай захиалга хүргэлтэнд гарлаа.`,
+    },
+    delivered: {
+      subject: `Захиалга хүргэгдлээ #${code}`,
+      eyebrow: 'Захиалга хүргэгдлээ',
+      title: 'Таны захиалга амжилттай хүргэгдлээ',
+      subtitle: `UJ Cosmetic-ийг сонгосонд баярлалаа. Бүтээгдэхүүнээ хэрэглээд сэтгэгдлээ үлдээвэл бидэнд их тус болно.`,
+    },
+    cancelled: {
+      subject: `Захиалга цуцлагдлаа #${code}`,
+      eyebrow: 'Захиалга цуцлагдлаа',
+      title: 'Таны захиалгын төлөв шинэчлэгдлээ',
+      subtitle: `Таны #${code} дугаартай захиалга цуцлагдсан төлөвтэй боллоо. Асуух зүйл байвал бидэнтэй холбогдоорой.`,
+    },
+  }[order.status]
+
+  await sendEmail({
+    to: customerEmail,
+    subject: copy.subject,
+    html: emailShell({
+      eyebrow: copy.eyebrow,
+      title: copy.title,
+      subtitle: copy.subtitle,
+      children: `
+        ${order.items?.length ? orderItemsTable(order.items, Number(order.total || 0), order.shippingCost) : ''}
+        ${section('Захиалгын мэдээлэл', `
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+            ${infoRows([
+              { label: 'Захиалгын дугаар', value: `#${code}` },
+              { label: 'Төлөв', value: copy.eyebrow },
+              { label: 'Хүлээн авагч', value: order.customerName },
+              { label: 'Хаяг', value: order.address || '-' },
+            ])}
+          </table>
+        `)}
+      `,
+      footerNote: 'UJ Cosmetic · Захиалгын төлөв шинэчлэгдсэн тухай мэдэгдэл',
+    }),
+  })
+}

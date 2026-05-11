@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { collection, getDocs, orderBy, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { useAuth } from '@/context/AuthContext';
 import { db } from '@/lib/firebase';
 import {
@@ -54,17 +54,21 @@ function AccountContent() {
 
       setLoading(true);
       try {
-        const ordersQuery = query(
-          collection(db, 'orders'),
-          where('userId', '==', user.uid),
-          orderBy('createdAt', 'desc')
-        );
+        const ordersQuery = query(collection(db, 'orders'), where('userId', '==', user.uid));
 
         // Fetch each data source independently to avoid one failure breaking everything
         const fetchOrders = async () => {
           try {
             const snap = await getDocs(ordersQuery);
-            setOrders(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            setOrders(
+              snap.docs
+                .map(doc => ({ id: doc.id, ...doc.data() }))
+                .sort((a: any, b: any) => {
+                  const aDate = a.createdAt?.toDate ? a.createdAt.toDate() : a.createdAt ? new Date(a.createdAt) : new Date(0);
+                  const bDate = b.createdAt?.toDate ? b.createdAt.toDate() : b.createdAt ? new Date(b.createdAt) : new Date(0);
+                  return bDate.getTime() - aDate.getTime();
+                })
+            );
           } catch (err) {
             console.error('Error fetching orders:', err);
           }

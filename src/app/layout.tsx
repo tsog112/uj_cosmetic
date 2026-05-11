@@ -38,7 +38,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="mn" className={`${ebGaramond.variable} ${inter.variable}`}>
+    <html lang="mn" data-scroll-behavior="smooth" className={`${ebGaramond.variable} ${inter.variable}`}>
       <head>
         <meta charSet="utf-8" />
       </head>
