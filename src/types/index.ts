@@ -66,6 +66,23 @@ export interface Order {
   updatedAt: Date;
 }
 
+export interface Review {
+  id: string;
+  productId: string;
+  productSlug: string;
+  productName: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  rating: number;
+  content: string;
+  imageUrls: string[];
+  orderId?: string;
+  approved: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface SiteSettings {
   announcementText: string;
   announcementActive: boolean;

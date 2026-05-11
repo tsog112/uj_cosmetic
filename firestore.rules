@@ -61,6 +61,21 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.productId is string
+        && request.resource.data.productName is string
+        && request.resource.data.rating is number
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5
+        && request.resource.data.content is string
+        && request.resource.data.imageUrls is list
+        && request.resource.data.approved == true;
+      allow update, delete: if isAdmin();
+    }
+
     match /settings/{settingId} {
       // Everyone can read site settings (announcement, bank info, etc)
       allow read: if true;

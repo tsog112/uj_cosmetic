@@ -83,7 +83,7 @@ export default function CartPage() {
                 className="py-6 grid grid-cols-[80px_1fr] md:grid-cols-[80px_1fr_120px_120px_40px] gap-4 md:gap-4 items-center"
               >
                 {/* Image */}
-                <Link href={`/shop/${product?.slug}`} className="relative aspect-4-5 bg-cream-dark overflow-hidden">
+                <Link href={`/shop/${product?.slug}`} className="relative aspect-[4/5] bg-cream-dark overflow-hidden">
                   <Image
                     src={image}
                     alt={name}

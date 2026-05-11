@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { getProductBySlug, getProductsByCategory, incrementProductViews } from '@/lib/services/firestoreService';
-import { formatPrice, getCategoryName, Product } from '@/types';
+import { getProductBySlug, getProductReviews, getProductsByCategory, incrementProductViews } from '@/lib/services/firestoreService';
+import { formatPrice, getCategoryName, Product, Review } from '@/types';
 import { useCart } from '@/context/CartContext';
 import Accordion from '@/components/ui/Accordion';
 import ProductCard from '@/components/ui/ProductCard';
+import ReviewForm from '@/components/ui/ReviewForm';
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -21,6 +22,18 @@ export default function ProductDetailPage() {
   const [error, setError] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isAdded, setIsAdded] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+
+  const loadReviews = async (productId: string) => {
+    setReviewsLoading(true);
+    try {
+      const productReviews = await getProductReviews(productId);
+      setReviews(productReviews);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -34,6 +47,7 @@ export default function ProductDetailPage() {
           // Fetch related
           const catProducts = await getProductsByCategory(p.category);
           setRelated(catProducts.filter(r => r.id !== p.id).slice(0, 4));
+          await loadReviews(p.id);
         }
       })
       .catch(() => setError(true))
@@ -44,7 +58,7 @@ export default function ProductDetailPage() {
     return (
       <div className="max-w-[1400px] mx-auto px-6 lg:px-10 py-12 md:py-20">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 animate-pulse">
-          <div className="aspect-4-5 bg-cream-dark" />
+            <div className="aspect-[4/5] bg-cream-dark" />
           <div>
             <div className="h-4 bg-cream-dark w-24 mb-5" />
             <div className="h-8 bg-cream-dark w-full mb-4" />
@@ -79,6 +93,9 @@ export default function ProductDetailPage() {
   const images = rawImages.length > 0 ? rawImages : ['/placeholder-product.svg'];
   const stockQuantity = Number(product.stockQuantity ?? (product.inStock === false ? 0 : 999));
   const isProductInStock = product.inStock !== false && stockQuantity > 0;
+  const averageRating = reviews.length
+    ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+    : 0;
 
   const handleAddToCart = () => {
     if (!isProductInStock) return;
@@ -114,7 +131,7 @@ export default function ProductDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
           {/* Left: Image Gallery */}
           <div>
-            <div className="aspect-4-5 relative overflow-hidden bg-cream-dark mb-4">
+            <div className="relative mb-4 aspect-[4/5] overflow-hidden bg-cream-dark">
               {images[selectedImageIndex] && (
                 <Image
                   src={images[selectedImageIndex]}
@@ -225,6 +242,89 @@ export default function ProductDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Reviews */}
+      <section className="max-w-[1400px] mx-auto px-6 lg:px-10 py-16 md:py-24 border-thin-t">
+        <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-[11px] tracking-[0.18em] uppercase text-[#8B6B78]">Review</p>
+            <h2 className="font-serif text-3xl md:text-4xl text-[#1A1A1A]">Хэрэглэгчийн сэтгэгдэл</h2>
+          </div>
+          <div className="text-left md:text-right">
+            <p className="text-2xl text-[#D894AC]">
+              {'★'.repeat(Math.round(averageRating || 0))}
+              <span className="text-[#E9D7DF]">{'★'.repeat(5 - Math.round(averageRating || 0))}</span>
+            </p>
+            <p className="text-sm text-[#8B6B78]">
+              {reviews.length > 0 ? `${averageRating.toFixed(1)} / 5 · ${reviews.length} сэтгэгдэл` : 'Одоогоор сэтгэгдэл байхгүй'}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[420px_1fr]">
+          <ReviewForm product={product} onSubmitted={() => loadReviews(product.id)} />
+
+          <div>
+            {reviewsLoading ? (
+              <div className="grid gap-4">
+                {[1, 2].map(item => (
+                  <div key={item} className="h-40 animate-pulse bg-[#FFF0F6]" />
+                ))}
+              </div>
+            ) : reviews.length > 0 ? (
+              <div className="grid gap-4">
+                {reviews.map(review => (
+                  <article key={review.id} className="border border-[#F2A8C8]/45 bg-white p-5 md:p-6">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-medium text-[#1A1A1A]">{review.userName || 'UJ хэрэглэгч'}</p>
+                        <p className="mt-1 text-xs text-[#8B6B78]">
+                          {review.createdAt instanceof Date
+                            ? review.createdAt.toLocaleDateString('mn-MN')
+                            : ''}
+                        </p>
+                      </div>
+                      <p className="whitespace-nowrap text-sm text-[#D894AC]">
+                        {'★'.repeat(review.rating)}
+                        <span className="text-[#E9D7DF]">{'★'.repeat(5 - review.rating)}</span>
+                      </p>
+                    </div>
+                    <p className="mt-4 text-sm leading-7 text-[#4A3A40]">{review.content}</p>
+                    {review.imageUrls.length > 0 && (
+                      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        {review.imageUrls.slice(0, 4).map((imageUrl, index) => (
+                          <a
+                            key={`${review.id}-${imageUrl}`}
+                            href={imageUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="relative aspect-square overflow-hidden bg-[#FFF0F6]"
+                          >
+                            <Image
+                              src={imageUrl}
+                              alt={`${review.productName} review ${index + 1}`}
+                              fill
+                              className="object-cover transition-transform duration-500 hover:scale-105"
+                              sizes="(max-width: 640px) 50vw, 140px"
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="flex min-h-64 items-center justify-center border border-dashed border-[#F2A8C8]/70 bg-[#FFF8FB] p-8 text-center">
+                <div>
+                  <p className="font-serif text-2xl text-[#1A1A1A]">Анхны сэтгэгдлийг үлдээгээрэй</p>
+                  <p className="mt-2 text-sm text-[#8B6B78]">Бүтээгдэхүүн хэрэглэсэн зураг, мэдрэмжээ бусадтай хуваалцаарай.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
 
       {/* Related Products */}
       {related.length > 0 && (

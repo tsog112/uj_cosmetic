@@ -4,7 +4,7 @@ import {
   runTransaction, Timestamp
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Product, Order, OrderStatus, SiteSettings } from '@/types';
+import type { Product, Order, OrderStatus, Review, SiteSettings } from '@/types';
 
 // ─── Error Handler ───────────────────────────────────────────────
 function handleError(error: any, context: string): never {
@@ -108,6 +108,93 @@ export async function deleteProduct(productId: string): Promise<void> {
   try {
     await deleteDoc(doc(db, PRODUCTS, productId));
   } catch (e) { handleError(e, 'deleteProduct'); }
+}
+
+// Reviews
+const REVIEWS = 'reviews';
+
+function normalizeReview(docId: string, data: any): Review {
+  const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt ?? new Date();
+  const updatedAt = data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt ?? createdAt;
+
+  return {
+    id: docId,
+    productId: data.productId ?? '',
+    productSlug: data.productSlug ?? '',
+    productName: data.productName ?? '',
+    userId: data.userId ?? '',
+    userName: data.userName ?? '',
+    userEmail: data.userEmail ?? '',
+    rating: Number(data.rating ?? 5),
+    content: data.content ?? '',
+    imageUrls: Array.isArray(data.imageUrls) ? data.imageUrls : [],
+    orderId: data.orderId,
+    approved: data.approved !== false,
+    createdAt,
+    updatedAt,
+  };
+}
+
+export async function getProductReviews(productId: string): Promise<Review[]> {
+  try {
+    const q = query(
+      collection(db, REVIEWS),
+      where('productId', '==', productId),
+      where('approved', '==', true)
+    );
+    const snap = await getDocs(q);
+    return snap.docs
+      .map(d => normalizeReview(d.id, d.data()))
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  } catch (e) { handleError(e, `getProductReviews(${productId})`); }
+}
+
+export async function getLatestReviews(count = 6): Promise<Review[]> {
+  try {
+    const q = query(collection(db, REVIEWS), where('approved', '==', true));
+    const snap = await getDocs(q);
+    return snap.docs
+      .map(d => normalizeReview(d.id, d.data()))
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, count);
+  } catch (e) { handleError(e, 'getLatestReviews'); }
+}
+
+export async function getAllReviews(): Promise<Review[]> {
+  try {
+    const snap = await getDocs(collection(db, REVIEWS));
+    return snap.docs
+      .map(d => normalizeReview(d.id, d.data()))
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  } catch (e) { handleError(e, 'getAllReviews'); }
+}
+
+export async function createProductReview(
+  data: Omit<Review, 'id' | 'approved' | 'createdAt' | 'updatedAt'>
+): Promise<string> {
+  try {
+    const ref = await addDoc(collection(db, REVIEWS), {
+      ...data,
+      rating: Math.max(1, Math.min(5, Math.round(data.rating))),
+      imageUrls: data.imageUrls ?? [],
+      approved: true,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return ref.id;
+  } catch (e) { handleError(e, 'createProductReview'); }
+}
+
+export async function updateReviewApproval(reviewId: string, approved: boolean): Promise<void> {
+  try {
+    await updateDoc(doc(db, REVIEWS, reviewId), { approved, updatedAt: serverTimestamp() });
+  } catch (e) { handleError(e, 'updateReviewApproval'); }
+}
+
+export async function deleteReview(reviewId: string): Promise<void> {
+  try {
+    await deleteDoc(doc(db, REVIEWS, reviewId));
+  } catch (e) { handleError(e, 'deleteReview'); }
 }
 
 // ─── ORDERS ──────────────────────────────────────────────────────

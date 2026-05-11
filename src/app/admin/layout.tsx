@@ -22,6 +22,7 @@ const navItems: NavItem[] = [
   { name: 'Бүтээгдэхүүн', shortName: 'Бараа', href: '/admin/products', icon: 'P' },
   { name: 'Ангилал', shortName: 'Ангилал', href: '/admin/categories', icon: 'C' },
   { name: 'Instagram', shortName: 'Instagram', href: '/admin/instagram', icon: 'I' },
+  { name: 'Сэтгэгдэл', shortName: 'Review', href: '/admin/reviews', icon: 'R' },
   { name: 'Аналитик', shortName: 'Аналитик', href: '/admin/analytics', icon: 'A' },
   { name: 'Тохиргоо', shortName: 'Тохиргоо', href: '/admin/settings', icon: 'S' },
 ];
@@ -102,6 +103,16 @@ function NavIcon({ href }: { href: string }) {
         <rect x="4" y="4" width="16" height="16" rx="4" />
         <circle cx="12" cy="12" r="3" />
         <path d="M16.8 7.2h.01" />
+      </svg>
+    );
+  }
+
+  if (href === '/admin/reviews') {
+    return (
+      <svg {...baseProps}>
+        <path d="M4 5h16v11H7l-3 3V5Z" />
+        <path d="M8 9h8" />
+        <path d="M8 13h5" />
       </svg>
     );
   }

@@ -1,28 +1,24 @@
 'use client';
 
-import { DragEvent, useEffect, useState } from 'react';
+import { ChangeEvent, DragEvent, useEffect, useState } from 'react';
 import { collection, doc, getDocs, orderBy, query, serverTimestamp, setDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getDownloadURL, getStorage, ref, uploadBytes } from 'firebase/storage';
+import { app, db } from '@/lib/firebase';
 
 type InstagramSlot = {
   id: string;
   instagramUrl: string;
-  embedUrl: string | null;
+  imageUrl: string;
 };
 
 const SLOT_COUNT = 6;
-
-function getEmbedUrl(instagramUrl: string): string | null {
-  const match = instagramUrl.match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
-  if (!match) return null;
-  return `https://www.instagram.com/p/${match[1]}/embed/`;
-}
+const storage = getStorage(app);
 
 function createEmptySlots(): InstagramSlot[] {
   return Array.from({ length: SLOT_COUNT }, (_, index) => ({
     id: `slot-${index + 1}`,
     instagramUrl: '',
-    embedUrl: null,
+    imageUrl: '',
   }));
 }
 
@@ -30,6 +26,7 @@ export default function AdminInstagramPage() {
   const [slots, setSlots] = useState<InstagramSlot[]>(createEmptySlots);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingSlot, setUploadingSlot] = useState<number | null>(null);
   const [draggedSlotId, setDraggedSlotId] = useState<string | null>(null);
   const [toast, setToast] = useState('');
 
@@ -41,16 +38,15 @@ export default function AdminInstagramPage() {
 
         const saved = snap.docs.slice(0, SLOT_COUNT).map(slotDoc => {
           const data = slotDoc.data();
-          const instagramUrl = data.instagramUrl || '';
           return {
             id: slotDoc.id,
-            instagramUrl,
-            embedUrl: data.embedUrl || getEmbedUrl(instagramUrl),
+            instagramUrl: data.instagramUrl || '',
+            imageUrl: data.imageUrl || '',
           };
         });
 
         while (saved.length < SLOT_COUNT) {
-          saved.push({ id: `slot-${saved.length + 1}`, instagramUrl: '', embedUrl: null });
+          saved.push({ id: `slot-${saved.length + 1}`, instagramUrl: '', imageUrl: '' });
         }
 
         setSlots(saved);
@@ -63,12 +59,30 @@ export default function AdminInstagramPage() {
   }, []);
 
   function handleUrlChange(slotIndex: number, value: string) {
-    const embedUrl = getEmbedUrl(value);
-    setSlots(prev => prev.map((slot, index) => index === slotIndex ? { ...slot, instagramUrl: value, embedUrl } : slot));
+    setSlots(prev => prev.map((slot, index) => index === slotIndex ? { ...slot, instagramUrl: value } : slot));
+  }
+
+  async function handleImageUpload(slotIndex: number, event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadingSlot(slotIndex);
+    try {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+      const storageRef = ref(storage, `instagram/slot-${slotIndex + 1}/${Date.now()}_${safeName}`);
+      await uploadBytes(storageRef, file);
+      const imageUrl = await getDownloadURL(storageRef);
+      setSlots(prev => prev.map((slot, index) => index === slotIndex ? { ...slot, imageUrl } : slot));
+    } catch (error: any) {
+      setToast(`Зураг оруулахад алдаа гарлаа: ${error.message}`);
+    } finally {
+      setUploadingSlot(null);
+      event.target.value = '';
+    }
   }
 
   function clearSlot(slotIndex: number) {
-    setSlots(prev => prev.map((slot, index) => index === slotIndex ? { ...slot, instagramUrl: '', embedUrl: null } : slot));
+    setSlots(prev => prev.map((slot, index) => index === slotIndex ? { ...slot, instagramUrl: '', imageUrl: '' } : slot));
   }
 
   function handleDrop(targetSlotId: string, event: DragEvent<HTMLDivElement>) {
@@ -95,14 +109,14 @@ export default function AdminInstagramPage() {
           {
             id: slot.id,
             instagramUrl: slot.instagramUrl || '',
-            embedUrl: slot.embedUrl || null,
+            imageUrl: slot.imageUrl || '',
             order: index + 1,
             updatedAt: serverTimestamp(),
           },
           { merge: true }
         );
       }
-      setToast('Instagram зураг хадгалагдлаа.');
+      setToast('Instagram хэсэг хадгалагдлаа.');
       setTimeout(() => setToast(''), 3000);
     } catch (error: any) {
       setToast(`Алдаа гарлаа: ${error.message}`);
@@ -114,13 +128,15 @@ export default function AdminInstagramPage() {
   if (loading) {
     return (
       <div className="space-y-6 animate-pulse">
-        <div className="h-8 bg-[#FFD6E8] w-56" />
+        <div className="h-8 bg-[#FFD6E8] w-56 rounded-[10px]" />
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: SLOT_COUNT }, (_, index) => <div key={index} className="aspect-square bg-[#FFF0F6]" />)}
+          {Array.from({ length: SLOT_COUNT }, (_, index) => <div key={index} className="aspect-square rounded-[16px] bg-[#FFF0F6]" />)}
         </div>
       </div>
     );
   }
+
+  const activeCount = slots.filter(slot => slot.imageUrl).length;
 
   return (
     <div className="space-y-4 md:space-y-8">
@@ -132,12 +148,12 @@ export default function AdminInstagramPage() {
 
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[10px] tracking-[0.1em] uppercase text-[#8B6B78]">Нүүр хуудасны feed</p>
-          <h2 className="truncate text-[22px] md:text-3xl font-semibold mt-1 text-[#1A1A1A]">Instagram</h2>
+          <p className="text-[10px] tracking-[0.1em] uppercase text-[#8B6B78]">Нүүр хуудасны gallery</p>
+          <h2 className="truncate text-[22px] md:text-3xl font-semibold mt-1 text-[#1A1A1A]">Instagram зургууд</h2>
         </div>
         <button
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || uploadingSlot !== null}
           className="shrink-0 min-h-11 px-4 md:px-5 rounded-[10px] bg-[#1A1A1A] text-white text-sm disabled:opacity-50 shadow-[0_10px_24px_rgba(26,26,26,0.12)]"
         >
           {saving ? 'Хадгалж байна...' : 'Хадгалах'}
@@ -150,13 +166,17 @@ export default function AdminInstagramPage() {
           <p className="mt-1 text-xl font-semibold">{SLOT_COUNT}</p>
         </div>
         <div className="rounded-[14px] border border-[#F2A8C8]/35 bg-[#FFF0F6] px-3 py-3 shadow-[0_8px_24px_rgba(26,26,26,0.035)]">
-          <p className="text-[10px] text-[#8B6B78]">Идэвхтэй</p>
-          <p className="mt-1 text-xl font-semibold">{slots.filter(slot => slot.embedUrl).length}</p>
+          <p className="text-[10px] text-[#8B6B78]">Зурагтай</p>
+          <p className="mt-1 text-xl font-semibold">{activeCount}</p>
         </div>
         <div className="rounded-[14px] border border-[#F1D28A]/70 bg-[#FFF9EC] px-3 py-3 shadow-[0_8px_24px_rgba(26,26,26,0.035)]">
           <p className="text-[10px] text-[#9A6A14]">Хоосон</p>
-          <p className="mt-1 text-xl font-semibold">{slots.filter(slot => !slot.embedUrl).length}</p>
+          <p className="mt-1 text-xl font-semibold">{SLOT_COUNT - activeCount}</p>
         </div>
+      </div>
+
+      <div className="rounded-[16px] border border-[#F2A8C8]/40 bg-white/70 p-4 text-sm text-[#8B6B78]">
+        Public нүүр хуудас дээр iframe биш зөвхөн цэвэр cover зураг харагдана. Instagram URL нь хэрэглэгч дарахад шинэ tab-д нээгдэнэ.
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5">
@@ -172,25 +192,23 @@ export default function AdminInstagramPage() {
           >
             <div className="flex items-center justify-between mb-3">
               <span className="text-[11px] font-medium text-[#8B6B78]">Слот {index + 1}</span>
-              <span className="text-[13px] text-[#8B6B78] cursor-move">⠿</span>
+              <span className="text-[13px] text-[#8B6B78] cursor-move">...</span>
             </div>
 
-            <div className="aspect-square rounded-[12px] bg-[#FFF0F6] overflow-hidden relative border border-[#F2A8C8]/30">
-              {slot.embedUrl ? (
-                <iframe
-                  src={slot.embedUrl}
-                  className="w-full h-full border-0 scale-[0.6] origin-top-left"
-                  style={{ width: '167%', height: '167%' }}
-                  scrolling="no"
-                  allowTransparency
-                />
+            <label className="group relative block aspect-square rounded-[12px] bg-[#FFF0F6] overflow-hidden border border-[#F2A8C8]/30 cursor-pointer">
+              {slot.imageUrl ? (
+                <img src={slot.imageUrl} alt={`Instagram ${index + 1}`} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
               ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-[#F2A8C8] gap-2">
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-[#D86FA0] gap-2">
                   <span className="text-4xl font-light">+</span>
-                  <span className="text-xs text-center px-4">Instagram линк оруулна уу</span>
+                  <span className="text-xs text-center px-4">Cover зураг оруулах</span>
                 </div>
               )}
-            </div>
+              <input type="file" accept="image/*" onChange={event => handleImageUpload(index, event)} className="sr-only" />
+              <span className="absolute inset-x-3 bottom-3 min-h-9 rounded-[10px] bg-white/90 flex items-center justify-center text-xs font-medium text-[#1A1A1A] opacity-0 group-hover:opacity-100 transition-opacity">
+                {uploadingSlot === index ? 'Оруулж байна...' : 'Зураг солих'}
+              </span>
+            </label>
 
             <input
               type="url"
@@ -200,7 +218,7 @@ export default function AdminInstagramPage() {
               className="w-full mt-3 min-h-11 rounded-[10px] px-3 text-xs border border-[#F2A8C8]/60 bg-[#FFF8FB] outline-none focus:border-[#FFB7D5] focus:bg-white"
             />
 
-            {slot.instagramUrl && (
+            {(slot.instagramUrl || slot.imageUrl) && (
               <button type="button" onClick={() => clearSlot(index)} className="mt-2 text-xs text-[#8B6B78] hover:text-[#A14E4E]">
                 Цэвэрлэх
               </button>
