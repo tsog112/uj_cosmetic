@@ -52,20 +52,20 @@ export default function CategorySection() {
   };
 
   return (
-    <section className="py-32 md:py-48 bg-sand" id="categories">
+    <section className="py-16 md:py-28 lg:py-36 bg-[#FFF0F6]" id="categories">
       <div className="max-content">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 1.2, ease: "easeOut" as const }}
-          className="flex flex-col md:flex-row md:items-end justify-between mb-24 gap-8"
+          className="flex flex-row items-end justify-between mb-8 md:mb-16 gap-5"
         >
           <div>
-            <span className="editorial-label block mb-6">Ангилал</span>
-            <h2 className="editorial-heading text-4xl md:text-5xl text-charcoal">Бүтээгдэхүүний ангилал</h2>
+            <span className="editorial-label block mb-3 md:mb-6">Ангилал</span>
+            <h2 className="text-[28px] md:font-serif md:text-4xl lg:text-5xl font-semibold md:font-light md:tracking-[0.08em] lg:tracking-[0.14em] md:uppercase text-charcoal leading-tight md:leading-[1.1]">Бүтээгдэхүүний ангилал</h2>
           </div>
-          <Link href="/shop" className="editorial-label border-b border-charcoal/20 pb-1 hover:border-charcoal transition-colors">
+          <Link href="/shop" className="shrink-0 text-[11px] font-medium text-charcoal border-b border-charcoal/20 pb-1 hover:border-charcoal transition-colors">
             Бүгдийг үзэх
           </Link>
         </motion.div>
@@ -75,18 +75,18 @@ export default function CategorySection() {
           initial="hidden"
           whileInView="show"
           viewport={{ once: true }}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12"
+          className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 lg:gap-8"
         >
           {loading ? (
             Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="aspect-[16/10] bg-sand-dark animate-pulse" />
+              <div key={i} className="aspect-square md:aspect-[16/10] rounded-[14px] md:rounded-none bg-sand-dark animate-pulse" />
             ))
           ) : (
             categories.map((category) => (
               <motion.div key={category.id} variants={item}>
                 <Link
                   href={`/shop?category=${encodeURIComponent(category.slug)}`}
-                  className="group relative block aspect-[16/10] overflow-hidden bg-[#F9F8F6]"
+                  className="group relative block aspect-square md:aspect-[16/10] overflow-hidden rounded-[14px] md:rounded-none bg-[#F9F8F6]"
                 >
                   {category.imageUrl && (
                     <motion.div 
@@ -101,10 +101,10 @@ export default function CategorySection() {
                       />
                     </motion.div>
                   )}
-                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors duration-700" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#1A1A1A]/45 via-[#8B6B78]/10 to-[#FFB7D5]/10 md:from-[#1A1A1A]/35 md:via-[#8B6B78]/10 md:to-[#FFB7D5]/10 md:group-hover:from-[#1A1A1A]/25 transition-colors duration-700" />
                   
-                  <div className="absolute inset-0 flex items-center justify-center p-8">
-                    <h3 className="font-serif text-3xl md:text-4xl font-light text-white tracking-[0.2em] text-center uppercase">
+                  <div className="absolute inset-0 flex items-end md:items-center justify-center p-4 md:p-8">
+                    <h3 className="text-base md:font-serif md:text-4xl font-semibold md:font-light text-white md:tracking-[0.2em] text-center md:uppercase">
                       {category.name_mn}
                     </h3>
                   </div>

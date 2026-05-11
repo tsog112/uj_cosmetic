@@ -11,7 +11,7 @@ export default function PublicLayout({
     <>
       <AnnouncementBar />
       <Header />
-      <main className="flex-1 min-h-screen">{children}</main>
+      <main className="flex-1 min-h-screen pb-20 md:pb-0">{children}</main>
       <Footer />
     </>
   );

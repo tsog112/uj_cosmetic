@@ -12,13 +12,15 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
-  const { addToCart } = useCart();
+  const { addToCart, buyNow } = useCart();
   const [isHovered, setIsHovered] = useState(false);
 
   const name = product.name_mn || 'Нэргүй бараа';
   const image = product.images?.[0] || '/placeholder-product.svg';
   const price = product.price || 0;
-  const inStock = product.inStock;
+  const salePrice = product.salePrice;
+  const displayPrice = salePrice || price;
+  const inStock = product.inStock !== false && Number(product.stockQuantity ?? 1) > 0;
 
   return (
     <div 
@@ -32,7 +34,7 @@ export default function ProductCard({ product }: ProductCardProps) {
       >
         {/* Image Container with 4:5 Aspect Ratio */}
         <motion.div 
-          className="relative aspect-[4/5] w-full overflow-hidden bg-[#F9F8F6] border border-border rounded-sm shadow-sm"
+          className="relative aspect-[4/5] w-full overflow-hidden bg-[#FFF0F6] border border-[#F2A8C8]/40 rounded-[14px] md:rounded-[10px] shadow-sm"
           animate={{
             boxShadow: isHovered ? "0 20px 40px -10px rgba(0,0,0,0.08)" : "0 1px 2px 0 rgba(0, 0, 0, 0.05)"
           }}
@@ -53,9 +55,14 @@ export default function ProductCard({ product }: ProductCardProps) {
           </motion.div>
 
           {/* Availability Badge */}
+          {salePrice && inStock && (
+            <span className="absolute top-3 left-3 bg-charcoal text-sand text-[9px] tracking-[0.14em] uppercase px-2 py-1 rounded-[6px]">
+              Sale
+            </span>
+          )}
           {!inStock && (
             <div className="absolute inset-0 bg-[#F9F8F6]/40 backdrop-blur-[2px] flex items-center justify-center">
-              <span className="editorial-label bg-sand px-4 py-2 shadow-sm text-[10px]">
+              <span className="editorial-label bg-sand px-4 py-2 shadow-sm text-[10px] rounded-[8px]">
                 Дууссан
               </span>
             </div>
@@ -70,32 +77,50 @@ export default function ProductCard({ product }: ProductCardProps) {
         </motion.div>
 
         {/* Product Info */}
-        <div className="mt-6 flex flex-col items-center text-center px-2">
-          <h3 className="font-serif text-lg md:text-xl font-light text-charcoal mb-2 tracking-[0.05em] group-hover:opacity-70 transition-opacity duration-500">
+        <div className="mt-3 md:mt-6 flex flex-col items-start md:items-center md:text-center px-0 md:px-2">
+          <p className="hidden md:block editorial-label text-[9px] mb-2">UJ Cosmetic</p>
+          <h3 className="text-[14px] md:font-serif md:text-xl font-medium md:font-light text-charcoal mb-1 md:mb-2 leading-snug tracking-normal md:tracking-[0.05em] group-hover:opacity-70 transition-opacity duration-500 line-clamp-2">
             {name}
           </h3>
-          <div className="flex flex-col items-center gap-1 mt-auto">
-            <span className="font-serif italic text-sm text-neutral-600 tracking-[0.05em]">
+          <div className="flex flex-col md:items-center gap-1 mt-auto">
+            <span className="hidden md:block font-serif italic text-sm text-neutral-600 tracking-[0.05em]">
               Арьс арчилгаа
             </span>
-            <span className="font-sans text-sm font-medium tracking-wider text-charcoal mt-1">
-              {price.toLocaleString()} ₮
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="font-sans text-sm font-semibold md:font-medium tracking-wide text-charcoal mt-1">
+                {displayPrice.toLocaleString()} ₮
+              </span>
+              {salePrice && (
+                <span className="text-xs text-neutral-500 line-through mt-1">
+                  {price.toLocaleString()} ₮
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </Link>
 
-      {/* Quick Add - Subtle reveal */}
-      <div className="mt-6 flex justify-center opacity-0 group-hover:opacity-100 transition-all duration-700 translate-y-2 group-hover:translate-y-0">
+      {/* Quick Add - visible on touch screens, subtle reveal on desktop */}
+      <div className="mt-3 md:mt-6 grid grid-cols-2 gap-2 md:flex md:justify-center md:opacity-0 md:group-hover:opacity-100 md:transition-all md:duration-700 md:translate-y-2 md:group-hover:translate-y-0">
         <button
           onClick={(e) => {
             e.preventDefault();
             if (inStock) addToCart(product);
           }}
-          className="editorial-label text-[10px] border-b border-charcoal pb-1 hover:text-neutral-600 hover:border-neutral-600 transition-colors disabled:opacity-30"
+          className="min-h-10 rounded-[10px] md:rounded-[8px] bg-blush md:bg-[#FFF0F6] border border-[#F2A8C8]/60 md:border-[#F2A8C8] px-2 text-[11px] md:text-[10px] md:tracking-[0.12em] md:uppercase font-medium hover:bg-[#FFB7D5] hover:text-charcoal hover:border-[#FFB7D5] transition-colors disabled:opacity-30"
           disabled={!inStock}
         >
-          Сагсанд нэмэх +
+          Сагс
+        </button>
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            if (inStock) buyNow({ product, quantity: 1 });
+          }}
+          className="min-h-10 rounded-[10px] md:rounded-[8px] bg-charcoal text-white border border-charcoal px-2 text-[11px] md:text-[10px] md:tracking-[0.12em] md:uppercase font-medium hover:bg-[#FFB7D5] hover:text-charcoal hover:border-[#FFB7D5] transition-colors disabled:opacity-30"
+          disabled={!inStock}
+        >
+          Авах
         </button>
       </div>
     </div>

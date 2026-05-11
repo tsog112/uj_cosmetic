@@ -2,15 +2,15 @@
 
 @theme inline {
   /* Brand Colors - Soft Branded Minimalism Palette */
-  --color-sand: #FAF6F3;
-  --color-blush: #FFF0F0;
-  --color-sand-dark: #F2EAE3;
-  --color-dusty-rose: #D8A7B1;
-  --color-rose-gold: #ECC5C0;
+  --color-sand: #FFF8FB;
+  --color-blush: #FFF0F6;
+  --color-sand-dark: #FFE6F0;
+  --color-dusty-rose: #F2A8C8;
+  --color-rose-gold: #FFB7D5;
   --color-charcoal: #1A1A1A;
   --color-text-primary: var(--color-charcoal);
   --color-text-muted: #666666;
-  --color-border: #EEE0E0;
+  --color-border: #F2A8C866;
   --color-white: #FFFFFF;
   --color-overlay: rgba(26, 26, 26, 0.4);
   --color-neutral-600: #525252;
@@ -67,7 +67,7 @@ h1, h2, h3, h4, h5, h6 {
   justify-content: center;
   padding: 1rem 2.5rem; /* 16px 40px */
   background-color: var(--color-charcoal);
-  color: var(--color-sand);
+  color: #FFFFFF;
   font-family: var(--font-sans);
   font-size: 0.75rem;
   font-weight: 500;
@@ -78,8 +78,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .btn-premium:hover {
-  background-color: transparent;
+  background-color: var(--color-rose-gold);
   color: var(--color-charcoal);
+  border-color: var(--color-rose-gold);
 }
 
 .btn-premium-outline {
@@ -94,13 +95,14 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 500;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  border: 1px solid var(--color-charcoal);
+  border: 1px solid var(--color-dusty-rose);
   transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-premium-outline:hover {
-  background-color: var(--color-charcoal);
-  color: var(--color-sand);
+  background-color: var(--color-rose-gold);
+  color: var(--color-charcoal);
+  border-color: var(--color-rose-gold);
 }
 
 /* Scrollbar */
@@ -135,6 +137,6 @@ h1, h2, h3, h4, h5, h6 {
 
 @media (max-width: 768px) {
   .max-content {
-    padding: 0 1.5rem; /* 24px */
+    padding: 0 1rem; /* 16px */
   }
 }

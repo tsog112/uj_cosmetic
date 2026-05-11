@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { getSiteSettings, updateSiteSettings } from '@/lib/services/firestoreService';
 import { DEFAULT_SETTINGS, SiteSettings } from '@/types';
 
@@ -8,157 +8,136 @@ export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState(false);
+  const [toast, setToast] = useState('');
 
   useEffect(() => {
     getSiteSettings()
-      .then(s => {
-        if (s) setSettings(s);
+      .then(siteSettings => {
+        if (siteSettings) setSettings(siteSettings);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = event.target;
     setSettings(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : type === 'number' ? Number(value) : value,
     }));
   };
 
-  const handleSave = async () => {
+  async function handleSave() {
     setSaving(true);
     try {
       await updateSiteSettings(settings);
-      setToast(true);
-      setTimeout(() => setToast(false), 3000);
-    } catch (error) {
-      alert('Хадгалахад алдаа гарлаа.');
+      setToast('Тохиргоо хадгалагдлаа.');
+      setTimeout(() => setToast(''), 3000);
+    } catch {
+      setToast('Хадгалахад алдаа гарлаа.');
     } finally {
       setSaving(false);
     }
-  };
+  }
 
   if (loading) {
     return (
-      <div className="animate-pulse space-y-6">
-        <div className="h-8 bg-gray-200 w-48 rounded" />
-        {[...Array(6)].map((_, i) => (
-          <div key={i} className="h-12 bg-gray-100 rounded" />
-        ))}
+      <div className="space-y-5 animate-pulse">
+        <div className="h-8 bg-[#FFD6E8] w-48" />
+        {Array.from({ length: 4 }, (_, index) => <div key={index} className="h-28 bg-[#FFF0F6]" />)}
       </div>
     );
   }
 
+  const inputClass = 'w-full min-h-11 rounded-[10px] border border-[#F2A8C8]/60 bg-[#FFF8FB] px-3 text-sm outline-none focus:border-[#FFB7D5] focus:bg-white';
+  const labelClass = 'block text-sm text-[#8B6B78] mb-1.5';
+
   return (
-    <div className="max-w-2xl">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Тохиргоо</h1>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="bg-[#FFB7D5] hover:bg-[#f5a0c5] text-[#1A1A1A] px-6 py-2.5 rounded-lg text-sm font-bold transition-colors disabled:opacity-50"
-        >
+    <div className="space-y-4 md:space-y-8 max-w-3xl">
+      {toast && (
+        <div className="fixed top-20 left-4 right-4 md:left-auto md:right-8 md:w-auto z-[120] px-4 py-3 bg-white border border-[#FFB7D5] text-sm shadow-[0_18px_45px_rgba(26,26,26,0.08)]">
+          {toast}
+        </div>
+      )}
+
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[10px] tracking-[0.1em] uppercase text-[#8B6B78]">Сайтын тохиргоо</p>
+          <h2 className="truncate text-[22px] md:text-3xl font-semibold mt-1 text-[#1A1A1A]">Тохиргоо</h2>
+        </div>
+        <button onClick={handleSave} disabled={saving} className="shrink-0 min-h-11 px-4 md:px-5 rounded-[10px] bg-[#1A1A1A] text-white text-sm disabled:opacity-50 shadow-[0_10px_24px_rgba(26,26,26,0.12)]">
           {saving ? 'Хадгалж байна...' : 'Хадгалах'}
         </button>
       </div>
 
-      {/* Toast */}
-      {toast && (
-        <div className="fixed top-6 right-6 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in text-sm font-medium flex items-center gap-2">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
-          Хадгалагдлаа ✓
-        </div>
-      )}
-
-      <div className="space-y-8">
-        {/* Мэдэгдлийн мөр */}
-        <section className="bg-sand border border-gray-200 rounded-xl p-6">
-          <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4">Мэдэгдлийн мөр</h2>
+      <div className="space-y-5">
+        <section className="rounded-[16px] bg-white border border-[#F2A8C8]/40 p-5 md:p-6 shadow-[0_10px_30px_rgba(26,26,26,0.03)]">
+          <h3 className="text-sm font-semibold text-[#1A1A1A] mb-5">Мэдэгдлийн мөр</h3>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Мэдэгдлийн текст</label>
-              <input type="text" name="announcementText" value={settings.announcementText} onChange={handleChange}
-                className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#FFB7D5] focus:border-transparent" />
+              <label className={labelClass}>Мэдэгдлийн текст</label>
+              <input name="announcementText" value={settings.announcementText} onChange={handleChange} className={inputClass} />
             </div>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input type="checkbox" name="announcementActive" checked={settings.announcementActive} onChange={handleChange}
-                className="w-5 h-5 rounded accent-[#FFB7D5]" />
-              <span className="text-sm text-gray-700">Мэдэгдлийг идэвхжүүлэх</span>
+            <label className="flex items-center gap-3 min-h-11 text-sm">
+              <input type="checkbox" name="announcementActive" checked={settings.announcementActive} onChange={handleChange} className="w-4 h-4 accent-[#FFB7D5]" />
+              Мэдэгдлийг идэвхжүүлэх
             </label>
           </div>
         </section>
 
-        {/* Хүргэлт */}
-        <section className="bg-sand border border-gray-200 rounded-xl p-6">
-          <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4">Хүргэлтийн тохиргоо</h2>
-          <div className="grid grid-cols-2 gap-4">
+        <section className="rounded-[16px] bg-white border border-[#F2A8C8]/40 p-5 md:p-6 shadow-[0_10px_30px_rgba(26,26,26,0.03)]">
+          <h3 className="text-sm font-semibold text-[#1A1A1A] mb-5">Хүргэлт</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Үнэгүй хүргэлтийн босго (₮)</label>
-              <input type="number" name="freeShippingThreshold" value={settings.freeShippingThreshold} onChange={handleChange}
-                className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#FFB7D5]" />
+              <label className={labelClass}>Үнэгүй хүргэлтийн босго</label>
+              <input type="number" name="freeShippingThreshold" value={settings.freeShippingThreshold} onChange={handleChange} className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Хүргэлтийн төлбөр (₮)</label>
-              <input type="number" name="shippingCost" value={settings.shippingCost} onChange={handleChange}
-                className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#FFB7D5]" />
+              <label className={labelClass}>Хүргэлтийн төлбөр</label>
+              <input type="number" name="shippingCost" value={settings.shippingCost} onChange={handleChange} className={inputClass} />
             </div>
           </div>
         </section>
 
-        {/* Банкны мэдээлэл */}
-        <section className="bg-sand border border-gray-200 rounded-xl p-6">
-          <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4">Банкны мэдээлэл</h2>
+        <section className="rounded-[16px] bg-white border border-[#F2A8C8]/40 p-5 md:p-6 shadow-[0_10px_30px_rgba(26,26,26,0.03)]">
+          <h3 className="text-sm font-semibold text-[#1A1A1A] mb-5">Банкны мэдээлэл</h3>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Банкны нэр</label>
-              <input type="text" name="bankName" value={settings.bankName} onChange={handleChange}
-                className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#FFB7D5]" />
+              <label className={labelClass}>Банкны нэр</label>
+              <input name="bankName" value={settings.bankName} onChange={handleChange} className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Дансны дугаар</label>
-              <input type="text" name="bankAccount" value={settings.bankAccount} onChange={handleChange}
-                className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#FFB7D5]" />
+              <label className={labelClass}>Дансны дугаар</label>
+              <input name="bankAccount" value={settings.bankAccount} onChange={handleChange} className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Хүлээн авагчийн нэр</label>
-              <input type="text" name="bankAccountName" value={settings.bankAccountName} onChange={handleChange}
-                className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#FFB7D5]" />
+              <label className={labelClass}>Хүлээн авагчийн нэр</label>
+              <input name="bankAccountName" value={settings.bankAccountName} onChange={handleChange} className={inputClass} />
             </div>
           </div>
         </section>
 
-        {/* Холбоо барих */}
-        <section className="bg-sand border border-gray-200 rounded-xl p-6">
-          <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4">Холбоо барих</h2>
+        <section className="rounded-[16px] bg-white border border-[#F2A8C8]/40 p-5 md:p-6 shadow-[0_10px_30px_rgba(26,26,26,0.03)]">
+          <h3 className="text-sm font-semibold text-[#1A1A1A] mb-5">Холбоо барих</h3>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Утасны дугаар</label>
-              <input type="text" name="phone" value={settings.phone} onChange={handleChange}
-                className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#FFB7D5]" />
+              <label className={labelClass}>Утасны дугаар</label>
+              <input name="phone" value={settings.phone} onChange={handleChange} className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Имэйл</label>
-              <input type="email" name="email" value={settings.email} onChange={handleChange}
-                className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#FFB7D5]" />
+              <label className={labelClass}>Имэйл</label>
+              <input type="email" name="email" value={settings.email} onChange={handleChange} className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Instagram URL</label>
-              <input type="url" name="instagramUrl" value={settings.instagramUrl} onChange={handleChange}
-                className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#FFB7D5]" />
+              <label className={labelClass}>Instagram URL</label>
+              <input type="url" name="instagramUrl" value={settings.instagramUrl} onChange={handleChange} className={inputClass} />
             </div>
           </div>
         </section>
       </div>
 
-      {/* Bottom save button */}
-      <div className="mt-8 pb-8">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="bg-[#FFB7D5] hover:bg-[#f5a0c5] text-[#1A1A1A] w-full py-3.5 rounded-lg text-sm font-bold transition-colors disabled:opacity-50"
-        >
+      <div className="sticky bottom-[64px] lg:bottom-0 bg-[#FFF8FB]/95 backdrop-blur-sm py-4">
+        <button onClick={handleSave} disabled={saving} className="w-full min-h-12 rounded-[10px] bg-[#1A1A1A] text-white text-sm disabled:opacity-50">
           {saving ? 'Хадгалж байна...' : 'Тохиргоо хадгалах'}
         </button>
       </div>

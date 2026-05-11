@@ -13,9 +13,7 @@ type InstagramSlot = {
 const SLOT_COUNT = 6;
 
 function getEmbedUrl(instagramUrl: string): string | null {
-  const match = instagramUrl.match(
-    /instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/
-  );
+  const match = instagramUrl.match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
   if (!match) return null;
   return `https://www.instagram.com/p/${match[1]}/embed/`;
 }
@@ -33,6 +31,7 @@ export default function AdminInstagramPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [draggedSlotId, setDraggedSlotId] = useState<string | null>(null);
+  const [toast, setToast] = useState('');
 
   useEffect(() => {
     async function fetchSaved() {
@@ -40,22 +39,18 @@ export default function AdminInstagramPage() {
         const snap = await getDocs(query(collection(db, 'instagramFeed'), orderBy('order', 'asc')));
         if (snap.empty) return;
 
-        const saved = snap.docs.slice(0, SLOT_COUNT).map(d => {
-          const data = d.data();
+        const saved = snap.docs.slice(0, SLOT_COUNT).map(slotDoc => {
+          const data = slotDoc.data();
           const instagramUrl = data.instagramUrl || '';
           return {
-            id: d.id,
+            id: slotDoc.id,
             instagramUrl,
             embedUrl: data.embedUrl || getEmbedUrl(instagramUrl),
           };
         });
 
         while (saved.length < SLOT_COUNT) {
-          saved.push({
-            id: `slot-${saved.length + 1}`,
-            instagramUrl: '',
-            embedUrl: null,
-          });
+          saved.push({ id: `slot-${saved.length + 1}`, instagramUrl: '', embedUrl: null });
         }
 
         setSlots(saved);
@@ -69,18 +64,14 @@ export default function AdminInstagramPage() {
 
   function handleUrlChange(slotIndex: number, value: string) {
     const embedUrl = getEmbedUrl(value);
-    setSlots(prev => prev.map((slot, index) =>
-      index === slotIndex ? { ...slot, instagramUrl: value, embedUrl } : slot
-    ));
+    setSlots(prev => prev.map((slot, index) => index === slotIndex ? { ...slot, instagramUrl: value, embedUrl } : slot));
   }
 
   function clearSlot(slotIndex: number) {
-    setSlots(prev => prev.map((slot, index) =>
-      index === slotIndex ? { ...slot, instagramUrl: '', embedUrl: null } : slot
-    ));
+    setSlots(prev => prev.map((slot, index) => index === slotIndex ? { ...slot, instagramUrl: '', embedUrl: null } : slot));
   }
 
-  const handleDrop = (targetSlotId: string, event: DragEvent<HTMLDivElement>) => {
+  function handleDrop(targetSlotId: string, event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
     if (!draggedSlotId || draggedSlotId === targetSlotId) return;
 
@@ -93,7 +84,7 @@ export default function AdminInstagramPage() {
     nextSlots.splice(targetIndex, 0, draggedSlot);
     setSlots(nextSlots);
     setDraggedSlotId(null);
-  };
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -111,9 +102,10 @@ export default function AdminInstagramPage() {
           { merge: true }
         );
       }
-      alert('Хадгалагдлаа ✓');
-    } catch (e: any) {
-      alert(`Алдаа: ${e.message}`);
+      setToast('Instagram зураг хадгалагдлаа.');
+      setTimeout(() => setToast(''), 3000);
+    } catch (error: any) {
+      setToast(`Алдаа гарлаа: ${error.message}`);
     } finally {
       setSaving(false);
     }
@@ -121,31 +113,53 @@ export default function AdminInstagramPage() {
 
   if (loading) {
     return (
-      <div className="animate-pulse space-y-8">
-        <div className="h-8 bg-gray-200 rounded w-56" />
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
-          {Array.from({ length: SLOT_COUNT }, (_, index) => (
-            <div key={index} className="h-80 bg-gray-100 rounded-xl" />
-          ))}
+      <div className="space-y-6 animate-pulse">
+        <div className="h-8 bg-[#FFD6E8] w-56" />
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: SLOT_COUNT }, (_, index) => <div key={index} className="aspect-square bg-[#FFF0F6]" />)}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-6xl">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Instagram зургууд</h1>
+    <div className="space-y-4 md:space-y-8">
+      {toast && (
+        <div className="fixed top-20 left-4 right-4 md:left-auto md:right-8 md:w-auto z-[120] px-4 py-3 bg-white border border-[#FFB7D5] text-sm shadow-[0_18px_45px_rgba(26,26,26,0.08)]">
+          {toast}
+        </div>
+      )}
+
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[10px] tracking-[0.1em] uppercase text-[#8B6B78]">Нүүр хуудасны feed</p>
+          <h2 className="truncate text-[22px] md:text-3xl font-semibold mt-1 text-[#1A1A1A]">Instagram</h2>
+        </div>
         <button
           onClick={handleSave}
           disabled={saving}
-          className="bg-[#FFB7D5] hover:bg-[#f5a0c5] text-[#1A1A1A] px-6 py-2.5 rounded-lg text-sm font-bold transition-colors disabled:opacity-50"
+          className="shrink-0 min-h-11 px-4 md:px-5 rounded-[10px] bg-[#1A1A1A] text-white text-sm disabled:opacity-50 shadow-[0_10px_24px_rgba(26,26,26,0.12)]"
         >
           {saving ? 'Хадгалж байна...' : 'Хадгалах'}
         </button>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
+      <div className="md:hidden grid grid-cols-3 gap-2">
+        <div className="rounded-[14px] border border-[#F2A8C8]/35 bg-white px-3 py-3 shadow-[0_8px_24px_rgba(26,26,26,0.035)]">
+          <p className="text-[10px] text-[#8B6B78]">Слот</p>
+          <p className="mt-1 text-xl font-semibold">{SLOT_COUNT}</p>
+        </div>
+        <div className="rounded-[14px] border border-[#F2A8C8]/35 bg-[#FFF0F6] px-3 py-3 shadow-[0_8px_24px_rgba(26,26,26,0.035)]">
+          <p className="text-[10px] text-[#8B6B78]">Идэвхтэй</p>
+          <p className="mt-1 text-xl font-semibold">{slots.filter(slot => slot.embedUrl).length}</p>
+        </div>
+        <div className="rounded-[14px] border border-[#F1D28A]/70 bg-[#FFF9EC] px-3 py-3 shadow-[0_8px_24px_rgba(26,26,26,0.035)]">
+          <p className="text-[10px] text-[#9A6A14]">Хоосон</p>
+          <p className="mt-1 text-xl font-semibold">{slots.filter(slot => !slot.embedUrl).length}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5">
         {slots.map((slot, index) => (
           <div
             key={slot.id}
@@ -154,20 +168,25 @@ export default function AdminInstagramPage() {
             onDragOver={event => event.preventDefault()}
             onDrop={event => handleDrop(slot.id, event)}
             onDragEnd={() => setDraggedSlotId(null)}
-            className="bg-sand border border-gray-200 rounded-xl p-4 shadow-sm"
+            className="rounded-[16px] bg-white border border-[#F2A8C8]/40 p-3 md:p-4 shadow-[0_8px_24px_rgba(26,26,26,0.045)]"
           >
-            <div className="aspect-square bg-pink-100 rounded-lg overflow-hidden relative">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[11px] font-medium text-[#8B6B78]">Слот {index + 1}</span>
+              <span className="text-[13px] text-[#8B6B78] cursor-move">⠿</span>
+            </div>
+
+            <div className="aspect-square rounded-[12px] bg-[#FFF0F6] overflow-hidden relative border border-[#F2A8C8]/30">
               {slot.embedUrl ? (
                 <iframe
                   src={slot.embedUrl}
                   className="w-full h-full border-0 scale-[0.6] origin-top-left"
                   style={{ width: '167%', height: '167%' }}
                   scrolling="no"
-                  allowTransparency={true}
+                  allowTransparency
                 />
               ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-pink-300 gap-2">
-                  <span className="text-4xl">+</span>
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-[#F2A8C8] gap-2">
+                  <span className="text-4xl font-light">+</span>
                   <span className="text-xs text-center px-4">Instagram линк оруулна уу</span>
                 </div>
               )}
@@ -178,16 +197,12 @@ export default function AdminInstagramPage() {
               placeholder="https://www.instagram.com/p/xxx/"
               value={slot.instagramUrl}
               onChange={event => handleUrlChange(index, event.target.value)}
-              className="w-full mt-2 px-3 py-2 text-xs border border-pink-200 rounded focus:outline-none focus:border-pink-400"
+              className="w-full mt-3 min-h-11 rounded-[10px] px-3 text-xs border border-[#F2A8C8]/60 bg-[#FFF8FB] outline-none focus:border-[#FFB7D5] focus:bg-white"
             />
 
             {slot.instagramUrl && (
-              <button
-                type="button"
-                onClick={() => clearSlot(index)}
-                className="text-xs text-gray-400 hover:text-red-400 mt-1"
-              >
-                × Цэвэрлэх
+              <button type="button" onClick={() => clearSlot(index)} className="mt-2 text-xs text-[#8B6B78] hover:text-[#A14E4E]">
+                Цэвэрлэх
               </button>
             )}
           </div>

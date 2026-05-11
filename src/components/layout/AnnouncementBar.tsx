@@ -22,7 +22,7 @@ export default function AnnouncementBar() {
   if (!isVisible || !active) return null;
 
   return (
-    <div className="relative bg-sand-dark border-b border-border text-text-primary overflow-hidden py-2">
+    <div className="relative bg-sand-dark border-b border-border text-text-primary overflow-hidden py-1.5 md:py-2">
       <div className="max-content relative flex items-center h-4">
         <motion.div 
           animate={{ x: ["100%", "-100%"] }}

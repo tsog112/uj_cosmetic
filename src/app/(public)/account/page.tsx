@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { formatPrice } from '@/types';
 import { db } from '@/lib/firebase';
@@ -8,7 +9,7 @@ import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import AuthGuard from '@/components/ui/AuthGuard';
 
 function AccountContent() {
-  const { user, signOut } = useAuth();
+  const { user, isAdmin, signOut } = useAuth();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -57,14 +58,15 @@ function AccountContent() {
   if (!user) return null;
 
   return (
-    <div className="max-w-[1000px] mx-auto px-6 lg:px-10 py-12 md:py-20">
-      <h1 className="section-heading text-3xl md:text-4xl mb-10">Миний бүртгэл</h1>
+    <div className="max-w-[1000px] mx-auto px-4 sm:px-6 lg:px-10 pt-24 pb-10 md:py-20">
+      <p className="text-[10px] tracking-[0.14em] uppercase text-[#8B6B78]">Бүртгэл</p>
+      <h1 className="mt-1 text-[28px] md:text-4xl font-semibold text-[#1A1A1A] mb-6 md:mb-10">Миний бүртгэл</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-10">
         {/* Sidebar / Profile Info */}
         <div>
-          <div className="bg-sand border border-border p-8 text-center sticky top-[120px]">
-            <div className="w-24 h-24 mx-auto bg-accent text-text-primary rounded-full flex items-center justify-center text-3xl font-medium mb-4 overflow-hidden">
+          <div className="bg-white border border-[#F2A8C8]/40 rounded-[18px] p-5 md:p-8 text-center md:sticky md:top-[120px] shadow-[0_10px_30px_rgba(26,26,26,0.035)]">
+            <div className="w-20 h-20 md:w-24 md:h-24 mx-auto bg-[#FFF0F6] border border-[#F2A8C8]/50 text-text-primary rounded-[18px] flex items-center justify-center text-3xl font-medium mb-4 overflow-hidden">
               {user.photoURL ? (
                 <img src={user.photoURL} alt={user.displayName || 'Profile'} className="w-full h-full object-cover" />
               ) : (
@@ -73,11 +75,20 @@ function AccountContent() {
             </div>
             
             <h2 className="text-lg font-medium text-text-primary mb-1">{user.displayName || 'Хэрэглэгч'}</h2>
-            <p className="text-sm text-text-muted mb-8">{user.email}</p>
+            <p className="text-sm text-text-muted mb-5 break-all">{user.email}</p>
+
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="mb-3 flex min-h-12 w-full items-center justify-center rounded-[12px] bg-[#1A1A1A] px-4 text-sm font-medium text-white transition-colors hover:bg-[#FFB7D5] hover:text-[#1A1A1A]"
+              >
+                Админ самбар руу орох
+              </Link>
+            )}
             
             <button 
               onClick={() => signOut()}
-              className="btn-outline w-full py-3"
+              className="w-full min-h-12 rounded-[12px] border border-[#F2A8C8] bg-[#FFF8FB] text-sm font-medium text-[#1A1A1A]"
             >
               Гарах
             </button>
@@ -86,7 +97,7 @@ function AccountContent() {
 
         {/* Order History */}
         <div>
-          <h2 className="text-xl font-serif text-text-primary mb-6">Захиалгын түүх</h2>
+          <h2 className="text-xl font-semibold text-text-primary mb-4 md:mb-6">Захиалгын түүх</h2>
           
           {loading ? (
             <div className="animate-pulse space-y-4">
@@ -94,20 +105,20 @@ function AccountContent() {
               <div className="h-32 bg-cream-dark w-full" />
             </div>
           ) : orders.length === 0 ? (
-            <div className="bg-sand border border-border p-10 text-center">
+            <div className="bg-white border border-[#F2A8C8]/40 rounded-[18px] p-8 md:p-10 text-center">
               <p className="text-text-muted mb-4">Та одоогоор захиалга хийгээгүй байна.</p>
-              <a href="/shop" className="text-accent hover:text-text-primary font-medium transition-colors">
+              <Link href="/shop" className="text-[#D86FA0] hover:text-text-primary font-medium transition-colors">
                 Дэлгүүр рүү буцах
-              </a>
+              </Link>
             </div>
           ) : (
             <div className="space-y-6">
               {orders.map((order) => (
-                <div key={order.id} className="bg-sand border border-border p-6">
+                <div key={order.id} className="bg-white border border-[#F2A8C8]/40 rounded-[18px] p-4 md:p-6 shadow-[0_8px_24px_rgba(26,26,26,0.035)]">
                   <div className="flex flex-wrap justify-between items-start gap-4 mb-6 pb-4 border-b border-border">
                     <div>
                       <p className="text-xs text-text-muted uppercase tracking-wider mb-1">Захиалгын дугаар</p>
-                      <p className="font-medium text-text-primary">{order.id}</p>
+                      <p className="font-medium text-text-primary break-all">#{order.id.slice(0, 10)}</p>
                     </div>
                     <div>
                       <p className="text-xs text-text-muted uppercase tracking-wider mb-1">Огноо</p>
@@ -135,7 +146,7 @@ function AccountContent() {
                       const price = item.price ?? 0;
                       return (
                       <div key={idx} className="flex justify-between items-center text-sm">
-                        <span className="text-text-primary">{name} <span className="text-text-muted">x {item.quantity}</span></span>
+                       <span className="text-text-primary min-w-0 pr-3">{name} <span className="text-text-muted">× {item.quantity}</span></span>
                         <span className="text-text-primary">{formatPrice(price * item.quantity)}</span>
                       </div>
                     )})}

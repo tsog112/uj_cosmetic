@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import { db } from '@/lib/firebase';
+import { useEffect, useMemo, useState } from 'react';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { collection, getDocs, query } from 'firebase/firestore';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid } from 'recharts';
+import { db } from '@/lib/firebase';
 import { formatPrice } from '@/types';
+
+const paidStatuses = ['confirmed', 'shipped', 'delivered'];
 
 export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
@@ -13,293 +15,167 @@ export default function AnalyticsPage() {
   const [orders, setOrders] = useState<any[]>([]);
 
   useEffect(() => {
-    const fetchAnalytics = async () => {
+    async function fetchAnalytics() {
       try {
         if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-          const pSnap = await getDocs(query(collection(db, "products")));
-          const pList: any[] = [];
-          pSnap.forEach(d => pList.push({ id: d.id, ...d.data() }));
-          setProducts(pList);
-
-          const uSnap = await getDocs(query(collection(db, "users")));
-          const uList: any[] = [];
-          uSnap.forEach(d => {
-            const data = d.data();
-            const created = data.createdAt?.toMillis ? data.createdAt.toMillis() : (data.createdAt ? new Date(data.createdAt).getTime() : 0);
-            uList.push({ id: d.id, ...data, createdTime: created });
-          });
-          setUsers(uList);
-
-          const oSnap = await getDocs(query(collection(db, "orders")));
-          const oList: any[] = [];
-          oSnap.forEach(d => {
-            const data = d.data();
-            const created = data.createdAt?.toMillis ? data.createdAt.toMillis() : (data.createdAt ? new Date(data.createdAt).getTime() : 0);
-            oList.push({ id: d.id, ...data, createdTime: created });
-          });
-          setOrders(oList);
+          const [productSnap, userSnap, orderSnap] = await Promise.all([
+            getDocs(query(collection(db, 'products'))),
+            getDocs(query(collection(db, 'users'))),
+            getDocs(query(collection(db, 'orders'))),
+          ]);
+          setProducts(productSnap.docs.map(item => ({ id: item.id, ...item.data() })));
+          setUsers(userSnap.docs.map(item => ({ id: item.id, ...item.data() })));
+          setOrders(orderSnap.docs.map(item => ({ id: item.id, ...item.data() })));
         } else {
           setProducts(JSON.parse(localStorage.getItem('mock_products') || '[]'));
           setUsers(JSON.parse(localStorage.getItem('mock_users') || '[]'));
           setOrders(JSON.parse(localStorage.getItem('mock_orders') || '[]'));
         }
-      } catch (error) {
-        console.error(error);
       } finally {
         setLoading(false);
       }
-    };
+    }
+
     fetchAnalytics();
   }, []);
 
   const productTable = useMemo(() => {
-    return products.map(p => {
-      const views = p.views || Math.floor(Math.random() * 500) + 50; 
-      const cartAdds = p.cartAdds || Math.floor(views * 0.1);
-      const ordered = p.orderCount || Math.floor(cartAdds * 0.4);
+    return products.map(product => {
+      const views = product.views || 0;
+      const ordered = product.orderCount || 0;
       const conversion = views > 0 ? ((ordered / views) * 100).toFixed(1) : '0.0';
-      return { id: p.id || p._id, name: p.name_mn, views, cartAdds, ordered, conversion };
+      return {
+        id: product.id || product._id,
+        name: product.name_mn,
+        views,
+        ordered,
+        conversion,
+        stockQuantity: Number(product.stockQuantity ?? 0),
+      };
     }).sort((a, b) => b.ordered - a.ordered);
   }, [products]);
 
-  const userMetrics = useMemo(() => {
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-    
-    let newUsersThisMonth = 0;
-    let repeatCustomers = 0;
-    
-    const monthCounts: Record<string, number> = {};
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const label = d.toLocaleString('mn-MN', { month: 'short' });
-      monthCounts[label] = 0;
-    }
+  const metrics = useMemo(() => {
+    const paidOrders = orders.filter(order => paidStatuses.includes(order.status));
+    const revenue = paidOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
+    const avgOrder = paidOrders.length ? Math.round(revenue / paidOrders.length) : 0;
+    const lowStock = products.filter(product => Number(product.stockQuantity ?? 0) <= 5).length;
+    const repeatCustomers = users.filter(user => Number(user.orderCount || 0) > 1).length;
+    return { revenue, avgOrder, lowStock, repeatCustomers, paidCount: paidOrders.length };
+  }, [orders, products, users]);
 
-    users.forEach(u => {
-      if (u.createdTime >= startOfMonth) newUsersThisMonth++;
-      if ((u.orderCount || 0) > 1) repeatCustomers++;
-      
-      if (u.createdTime) {
-        const d = new Date(u.createdTime);
-        const label = d.toLocaleString('mn-MN', { month: 'short' });
-        if (monthCounts[label] !== undefined) {
-          monthCounts[label]++;
-        }
-      }
+  const orderChartData = useMemo(() => {
+    const counts = [
+      { status: 'Хүлээгдэж', count: 0 },
+      { status: 'Баталгаажсан', count: 0 },
+      { status: 'Хүргэлт', count: 0 },
+      { status: 'Хүргэгдсэн', count: 0 },
+      { status: 'Цуцлагдсан', count: 0 },
+    ];
+    orders.forEach(order => {
+      if (order.status === 'pending') counts[0].count += 1;
+      if (order.status === 'confirmed') counts[1].count += 1;
+      if (order.status === 'shipped') counts[2].count += 1;
+      if (order.status === 'delivered') counts[3].count += 1;
+      if (order.status === 'cancelled') counts[4].count += 1;
     });
-
-    const chartData = Object.keys(monthCounts).map(k => ({ month: k, count: monthCounts[k] }));
-
-    return {
-      total: users.length,
-      newThisMonth: newUsersThisMonth,
-      repeat: repeatCustomers,
-      chartData
-    };
-  }, [users]);
-
-  const orderMetrics = useMemo(() => {
-    let totalRevenue = 0;
-    const statusCounts: Record<string, number> = {};
-    const dayCounts = [0,0,0,0,0,0,0];
-
-    orders.forEach(o => {
-      const statusKey = o.status === 'pending' ? 'Хүлээгдэж байна' :
-                        o.status === 'confirmed' ? 'Баталгаажсан' :
-                        o.status === 'shipped' ? 'Хүргэлтэнд гарсан' :
-                        o.status === 'delivered' ? 'Хүргэгдсэн' :
-                        o.status === 'cancelled' ? 'Цуцлагдсан' : o.status;
-
-      if (statusKey !== 'Цуцлагдсан') {
-        totalRevenue += (o.total || 0);
-      }
-      statusCounts[statusKey] = (statusCounts[statusKey] || 0) + 1;
-      
-      if (o.createdTime) {
-        const day = new Date(o.createdTime).getDay();
-        dayCounts[day]++;
-      }
-    });
-
-    const avgOrder = orders.length > 0 ? Math.round(totalRevenue / orders.length) : 0;
-    
-    const totalCartAdds = productTable.reduce((acc, p) => acc + p.cartAdds, 0);
-    const abandonedCartPct = totalCartAdds > 0 ? (((totalCartAdds - orders.length) / totalCartAdds) * 100).toFixed(1) : '0.0';
-
-    const COLORS: Record<string, string> = {
-      'Хүлээгдэж байна': '#E5E1DA',
-      'Баталгаажсан': '#E8D5D0',
-      'Хүргэлтэнд гарсан': '#525252',
-      'Хүргэгдсэн': '#1A1A1A',
-      'Цуцлагдсан': '#FEE2E2'
-    };
-
-    const pieData = Object.keys(statusCounts).map(k => ({
-      name: k,
-      value: statusCounts[k],
-      color: COLORS[k] || '#E5E1DA'
-    }));
-
-    const daysOfWeek = ['Ням', 'Дав', 'Мяг', 'Лха', 'Пүр', 'Баа', 'Бям'];
-    const barData = daysOfWeek.map((day, idx) => ({ day, count: dayCounts[idx] }));
-
-    return { avgOrder, abandonedCartPct, pieData, barData };
-  }, [orders, productTable]);
+    return counts;
+  }, [orders]);
 
   if (loading) {
-    return <div className="flex justify-center py-32"><div className="w-8 h-8 border border-charcoal border-t-transparent rounded-full animate-spin"/></div>;
+    return <div className="flex justify-center py-32"><div className="w-8 h-8 border border-[#1A1A1A] border-t-transparent rounded-full animate-spin" /></div>;
   }
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-sand border border-border p-4 shadow-sm text-sm">
-          <p className="font-serif italic text-charcoal mb-1">{label}</p>
-          <p className="text-charcoal font-medium">Тоо: {payload[0].value}</p>
-        </div>
-      );
-    }
-    return null;
-  };
+  const cards = [
+    { label: 'Баталгаажсан орлого', value: formatPrice(metrics.revenue), note: `${metrics.paidCount} төлөгдсөн захиалга`, accent: 'border-l-[#FFB7D5]' },
+    { label: 'Дундаж захиалга', value: formatPrice(metrics.avgOrder), note: 'Баталгаажсан захиалга', accent: 'border-l-[#B9D7F2]' },
+    { label: 'Давтан хэрэглэгч', value: metrics.repeatCustomers, note: '2+ захиалгатай', accent: 'border-l-[#B8DEC1]' },
+    { label: 'Бага нөөцтэй', value: metrics.lowStock, note: '5 буюу түүнээс бага', accent: 'border-l-[#F1B8B8]' },
+  ];
 
   return (
-    <div className="space-y-12 pb-24">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-border pb-6">
-        <h2 className="font-serif text-3xl text-charcoal tracking-wide">Аналитик</h2>
+    <div className="space-y-4 md:space-y-8">
+      <div>
+        <p className="text-[10px] tracking-[0.1em] uppercase text-[#8B6B78]">Борлуулалтын тойм</p>
+        <h2 className="text-[22px] md:text-3xl font-semibold mt-1 text-[#1A1A1A]">Аналитик</h2>
       </div>
 
-      {/* 1. PRODUCT METRICS */}
-      <section>
-        <h3 className="font-serif text-xl text-charcoal tracking-wide mb-6">Бүтээгдэхүүний тайлан</h3>
-        <div className="bg-sand border border-border overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-sand-dark border-b border-border">
-                <tr>
-                  <th className="px-8 py-4 editorial-label text-charcoal">Барааны нэр</th>
-                  <th className="px-8 py-4 editorial-label text-charcoal text-right">Үзэлт</th>
-                  <th className="px-8 py-4 editorial-label text-charcoal text-right">Сагсанд нэмсэн</th>
-                  <th className="px-8 py-4 editorial-label text-charcoal text-right">Захиалсан</th>
-                  <th className="px-8 py-4 editorial-label text-charcoal text-right">Хөрвөлт</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {productTable.map((p, i) => (
-                  <tr key={p.id} className="hover:bg-sand-dark transition-colors">
-                    <td className="px-8 py-5 text-charcoal font-serif text-base tracking-wide">{i+1}. {p.name}</td>
-                    <td className="px-8 py-5 text-right font-sans text-sm text-neutral-600">{p.views}</td>
-                    <td className="px-8 py-5 text-right font-sans text-sm text-neutral-600">{p.cartAdds}</td>
-                    <td className="px-8 py-5 text-right font-sans text-sm text-charcoal font-medium">{p.ordered}</td>
-                    <td className="px-8 py-5 text-right">
-                      <span className="editorial-label border-b border-charcoal text-charcoal pb-0.5">{p.conversion}%</span>
-                    </td>
-                  </tr>
-                ))}
-                {productTable.length === 0 && (
-                  <tr><td colSpan={5} className="px-8 py-12 text-center editorial-label text-neutral-400">Мэдээлэл алга</td></tr>
-                )}
-              </tbody>
-            </table>
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-2 md:gap-4">
+        {cards.map(card => (
+          <div key={card.label} className={`rounded-[14px] bg-white border border-[#F2A8C8]/40 border-l-4 ${card.accent} p-4 md:p-5 shadow-[0_8px_24px_rgba(26,26,26,0.04)]`}>
+            <p className="text-[10px] md:text-[11px] text-[#8B6B78]">{card.label}</p>
+            <p className="text-xl md:text-3xl font-semibold mt-3">{card.value}</p>
+            <p className="text-xs text-[#8B6B78] mt-2">{card.note}</p>
           </div>
+        ))}
+      </div>
+
+      <section className="rounded-[16px] bg-white border border-[#F2A8C8]/40 p-5 md:p-6 shadow-[0_10px_30px_rgba(26,26,26,0.03)]">
+        <div className="mb-6">
+          <p className="text-[10px] tracking-[0.1em] uppercase text-[#8B6B78]">Захиалгын төлөв</p>
+          <h3 className="text-lg md:text-2xl font-semibold mt-1">Төлөвийн задаргаа</h3>
+        </div>
+        <div className="h-[280px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={orderChartData}>
+              <CartesianGrid vertical={false} stroke="#F2A8C8" opacity={0.25} />
+              <XAxis dataKey="status" tickLine={false} axisLine={false} tick={{ fill: '#8B6B78', fontSize: 11 }} />
+              <YAxis tickLine={false} axisLine={false} tick={{ fill: '#8B6B78', fontSize: 11 }} />
+              <Tooltip contentStyle={{ border: '1px solid rgba(242,168,200,.45)', background: '#fff', borderRadius: 0 }} />
+              <Bar dataKey="count" fill="#FFB7D5" barSize={28} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        
-        {/* 2. CUSTOMER METRICS */}
-        <section>
-          <h3 className="font-serif text-xl text-charcoal tracking-wide mb-6">Хэрэглэгчийн тайлан</h3>
-          <div className="bg-sand border border-border p-8 space-y-10">
-            <div className="grid grid-cols-3 gap-6">
-              <div className="bg-sand border border-border p-6 text-center">
-                <p className="editorial-label mb-2">Нийт</p>
-                <p className="font-serif text-3xl text-charcoal">{userMetrics.total}</p>
-              </div>
-              <div className="bg-sand border border-border p-6 text-center">
-                <p className="editorial-label mb-2">Шинэ (Сар)</p>
-                <p className="font-serif text-3xl text-charcoal">{userMetrics.newThisMonth}</p>
-              </div>
-              <div className="bg-sand border border-border p-6 text-center">
-                <p className="editorial-label mb-2">Дахин захиалсан</p>
-                <p className="font-serif text-3xl text-charcoal">{userMetrics.repeat}</p>
+      <section className="rounded-[16px] bg-white border border-[#F2A8C8]/40 shadow-[0_10px_30px_rgba(26,26,26,0.03)] overflow-hidden">
+        <div className="p-5 md:p-6 border-b border-[#F2A8C8]/40">
+          <p className="text-[10px] tracking-[0.1em] uppercase text-[#8B6B78]">Бүтээгдэхүүн</p>
+          <h3 className="text-lg md:text-2xl font-semibold mt-1">Бүтээгдэхүүний үзүүлэлт</h3>
+        </div>
+
+        <div className="md:hidden space-y-3 bg-[#FFF8FB] p-3">
+          {productTable.length === 0 ? (
+            <p className="p-8 text-center text-sm text-[#8B6B78]">Мэдээлэл алга</p>
+          ) : productTable.map(product => (
+            <div key={product.id} className="rounded-[14px] border border-[#F2A8C8]/35 bg-white p-4 shadow-[0_8px_24px_rgba(26,26,26,0.04)]">
+              <p className="font-medium">{product.name}</p>
+              <div className="mt-3 grid grid-cols-3 gap-3 text-sm">
+                <div><p className="text-xs text-[#8B6B78]">Үзэлт</p><p>{product.views}</p></div>
+                <div><p className="text-xs text-[#8B6B78]">Зарагдсан</p><p>{product.ordered}</p></div>
+                <div><p className="text-xs text-[#8B6B78]">Хөрвөлт</p><p>{product.conversion}%</p></div>
               </div>
             </div>
+          ))}
+        </div>
 
-            <div>
-              <p className="editorial-label text-charcoal mb-6 border-b border-border pb-2">Өсөлт (6 сар)</p>
-              <div className="h-56 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={userMetrics.chartData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E1DA" />
-                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#666', fontSize: 10, fontFamily: 'var(--font-inter)', letterSpacing: '0.1em'}} dy={10} />
-                    <Tooltip content={<CustomTooltip />} cursor={{fill: '#F9F8F6'}} />
-                    <Bar dataKey="count" fill="#1A1A1A" radius={[2,2,0,0]} barSize={24} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* 3. ORDER METRICS */}
-        <section>
-          <h3 className="font-serif text-xl text-charcoal tracking-wide mb-6">Захиалгын тайлан</h3>
-          <div className="bg-sand border border-border p-8 space-y-10">
-            <div className="grid grid-cols-2 gap-6">
-              <div className="bg-sand border border-border p-6">
-                <p className="editorial-label mb-2">Дундаж захиалгын дүн</p>
-                <p className="font-serif text-3xl text-charcoal">{formatPrice(orderMetrics.avgOrder)}</p>
-              </div>
-              <div className="bg-sand border border-border p-6">
-                <p className="editorial-label mb-2">Хаягдсан сагс</p>
-                <p className="font-serif text-3xl text-neutral-500 italic">{orderMetrics.abandonedCartPct}%</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
-              <div>
-                <p className="editorial-label text-charcoal mb-6 border-b border-border pb-2 text-center">Захиалгын төлөв</p>
-                <div className="h-48 w-full relative">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={orderMetrics.pieData} innerRadius={45} outerRadius={75} paddingAngle={2} dataKey="value" stroke="none">
-                        {orderMetrics.pieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip content={<CustomTooltip />} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="flex flex-col gap-2 mt-4 items-center">
-                  {orderMetrics.pieData.map((entry, i) => (
-                    <div key={i} className="flex items-center gap-3 editorial-label text-neutral-600">
-                      <div className="w-2.5 h-2.5 border border-border" style={{backgroundColor: entry.color}}/>
-                      {entry.name}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <p className="editorial-label text-charcoal mb-6 border-b border-border pb-2 text-center">Идэвхтэй өдрүүд</p>
-                <div className="h-56 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={orderMetrics.barData} layout="vertical" margin={{top: 0, right: 0, left: -20, bottom: 0}}>
-                      <XAxis type="number" hide />
-                      <YAxis dataKey="day" type="category" axisLine={false} tickLine={false} tick={{fill: '#666', fontSize: 10, fontFamily: 'var(--font-inter)', letterSpacing: '0.1em'}} />
-                      <Tooltip content={<CustomTooltip />} cursor={{fill: '#F9F8F6'}} />
-                      <Bar dataKey="count" fill="#E8D5D0" radius={[0,2,2,0]} barSize={16} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-      </div>
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-[#FFF8FB] text-[11px] tracking-[0.14em] uppercase text-[#8B6B78]">
+              <tr>
+                <th className="px-5 py-4 font-medium">Бараа</th>
+                <th className="px-5 py-4 font-medium text-right">Үзэлт</th>
+                <th className="px-5 py-4 font-medium text-right">Зарагдсан</th>
+                <th className="px-5 py-4 font-medium text-right">Хөрвөлт</th>
+                <th className="px-5 py-4 font-medium text-right">Нөөц</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#F2A8C8]/30">
+              {productTable.length === 0 ? (
+                <tr><td colSpan={5} className="px-5 py-12 text-center text-[#8B6B78]">Мэдээлэл алга</td></tr>
+              ) : productTable.map(product => (
+                <tr key={product.id} className="hover:bg-[#FFF8FB]">
+                  <td className="px-5 py-4 font-medium">{product.name}</td>
+                  <td className="px-5 py-4 text-right">{product.views}</td>
+                  <td className="px-5 py-4 text-right">{product.ordered}</td>
+                  <td className="px-5 py-4 text-right">{product.conversion}%</td>
+                  <td className="px-5 py-4 text-right">{product.stockQuantity}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }

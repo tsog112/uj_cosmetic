@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, getDocs, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { formatPrice } from '@/types';
@@ -200,15 +200,27 @@ export default function AdminProductsPage() {
     setQuickEditId(null);
   };
 
+  const productSummary = useMemo(() => {
+    const outOfStock = products.filter(product => Number(product.stockQuantity ?? product.stock ?? (product.inStock === false ? 0 : 999)) <= 0 || product.inStock === false).length;
+    const hidden = products.filter(product => product.published === false).length;
+    const lowStock = products.filter(product => {
+      const stockQuantity = Number(product.stockQuantity ?? product.stock ?? (product.inStock === false ? 0 : 999));
+      return stockQuantity > 0 && stockQuantity <= 5;
+    }).length;
+
+    return { total: products.length, outOfStock, hidden, lowStock };
+  }, [products]);
+
   return (
-    <div className="space-y-12 pb-24">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div className="flex items-center gap-6">
-          <h2 className="font-serif text-3xl text-charcoal tracking-wide">Бүтээгдэхүүн</h2>
-          <label className="flex items-center gap-3 text-sm text-neutral-500 cursor-pointer editorial-label mt-1">
+    <div className="space-y-4 md:space-y-8 pb-24">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[10px] tracking-[0.1em] uppercase text-[#8B6B78]">Барааны удирдлага</p>
+          <h2 className="truncate text-[22px] md:text-3xl font-semibold mt-1 text-[#1A1A1A]">Бүтээгдэхүүн</h2>
+          <label className="mt-3 flex items-center gap-3 text-sm text-[#8B6B78] cursor-pointer">
             <input 
               type="checkbox" 
-              className="w-4 h-4 text-charcoal border-border rounded-none focus:ring-0"
+              className="w-4 h-4 accent-[#FFB7D5]"
               checked={products.length > 0 && selectedIds.size === products.length}
               onChange={(e) => {
                 if (e.target.checked) setSelectedIds(new Set(products.map(p => p._id || p.id)));
@@ -220,10 +232,30 @@ export default function AdminProductsPage() {
         </div>
         <button 
           onClick={() => handleOpenForm()}
-          className="btn-premium"
+          className="shrink-0 min-h-11 px-4 md:px-5 rounded-[10px] bg-[#1A1A1A] text-white text-sm shadow-[0_10px_24px_rgba(26,26,26,0.12)]"
         >
-          Бараа нэмэх
+          <span className="hidden sm:inline">Бараа нэмэх</span>
+          <span className="sm:hidden text-lg leading-none">+</span>
         </button>
+      </div>
+
+      <div className="md:hidden grid grid-cols-4 gap-2">
+        <div className="rounded-[14px] border border-[#F2A8C8]/35 bg-white px-3 py-3 shadow-[0_8px_24px_rgba(26,26,26,0.035)]">
+          <p className="text-[10px] text-[#8B6B78]">Нийт</p>
+          <p className="mt-1 text-xl font-semibold">{productSummary.total}</p>
+        </div>
+        <div className="rounded-[14px] border border-[#F1D28A]/70 bg-[#FFF9EC] px-3 py-3 shadow-[0_8px_24px_rgba(26,26,26,0.035)]">
+          <p className="text-[10px] text-[#9A6A14]">Бага</p>
+          <p className="mt-1 text-xl font-semibold">{productSummary.lowStock}</p>
+        </div>
+        <div className="rounded-[14px] border border-[#F1B8B8]/70 bg-[#FFF0F0] px-3 py-3 shadow-[0_8px_24px_rgba(26,26,26,0.035)]">
+          <p className="text-[10px] text-[#A14E4E]">Дууссан</p>
+          <p className="mt-1 text-xl font-semibold">{productSummary.outOfStock}</p>
+        </div>
+        <div className="rounded-[14px] border border-[#F2A8C8]/35 bg-[#FFF0F6] px-3 py-3 shadow-[0_8px_24px_rgba(26,26,26,0.035)]">
+          <p className="text-[10px] text-[#8B6B78]">Нуусан</p>
+          <p className="mt-1 text-xl font-semibold">{productSummary.hidden}</p>
+        </div>
       </div>
 
       {loading ? (
@@ -231,12 +263,12 @@ export default function AdminProductsPage() {
           <div className="w-8 h-8 border border-charcoal border-t-transparent rounded-full animate-spin"/>
         </div>
       ) : products.length === 0 ? (
-        <div className="bg-sand border border-border p-24 text-center">
-          <p className="font-serif italic text-xl text-neutral-500 mb-6">Бүтээгдэхүүн олдсонгүй.</p>
-          <button onClick={() => handleOpenForm()} className="editorial-label border-b border-charcoal pb-1 text-charcoal hover:opacity-50 transition-opacity">Эхний барааг нэмэх</button>
+        <div className="bg-white border border-[#F2A8C8]/40 p-12 md:p-20 text-center shadow-[0_10px_30px_rgba(26,26,26,0.03)]">
+          <p className="font-serif text-xl text-[#8B6B78] mb-6">Бүтээгдэхүүн олдсонгүй.</p>
+          <button onClick={() => handleOpenForm()} className="text-xs tracking-[0.14em] uppercase border-b border-[#FFB7D5] pb-1">Эхний барааг нэмэх</button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
           {products.map(p => {
             const docId = p._id || p.id;
             const stockQuantity = Number(p.stockQuantity ?? p.stock ?? (p.inStock === false ? 0 : 999));
@@ -249,21 +281,21 @@ export default function AdminProductsPage() {
             }
 
             return (
-            <div key={docId} className={`bg-sand border flex flex-col relative transition-all duration-300 ${selectedIds.has(docId) ? 'border-charcoal' : 'border-border'}`}>
+            <div key={docId} className={`bg-white border flex flex-col relative overflow-hidden rounded-[14px] transition-all duration-300 shadow-[0_8px_24px_rgba(26,26,26,0.045)] ${selectedIds.has(docId) ? 'border-[#FFB7D5]' : 'border-[#F2A8C8]/40'}`}>
               
               {/* Checkbox */}
-              <div className="absolute top-4 right-4 z-10">
+              <div className="absolute top-3 right-3 z-10">
                 <input 
                   type="checkbox" 
                   checked={selectedIds.has(docId)}
                   onChange={() => toggleSelect(docId)}
-                  className="w-4 h-4 text-charcoal border-border rounded-none shadow-none focus:ring-0 cursor-pointer"
+                  className="w-5 h-5 rounded-[6px] accent-[#FFB7D5] cursor-pointer"
                 />
               </div>
 
               {/* Hover Quick Edit Overlay */}
-              <div className={`absolute inset-0 z-20 bg-sand/95 backdrop-blur-sm p-6 flex flex-col transition-opacity duration-300 ${quickEditId === docId ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-                <h4 className="font-serif text-xl text-charcoal mb-6 border-b border-border pb-2">Хурдан засах</h4>
+              <div className={`absolute inset-0 z-20 bg-white/95 backdrop-blur-sm p-5 flex flex-col transition-opacity duration-300 ${quickEditId === docId ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+                <h4 className="text-lg font-semibold text-[#1A1A1A] mb-5 border-b border-[#F2A8C8]/40 pb-3">Хурдан засах</h4>
                 <div className="space-y-6 flex-1">
                   <div>
                     <label className="editorial-label block mb-2">Үнэ (₮)</label>
@@ -271,7 +303,7 @@ export default function AdminProductsPage() {
                       type="number"
                       value={quickEditData.price}
                       onChange={e => setQuickEditData({...quickEditData, price: e.target.value})}
-                      className="w-full p-3 bg-sand border border-border text-sm focus:outline-none focus:border-charcoal rounded-none"
+                      className="w-full p-3 bg-[#FFF8FB] border border-[#F2A8C8]/60 text-sm focus:outline-none focus:border-[#FFB7D5]"
                     />
                   </div>
                   <label className="flex items-center justify-between cursor-pointer">
@@ -287,13 +319,13 @@ export default function AdminProductsPage() {
                     <input type="checkbox" checked={quickEditData.published} onChange={e => setQuickEditData({...quickEditData, published: e.target.checked})} className="w-4 h-4 text-charcoal border-border rounded-none" />
                   </label>
                 </div>
-                <div className="flex gap-4 mt-6">
-                  <button onClick={(e) => {e.stopPropagation(); setQuickEditId(null);}} className="flex-1 py-3 border border-charcoal text-charcoal editorial-label hover:bg-charcoal hover:text-sand transition-colors">Цуцлах</button>
-                  <button onClick={(e) => saveQuickEdit(docId, e)} className="flex-1 py-3 bg-charcoal border border-charcoal text-sand editorial-label hover:bg-transparent hover:text-charcoal transition-colors">Хадгалах</button>
+                <div className="flex gap-3 mt-6">
+                  <button onClick={(e) => {e.stopPropagation(); setQuickEditId(null);}} className="flex-1 min-h-11 rounded-[10px] border border-[#F2A8C8] text-sm hover:bg-[#FFF8FB] transition-colors">Цуцлах</button>
+                  <button onClick={(e) => saveQuickEdit(docId, e)} className="flex-1 min-h-11 rounded-[10px] bg-[#1A1A1A] text-white text-sm">Хадгалах</button>
                 </div>
               </div>
 
-              <div className="aspect-[4/5] relative bg-[#F9F8F6] border-b border-border overflow-hidden cursor-pointer" onClick={() => handleOpenForm(p)}>
+              <div className="aspect-[4/5] relative bg-[#FFF0F6] border-b border-[#F2A8C8]/40 overflow-hidden cursor-pointer" onClick={() => handleOpenForm(p)}>
                 {p.images?.[0] ? (
                   <img src={p.images[0]} alt={p.name_mn} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out-expo" />
                 ) : (
@@ -303,18 +335,18 @@ export default function AdminProductsPage() {
                 )}
                 
                 {/* Status Badges Overlay */}
-                <div className="absolute top-4 left-4 flex flex-col gap-2 items-start pointer-events-none">
+                <div className="absolute top-3 left-3 flex flex-col gap-2 items-start pointer-events-none">
                   {isSaleActive && (
-                    <span className="bg-[#E8D5D0] text-charcoal editorial-label px-3 py-1">
+                    <span className="rounded-[7px] bg-[#1A1A1A] text-white text-[9px] tracking-[0.12em] uppercase px-2 py-1">
                       ХЯМДРАЛ
                     </span>
                   )}
                   {!p.published && (
-                    <span className="bg-charcoal/80 backdrop-blur-md text-white editorial-label px-3 py-1">
+                    <span className="rounded-[7px] bg-[#1A1A1A]/80 backdrop-blur-md text-white text-[9px] tracking-[0.12em] uppercase px-2 py-1">
                       Нууцлагдсан
                     </span>
                   )}
-                  <span className={`editorial-label px-3 py-1 bg-sand border border-border ${stockQuantity === 0 ? 'text-red-500' : 'text-charcoal'}`}>
+                  <span className={`rounded-[7px] border px-2 py-1 text-[9px] tracking-[0.08em] uppercase bg-white/90 ${stockQuantity === 0 ? 'border-[#F1B8B8] text-[#A14E4E]' : stockQuantity <= 5 ? 'border-[#F1D28A] text-[#9A6A14]' : 'border-[#F2A8C8]/50 text-[#1A1A1A]'}`}>
                     Нөөц: {stockQuantity}
                   </span>
                 </div>
@@ -326,15 +358,15 @@ export default function AdminProductsPage() {
                 )}
               </div>
               
-              <div className="p-6 flex-1 flex flex-col group cursor-pointer" onClick={() => handleOpenForm(p)}>
+              <div className="p-4 md:p-5 flex-1 flex flex-col group cursor-pointer" onClick={() => handleOpenForm(p)}>
                 <div className="flex justify-between items-start mb-2">
-                  <p className="editorial-label">{p.category || 'Ангилалгүй'}</p>
+                  <p className="text-[10px] tracking-[0.1em] uppercase text-[#8B6B78]">{p.category || 'Ангилалгүй'}</p>
                   <button onClick={(e) => openQuickEdit(p, e)} className="text-neutral-400 hover:text-charcoal transition-colors">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                   </button>
                 </div>
                 
-                <h3 className="font-serif text-lg text-charcoal leading-snug tracking-wide mb-4 flex-1">{p.name_mn}</h3>
+                <h3 className="text-[15px] font-semibold text-[#1A1A1A] leading-snug mb-4 flex-1">{p.name_mn}</h3>
                 
                 <div className="flex items-center gap-3 mb-6">
                   <p className="font-sans text-sm font-medium tracking-wide text-charcoal">
@@ -345,8 +377,8 @@ export default function AdminProductsPage() {
                   )}
                 </div>
                 
-                <div className="mt-auto border-t border-border pt-4 flex items-center justify-between" onClick={e => e.stopPropagation()}>
-                  <span className={`editorial-label ${inStock ? 'text-charcoal' : 'text-red-500'}`}>
+                <div className="mt-auto border-t border-[#F2A8C8]/35 pt-4 flex items-center justify-between" onClick={e => e.stopPropagation()}>
+                  <span className={`text-[10px] tracking-[0.1em] uppercase ${inStock ? 'text-[#1A1A1A]' : 'text-[#A14E4E]'}`}>
                     {inStock ? 'Боломжтой' : 'Дууссан'}
                   </span>
                   <label className="relative inline-flex items-center cursor-pointer">
@@ -359,7 +391,7 @@ export default function AdminProductsPage() {
                       })}
                       className="sr-only peer"
                     />
-                    <div className="w-9 h-5 bg-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-sand after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-charcoal"></div>
+                    <div className="w-9 h-5 bg-[#E9DDE2] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[#F2A8C8]/60 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#1A1A1A]"></div>
                   </label>
                 </div>
               </div>
@@ -370,7 +402,7 @@ export default function AdminProductsPage() {
 
       {/* Bulk Action Bar */}
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-0 left-0 md:left-64 right-0 bg-sand border-t border-border p-6 flex flex-col sm:flex-row items-center justify-between gap-6 z-40">
+        <div className="fixed bottom-[62px] md:bottom-0 left-0 md:left-64 right-0 bg-white/95 backdrop-blur-md border-t border-[#F2A8C8]/40 p-4 md:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 md:gap-6 z-40 shadow-[0_-12px_28px_rgba(26,26,26,0.06)]">
           <div className="flex items-center gap-4">
             <span className="font-serif italic text-xl text-charcoal">{selectedIds.size}</span>
             <span className="editorial-label text-charcoal mt-1">Бараа сонгогдсон</span>

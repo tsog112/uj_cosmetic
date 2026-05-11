@@ -230,28 +230,28 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
   };
 
   return (
-    <div className="bg-sand max-w-4xl w-full rounded-xl shadow-2xl flex flex-col max-h-[90vh]">
-      <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-sand z-10 rounded-t-xl">
-        <h2 className="text-xl font-bold text-gray-800">{initialData ? 'Бараа засах' : 'Шинэ бараа нэмэх'}</h2>
+    <div className="bg-white max-w-4xl w-full shadow-2xl flex flex-col max-h-[92vh] border border-[#F2A8C8]/40">
+      <div className="px-5 md:px-6 py-4 border-b border-[#F2A8C8]/40 flex justify-between items-center sticky top-0 bg-white z-10">
+        <h2 className="font-serif text-xl md:text-2xl font-light text-[#1A1A1A]">{initialData ? 'Бараа засах' : 'Шинэ бараа нэмэх'}</h2>
         <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 transition-colors">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-5 md:p-6 pb-28 md:pb-6">
         <form id="product-form" onSubmit={handleSubmit} className="space-y-10">
           
           {/* SECTION 1 - MEDIA */}
           <section>
-            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Зураг</h3>
+            <h3 className="text-[11px] font-medium text-[#8B6B78] uppercase tracking-[0.18em] mb-4 border-b border-[#F2A8C8]/40 pb-2">Зураг</h3>
             
             <div 
               onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
               onDrop={handleDropUpload}
               onClick={() => !uploading && fileInputRef.current?.click()}
-              className={`border-2 border-dashed border-[#FFB7D5] rounded-xl p-10 text-center cursor-pointer hover:bg-[#FFF0F6] transition-colors mb-4 group ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`min-h-[180px] border border-dashed border-[#FFB7D5] p-6 md:p-10 text-center cursor-pointer hover:bg-[#FFF0F6] transition-colors mb-4 group ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              <div className="w-16 h-16 mx-auto bg-sand rounded-full flex items-center justify-center text-[#FFB7D5] shadow-sm group-hover:scale-110 transition-transform mb-4">
+              <div className="w-14 h-14 mx-auto bg-[#FFF0F6] flex items-center justify-center text-[#FFB7D5] group-hover:scale-105 transition-transform mb-4">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                   <polyline points="17 8 12 3 7 8" />
@@ -270,14 +270,14 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
               />
             </div>
 
-            <div className="flex flex-wrap gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3 md:gap-4">
               {images.map((url, idx) => (
                 <div 
                   key={idx} 
                   draggable 
                   onDragStart={() => handleDragStart(idx)}
                   onDragOver={(e) => handleDragOver(e, idx)}
-                  className="relative w-24 h-24 rounded-lg overflow-hidden border border-gray-200 cursor-move group"
+                  className="relative aspect-square overflow-hidden border border-[#F2A8C8]/50 cursor-move group"
                 >
                   <img src={url} alt="upload" className="w-full h-full object-cover" />
                   {idx === 0 && (
@@ -291,7 +291,7 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
 
               {/* Progress bars for currently uploading images */}
               {uploading && uploadProgress.map((prog, idx) => (
-                <div key={`prog-${idx}`} className="relative w-24 h-24 rounded-lg overflow-hidden border border-gray-200 bg-gray-50 flex flex-col items-center justify-center">
+                <div key={`prog-${idx}`} className="relative aspect-square overflow-hidden border border-[#F2A8C8]/50 bg-[#FFF8FB] flex flex-col items-center justify-center">
                    <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden mb-2">
                      <div className="h-full bg-accent" style={{width: `${prog}%`}} />
                    </div>
@@ -303,7 +303,7 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
 
           {/* SECTION 2 - INFO */}
           <section>
-            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Барааны мэдээлэл</h3>
+            <h3 className="text-[11px] font-medium text-[#8B6B78] uppercase tracking-[0.18em] mb-4 border-b border-[#F2A8C8]/40 pb-2">Барааны мэдээлэл</h3>
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Барааны нэр *</label>
@@ -312,7 +312,7 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
                   value={name_mn} 
                   onChange={e => setNameMn(e.target.value)} 
                   placeholder="Жишээ: UJ Серум Арьс тэнцвэржүүлэгч" 
-                  className="w-full p-4 border border-gray-300 rounded-lg focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none text-gray-900 placeholder-gray-400"
+                  className="w-full min-h-12 p-4 border border-[#F2A8C8]/60 focus:border-[#FFB7D5] focus:outline-none text-[#1A1A1A] placeholder:text-[#8B6B78]/60 bg-white"
                 />
               </div>
               
@@ -323,7 +323,7 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
                     value={category} 
                     onChange={e => setCategory(e.target.value)} 
                     required
-                    className="w-full p-4 border border-gray-300 rounded-lg focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none bg-sand text-gray-900"
+                    className="w-full min-h-12 p-4 border border-[#F2A8C8]/60 focus:border-[#FFB7D5] focus:outline-none bg-white text-[#1A1A1A]"
                   >
                     <option value="">Ангилал сонгоно уу</option>
                     {categories.map(cat => (
@@ -342,7 +342,7 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
                       value={priceStr} 
                       onChange={e => handlePriceChange(e, setPriceStr)} 
                       placeholder="89,000" 
-                      className="w-full p-4 pr-10 border border-gray-300 rounded-lg focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none text-gray-900 font-medium"
+                      className="w-full min-h-12 p-4 pr-10 border border-[#F2A8C8]/60 focus:border-[#FFB7D5] focus:outline-none text-[#1A1A1A] font-medium bg-white"
                     />
                     <span className="absolute right-4 top-4 text-gray-500 font-medium">₮</span>
                   </div>
@@ -357,13 +357,13 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
                     value={stockQuantity}
                     onChange={handleStockQuantityChange}
                     placeholder="0"
-                    className="w-full p-4 border border-gray-300 rounded-lg focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none text-gray-900 font-medium"
+                    className="w-full min-h-12 p-4 border border-[#F2A8C8]/60 focus:border-[#FFB7D5] focus:outline-none text-[#1A1A1A] font-medium bg-white"
                   />
                 </div>
               </div>
 
               {/* ХЯМДРАЛ ТОХИРУУЛАХ */}
-              <div className="bg-red-50/50 p-5 rounded-xl border border-red-100 space-y-4">
+              <div className="bg-[#FFF8FB] p-5 border border-[#F2A8C8]/40 space-y-4">
                 <h4 className="text-sm font-bold text-red-600 flex items-center gap-2">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
                   Хямдрал тохируулах
@@ -403,7 +403,7 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
                   value={description_mn} 
                   onChange={e => setDescriptionMn(e.target.value)} 
                   placeholder="Барааны онцлог, үр дүн..." 
-                  className="w-full p-4 border border-gray-300 rounded-lg focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none resize-none text-gray-900 placeholder-gray-400"
+                  className="w-full p-4 border border-[#F2A8C8]/60 focus:border-[#FFB7D5] focus:outline-none resize-none text-[#1A1A1A] placeholder:text-[#8B6B78]/60 bg-white"
                 />
               </div>
 
@@ -415,7 +415,7 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
                     value={ingredients} 
                     onChange={e => setIngredients(e.target.value)} 
                     placeholder="Усны экстракт, Витамин С..." 
-                    className="w-full p-4 border border-gray-300 rounded-lg focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none resize-none text-gray-900 placeholder-gray-400"
+                    className="w-full p-4 border border-[#F2A8C8]/60 focus:border-[#FFB7D5] focus:outline-none resize-none text-[#1A1A1A] placeholder:text-[#8B6B78]/60 bg-white"
                   />
                 </div>
                 <div>
@@ -425,7 +425,7 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
                     value={howToUse} 
                     onChange={e => setHowToUse(e.target.value)} 
                     placeholder="Арьсаа угааж цэвэрлэсний дараа..." 
-                    className="w-full p-4 border border-gray-300 rounded-lg focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none resize-none text-gray-900 placeholder-gray-400"
+                    className="w-full p-4 border border-[#F2A8C8]/60 focus:border-[#FFB7D5] focus:outline-none resize-none text-[#1A1A1A] placeholder:text-[#8B6B78]/60 bg-white"
                   />
                 </div>
               </div>
@@ -434,10 +434,10 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
 
           {/* SECTION 3 - SETTINGS */}
           <section>
-            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Нэмэлт тохиргоо</h3>
+            <h3 className="text-[11px] font-medium text-[#8B6B78] uppercase tracking-[0.18em] mb-4 border-b border-[#F2A8C8]/40 pb-2">Нэмэлт тохиргоо</h3>
             <div className="space-y-4">
               
-              <label className="flex items-center gap-4 p-4 border border-gray-100 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+              <label className="flex items-center gap-4 p-4 border border-[#F2A8C8]/40 cursor-pointer hover:bg-[#FFF8FB] transition-colors">
                 <div className={`w-12 h-6 rounded-full p-1 transition-colors ${featured ? 'bg-accent' : 'bg-gray-300'}`}>
                   <div className={`w-4 h-4 bg-sand rounded-full shadow-md transform transition-transform ${featured ? 'translate-x-6' : 'translate-x-0'}`} />
                 </div>
@@ -448,7 +448,7 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
                 </div>
               </label>
 
-              <label className="flex items-center gap-4 p-4 border border-gray-100 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+              <label className="flex items-center gap-4 p-4 border border-[#F2A8C8]/40 cursor-pointer hover:bg-[#FFF8FB] transition-colors">
                 <div className={`w-12 h-6 rounded-full p-1 transition-colors ${published ? 'bg-green-500' : 'bg-gray-300'}`}>
                   <div className={`w-4 h-4 bg-sand rounded-full shadow-md transform transition-transform ${published ? 'translate-x-6' : 'translate-x-0'}`} />
                 </div>
@@ -459,7 +459,7 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
                 </div>
               </label>
 
-              <label className="flex items-center gap-4 p-4 border border-gray-100 rounded-lg cursor-pointer hover:bg-red-50 transition-colors">
+              <label className="flex items-center gap-4 p-4 border border-[#F2A8C8]/40 cursor-pointer hover:bg-[#FFF8FB] transition-colors">
                 <div className={`w-12 h-6 rounded-full p-1 transition-colors ${outOfStock ? 'bg-red-500' : 'bg-gray-300'}`}>
                   <div className={`w-4 h-4 bg-sand rounded-full shadow-md transform transition-transform ${outOfStock ? 'translate-x-6' : 'translate-x-0'}`} />
                 </div>
@@ -486,12 +486,12 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
         </form>
       </div>
 
-      <div className="p-6 border-t border-gray-100 bg-gray-50 rounded-b-xl flex gap-4">
+      <div className="fixed md:sticky bottom-0 left-0 right-0 md:left-auto md:right-auto p-4 md:p-6 border-t border-[#F2A8C8]/40 bg-white flex gap-3 md:gap-4 z-20">
         <button 
           onClick={onCancel}
           type="button"
           disabled={isSubmitting}
-          className="flex-1 py-4 text-gray-700 font-bold bg-sand border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+          className="flex-1 min-h-12 text-[#1A1A1A] font-medium bg-white border border-[#F2A8C8] hover:bg-[#FFF8FB] transition-colors disabled:opacity-50"
         >
           Цуцлах
         </button>
@@ -499,7 +499,7 @@ export default function ProductForm({ initialData, onCancel, onSuccess }: Produc
           type="submit"
           form="product-form"
           disabled={isSubmitting}
-          className="flex-1 py-4 bg-accent text-white font-bold rounded-lg shadow-md hover:bg-[#e89ebf] transition-colors disabled:opacity-70 flex justify-center items-center gap-3"
+          className="flex-1 min-h-12 bg-[#1A1A1A] text-white font-medium hover:bg-[#333] transition-colors disabled:opacity-70 flex justify-center items-center gap-3"
         >
           {isSubmitting ? (
             <>

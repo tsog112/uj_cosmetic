@@ -73,11 +73,11 @@ export default function InstagramSection() {
   const instaHandle = settings.instagramUrl.split('/').filter(Boolean).pop() || 'uj_cosmetic';
 
   return (
-    <section ref={ref} className="section-padding fade-in-section border-thin-t bg-sand" id="instagram">
+    <section ref={ref} className="py-16 md:py-28 lg:py-32 fade-in-section border-t border-[#F2A8C8]/40 bg-[#FFF0F6]" id="instagram">
       <div className="max-w-[1400px] mx-auto px-6 lg:px-10">
-        <div className="text-center mb-14">
-          <p className="section-label">Instagram</p>
-          <h2 className="section-heading">
+        <div className="text-left md:text-center mb-8 md:mb-14">
+          <p className="editorial-label mb-3 md:mb-5">Instagram</p>
+          <h2 className="text-[28px] md:font-serif md:text-4xl lg:text-5xl font-semibold md:font-light text-charcoal">
             <a
               href={settings.instagramUrl}
               target="_blank"
@@ -97,7 +97,7 @@ export default function InstagramSection() {
                 href={slot.instagramUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block aspect-square overflow-hidden relative group bg-pink-100"
+                className="block aspect-square overflow-hidden relative group bg-pink-100 rounded-[12px] md:rounded-none"
               >
                 <iframe
                   src={slot.embedUrl}
@@ -119,7 +119,7 @@ export default function InstagramSection() {
             ) : (
               <div
                 key={`instagram-placeholder-${index}`}
-                className="aspect-square bg-pink-100"
+                className="aspect-square bg-pink-100 rounded-[12px] md:rounded-none"
                 aria-label="Instagram placeholder"
               />
             )
@@ -131,7 +131,7 @@ export default function InstagramSection() {
             href={settings.instagramUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center bg-[#1A1A1A] text-white px-6 py-3 text-sm font-bold hover:bg-[#FFB7D5] hover:text-[#1A1A1A] transition-colors"
+            className="inline-flex min-h-12 w-full md:w-auto items-center justify-center rounded-[10px] md:rounded-none bg-[#1A1A1A] text-white px-6 py-3 text-sm font-bold hover:bg-[#FFB7D5] hover:text-[#1A1A1A] transition-colors"
           >
             @uj_cosmetic дагаарай
           </a>
