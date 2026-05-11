@@ -3,18 +3,21 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { getProductBySlug, getProductReviews, getProductsByCategory, incrementProductViews } from '@/lib/services/firestoreService';
+import { useParams, useRouter } from 'next/navigation';
+import { addToWishlist, getProductBySlug, getProductReviews, getProductsByCategory, getWishlistStatus, incrementProductViews, removeFromWishlist } from '@/lib/services/firestoreService';
 import { formatPrice, getCategoryName, Product, Review } from '@/types';
 import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
 import Accordion from '@/components/ui/Accordion';
 import ProductCard from '@/components/ui/ProductCard';
 import ReviewForm from '@/components/ui/ReviewForm';
 
 export default function ProductDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const slug = params.slug as string;
   const { addToCart, buyNow } = useCart();
+  const { user } = useAuth();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [related, setRelated] = useState<Product[]>([]);
@@ -24,6 +27,8 @@ export default function ProductDetailPage() {
   const [isAdded, setIsAdded] = useState(false);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
 
   const loadReviews = async (productId: string) => {
     setReviewsLoading(true);
@@ -53,6 +58,16 @@ export default function ProductDetailPage() {
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [slug]);
+
+  useEffect(() => {
+    if (!user || !product) {
+      setIsWishlisted(false);
+      return;
+    }
+    getWishlistStatus(user.uid, product.id)
+      .then(setIsWishlisted)
+      .catch(() => {});
+  }, [user, product]);
 
   if (loading) {
     return (
@@ -107,6 +122,26 @@ export default function ProductDetailPage() {
   const handleBuyNow = () => {
     if (!isProductInStock) return;
     buyNow({ product, quantity: 1 });
+  };
+
+  const handleWishlist = async () => {
+    if (!user) {
+      router.push('/auth');
+      return;
+    }
+
+    setWishlistLoading(true);
+    try {
+      if (isWishlisted) {
+        await removeFromWishlist(user.uid, product.id);
+        setIsWishlisted(false);
+      } else {
+        await addToWishlist(user.uid, product);
+        setIsWishlisted(true);
+      }
+    } finally {
+      setWishlistLoading(false);
+    }
   };
 
   return (
@@ -228,6 +263,18 @@ export default function ProductDetailPage() {
                 className="w-full py-4 border-2 border-brand-black bg-sand text-brand-black text-sm font-medium tracking-[0.1em] uppercase hover:bg-brand-black hover:text-white transition-colors duration-200 disabled:border-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed disabled:hover:bg-sand"
               >
                 Шууд худалдан авах
+              </button>
+
+              <button
+                onClick={handleWishlist}
+                disabled={wishlistLoading}
+                className={`w-full py-4 border border-[#F2A8C8] text-sm font-medium tracking-[0.1em] uppercase transition-colors duration-200 ${
+                  isWishlisted
+                    ? 'bg-[#FFF0F6] text-[#D86FA0]'
+                    : 'bg-white text-[#1A1A1A] hover:bg-[#FFF0F6]'
+                }`}
+              >
+                {isWishlisted ? '♥ Дуртайд хадгалсан' : '♡ Дуртайд хадгалах'}
               </button>
             </div>
 

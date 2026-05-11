@@ -2,8 +2,11 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState, type MouseEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
+import { addToWishlist, getWishlistStatus, removeFromWishlist } from '@/lib/services/firestoreService';
 import { Product } from '@/types';
 import { motion } from 'framer-motion';
 
@@ -13,7 +16,11 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
   const { addToCart, buyNow } = useCart();
+  const { user } = useAuth();
+  const router = useRouter();
   const [isHovered, setIsHovered] = useState(false);
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
 
   const name = product.name_mn || 'Нэргүй бараа';
   const image = product.images?.[0] || '/placeholder-product.svg';
@@ -21,6 +28,39 @@ export default function ProductCard({ product }: ProductCardProps) {
   const salePrice = product.salePrice;
   const displayPrice = salePrice || price;
   const inStock = product.inStock !== false && Number(product.stockQuantity ?? 1) > 0;
+
+  useEffect(() => {
+    if (!user) {
+      setIsWishlisted(false);
+      return;
+    }
+    getWishlistStatus(user.uid, product.id)
+      .then(setIsWishlisted)
+      .catch(() => {});
+  }, [user, product.id]);
+
+  const handleWishlist = async (event: MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!user) {
+      router.push('/auth');
+      return;
+    }
+
+    setWishlistLoading(true);
+    try {
+      if (isWishlisted) {
+        await removeFromWishlist(user.uid, product.id);
+        setIsWishlisted(false);
+      } else {
+        await addToWishlist(user.uid, product);
+        setIsWishlisted(true);
+      }
+    } finally {
+      setWishlistLoading(false);
+    }
+  };
 
   return (
     <div 
@@ -67,6 +107,19 @@ export default function ProductCard({ product }: ProductCardProps) {
               </span>
             </div>
           )}
+
+          <button
+            onClick={handleWishlist}
+            disabled={wishlistLoading}
+            className={`absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full border border-[#F2A8C8]/70 bg-white/90 shadow-sm backdrop-blur-sm transition-colors ${
+              isWishlisted ? 'text-[#D86FA0]' : 'text-[#1A1A1A]'
+            } hover:bg-[#FFF0F6]`}
+            aria-label={isWishlisted ? 'Дуртайгаас хасах' : 'Дуртайд нэмэх'}
+          >
+            <svg width="19" height="19" viewBox="0 0 24 24" fill={isWishlisted ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+              <path d="M20.8 4.6a5.4 5.4 0 0 0-7.6 0L12 5.8l-1.2-1.2a5.4 5.4 0 1 0-7.6 7.6L12 21l8.8-8.8a5.4 5.4 0 0 0 0-7.6Z" />
+            </svg>
+          </button>
 
           {/* Subtle Overlay on Hover */}
           <div 

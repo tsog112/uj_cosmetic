@@ -4,7 +4,7 @@ import {
   runTransaction, Timestamp
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Product, Order, OrderStatus, Review, SiteSettings } from '@/types';
+import type { Product, Order, OrderStatus, Review, SiteSettings, WishlistItem } from '@/types';
 
 // ─── Error Handler ───────────────────────────────────────────────
 function handleError(error: any, context: string): never {
@@ -149,6 +149,16 @@ export async function getProductReviews(productId: string): Promise<Review[]> {
   } catch (e) { handleError(e, `getProductReviews(${productId})`); }
 }
 
+export async function getUserReviews(userId: string): Promise<Review[]> {
+  try {
+    const q = query(collection(db, REVIEWS), where('userId', '==', userId));
+    const snap = await getDocs(q);
+    return snap.docs
+      .map(d => normalizeReview(d.id, d.data()))
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  } catch (e) { handleError(e, `getUserReviews(${userId})`); }
+}
+
 export async function getLatestReviews(count = 6): Promise<Review[]> {
   try {
     const q = query(collection(db, REVIEWS), where('approved', '==', true));
@@ -195,6 +205,75 @@ export async function deleteReview(reviewId: string): Promise<void> {
   try {
     await deleteDoc(doc(db, REVIEWS, reviewId));
   } catch (e) { handleError(e, 'deleteReview'); }
+}
+
+export async function updateUserReview(
+  reviewId: string,
+  data: Pick<Review, 'rating' | 'content' | 'imageUrls'>
+): Promise<void> {
+  try {
+    await updateDoc(doc(db, REVIEWS, reviewId), {
+      rating: Math.max(1, Math.min(5, Math.round(data.rating))),
+      content: data.content,
+      imageUrls: data.imageUrls ?? [],
+      updatedAt: serverTimestamp(),
+    });
+  } catch (e) { handleError(e, 'updateUserReview'); }
+}
+
+// Wishlist
+function normalizeWishlistItem(docId: string, data: any): WishlistItem {
+  const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt ?? new Date();
+  return {
+    id: docId,
+    userId: data.userId ?? '',
+    productId: data.productId ?? docId,
+    productSlug: data.productSlug ?? '',
+    productName: data.productName ?? '',
+    productImage: data.productImage ?? '/placeholder-product.svg',
+    price: Number(data.price ?? 0),
+    salePrice: data.salePrice ?? null,
+    inStock: data.inStock !== false,
+    createdAt,
+  };
+}
+
+export async function getWishlistStatus(userId: string, productId: string): Promise<boolean> {
+  try {
+    const snap = await getDoc(doc(db, 'users', userId, 'wishlist', productId));
+    return snap.exists();
+  } catch (e) { handleError(e, 'getWishlistStatus'); }
+}
+
+export async function getUserWishlist(userId: string): Promise<WishlistItem[]> {
+  try {
+    const snap = await getDocs(collection(db, 'users', userId, 'wishlist'));
+    return snap.docs
+      .map(d => normalizeWishlistItem(d.id, d.data()))
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  } catch (e) { handleError(e, 'getUserWishlist'); }
+}
+
+export async function addToWishlist(userId: string, product: Product): Promise<void> {
+  try {
+    await setDoc(doc(db, 'users', userId, 'wishlist', product.id), {
+      userId,
+      productId: product.id,
+      productSlug: product.slug,
+      productName: product.name_mn,
+      productImage: product.images?.[0] || '/placeholder-product.svg',
+      price: product.price,
+      salePrice: product.salePrice ?? null,
+      inStock: product.inStock !== false && Number(product.stockQuantity ?? 1) > 0,
+      createdAt: serverTimestamp(),
+    });
+  } catch (e) { handleError(e, 'addToWishlist'); }
+}
+
+export async function removeFromWishlist(userId: string, productId: string): Promise<void> {
+  try {
+    await deleteDoc(doc(db, 'users', userId, 'wishlist', productId));
+  } catch (e) { handleError(e, 'removeFromWishlist'); }
 }
 
 // ─── ORDERS ──────────────────────────────────────────────────────

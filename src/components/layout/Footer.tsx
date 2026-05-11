@@ -24,6 +24,8 @@ export default function Footer() {
   }, []);
 
   const instagramHandle = settings.instagramUrl.split('/').filter(Boolean).pop() || 'uj_cosmetic';
+  const displayPhone = settings.phone?.includes('ТАНЫ_') ? '+976 9900-0000' : settings.phone;
+  const displayEmail = settings.email?.includes('ТАНЫ_') ? 'info@ujcosmetic.mn' : settings.email;
 
   return (
     <footer className="relative mt-auto overflow-hidden border-t border-[#F2A8C8]/35 bg-[#FFF8FB] text-[#1A1A1A]">
@@ -94,11 +96,11 @@ export default function Footer() {
               Холбоо барих
             </h4>
             <div className="space-y-3 text-sm text-[#1A1A1A]/75">
-              <a href={`tel:${settings.phone.replace(/[\s-]/g, '')}`} className="block transition-colors hover:text-[#1A1A1A]">
-                {settings.phone}
+              <a href={`tel:${displayPhone.replace(/[\s-]/g, '')}`} className="block transition-colors hover:text-[#1A1A1A]">
+                {displayPhone}
               </a>
-              <a href={`mailto:${settings.email}`} className="block break-all transition-colors hover:text-[#1A1A1A]">
-                {settings.email}
+              <a href={`mailto:${displayEmail}`} className="block break-all transition-colors hover:text-[#1A1A1A]">
+                {displayEmail}
               </a>
               <a href={settings.instagramUrl} target="_blank" rel="noopener noreferrer" className="block transition-colors hover:text-[#1A1A1A]">
                 @{instagramHandle}
@@ -107,15 +109,15 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-10 border-t border-[#F2A8C8]/35 pt-5 md:mt-14 md:flex md:items-center md:justify-between">
-          <p className="text-[10px] font-medium uppercase leading-5 tracking-[0.14em] text-[#8B6B78]">
+        <div className="mt-10 border-t border-[#F2A8C8]/35 pb-20 pt-5 md:mt-14 md:flex md:items-center md:justify-between md:pb-0">
+          <p className="text-[11px] font-medium leading-6 tracking-[0.08em] text-[#8B6B78]">
             © {new Date().getFullYear()} UJ Cosmetic. Бүх эрх хуулиар хамгаалагдсан.
           </p>
-          <div className="mt-4 flex flex-wrap gap-4 md:mt-0">
-            <Link href="/privacy" className="text-[10px] font-medium uppercase tracking-[0.14em] text-[#8B6B78] transition-colors hover:text-[#1A1A1A]">
+          <div className="mt-4 flex flex-wrap gap-5 md:mt-0">
+            <Link href="/privacy" className="text-[12px] font-medium tracking-[0.08em] text-[#6F5962] transition-colors hover:text-[#1A1A1A]">
               Нууцлал
             </Link>
-            <Link href="/terms" className="text-[10px] font-medium uppercase tracking-[0.14em] text-[#8B6B78] transition-colors hover:text-[#1A1A1A]">
+            <Link href="/terms" className="text-[12px] font-medium tracking-[0.08em] text-[#6F5962] transition-colors hover:text-[#1A1A1A]">
               Нөхцөл
             </Link>
           </div>

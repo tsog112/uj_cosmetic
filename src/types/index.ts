@@ -83,6 +83,19 @@ export interface Review {
   updatedAt: Date;
 }
 
+export interface WishlistItem {
+  id: string;
+  userId: string;
+  productId: string;
+  productSlug: string;
+  productName: string;
+  productImage: string;
+  price: number;
+  salePrice: number | null;
+  inStock: boolean;
+  createdAt: Date;
+}
+
 export interface SiteSettings {
   announcementText: string;
   announcementActive: boolean;
