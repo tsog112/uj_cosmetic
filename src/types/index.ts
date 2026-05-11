@@ -56,6 +56,8 @@ export interface Order {
   shippingCost: number;
   total: number;
   customerName: string;
+  customerEmail?: string;
+  email?: string;
   phone: string;
   address: string;
   note: string;

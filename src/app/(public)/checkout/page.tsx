@@ -125,6 +125,8 @@ function CheckoutContent() {
         shippingCost,
         total: cartTotal,
         customerName: formData.customerName,
+        customerEmail: formData.email.trim(),
+        email: formData.email.trim(),
         phone: formData.phone.replace(/[\s-]/g, ''),
         address: formData.address,
         note: formData.note,
@@ -140,6 +142,7 @@ function CheckoutContent() {
           body: JSON.stringify({
             id: orderId,
             customerName: formData.customerName,
+            customerEmail: formData.email.trim(),
             phone: formData.phone,
             address: formData.address,
             items: items.map(i => ({

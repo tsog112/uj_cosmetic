@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sendOrderStatusNotification } from '@/lib/emailService'
+import {
+  getOrderById,
+  getUserById,
+  updateOrderStatus,
+} from '@/lib/services/firestoreService'
 
 const EMAIL_STATUSES = ['confirmed', 'shipped', 'delivered', 'cancelled'] as const
+type EmailStatus = typeof EMAIL_STATUSES[number]
+
+function getOrderEmail(order: { customerEmail?: string; email?: string }) {
+  return order.customerEmail || order.email || ''
+}
 
 export async function POST(
   req: NextRequest,
@@ -10,25 +20,34 @@ export async function POST(
   try {
     const { id } = await params
     const body = await req.json()
-    const status = body.status as typeof EMAIL_STATUSES[number]
-    const customerEmail = body.customerEmail as string
+    const status = body.status as EmailStatus
 
     if (!EMAIL_STATUSES.includes(status)) {
       return NextResponse.json({ error: 'Email is not configured for this status' }, { status: 400 })
     }
 
+    const order = await getOrderById(id)
+    if (!order) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+    }
+
+    const user = order.userId ? await getUserById(order.userId) : null
+    const customerEmail = body.customerEmail || getOrderEmail(order) || user?.email || ''
+
     if (!customerEmail) {
       return NextResponse.json({ error: 'Customer email is missing' }, { status: 400 })
     }
 
+    await updateOrderStatus(id, status)
+
     await sendOrderStatusNotification(customerEmail, {
       id,
       status,
-      customerName: body.customerName || 'UJ хэрэглэгч',
-      items: body.items || [],
-      total: Number(body.total || 0),
-      shippingCost: Number(body.shippingCost || 0),
-      address: body.address || '',
+      customerName: body.customerName || order.customerName || 'UJ customer',
+      items: body.items || order.items || [],
+      total: Number(body.total ?? order.total ?? 0),
+      shippingCost: Number(body.shippingCost ?? order.shippingCost ?? 0),
+      address: body.address || order.address || '',
     })
 
     return NextResponse.json({ success: true })

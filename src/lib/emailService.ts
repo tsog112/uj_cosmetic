@@ -2,7 +2,7 @@ import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || ''
-const FROM_EMAIL = 'UJ Cosmetic <onboarding@resend.dev>'
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'UJ Cosmetic <noreply@uj-cosmetic.kro.kr>'
 
 type EmailOptions = {
   to: string

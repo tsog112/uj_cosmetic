@@ -4,6 +4,7 @@ import { Resend } from 'resend'
 export async function GET() {
   const apiKey = process.env.RESEND_API_KEY
   const adminEmail = process.env.ADMIN_EMAIL
+  const fromEmail = process.env.RESEND_FROM_EMAIL || 'UJ Cosmetic <noreply@uj-cosmetic.kro.kr>'
 
   if (!apiKey) return NextResponse.json({ error: 'RESEND_API_KEY not set' }, { status: 500 })
   if (!adminEmail) return NextResponse.json({ error: 'ADMIN_EMAIL not set' }, { status: 500 })
@@ -12,7 +13,7 @@ export async function GET() {
 
   try {
     const result = await resend.emails.send({
-      from: 'UJ Cosmetic <onboarding@resend.dev>',
+      from: fromEmail,
       to: adminEmail,
       subject: '✅ UJ Cosmetic email тест амжилттай!',
       html: `

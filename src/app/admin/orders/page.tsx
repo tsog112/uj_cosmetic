@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { collection, doc, getDoc, getDocs, orderBy, query } from 'firebase/firestore';
+import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { updateOrderStatus } from '@/lib/services/firestoreService';
 import { formatPrice, OrderStatus } from '@/types';
@@ -139,22 +139,10 @@ export default function AdminOrdersPage() {
     setNewStatus((order.status || 'pending') as OrderStatus);
   };
 
-  async function getCustomerEmail(order: any) {
-    if (order.customerEmail || order.email) return order.customerEmail || order.email;
-    if (!order.userId) return '';
-
-    const userSnap = await getDoc(doc(db, 'users', order.userId));
-    if (!userSnap.exists()) return '';
-    return userSnap.data().email || '';
-  }
-
   async function sendStatusEmail(order: any, status: OrderStatus) {
     if (!['confirmed', 'shipped', 'delivered', 'cancelled'].includes(status)) return;
 
-    const customerEmail = await getCustomerEmail(order);
-    if (!customerEmail) {
-      throw new Error('Харилцагчийн имэйл олдсонгүй');
-    }
+    const customerEmail = order.customerEmail || order.email || '';
 
     const res = await fetch(`/api/orders/${order.id}/status-email`, {
       method: 'POST',
@@ -183,12 +171,15 @@ export default function AdminOrdersPage() {
 
     try {
       if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-        await updateOrderStatus(selectedOrder.id, newStatus);
-        try {
-          await sendStatusEmail(selectedOrder, newStatus);
-        } catch (error: any) {
+        if (newStatus === 'pending') {
+          await updateOrderStatus(selectedOrder.id, newStatus);
+        } else {
+          try {
+            await sendStatusEmail(selectedOrder, newStatus);
+          } catch (error: any) {
           emailError = error?.message || 'Имэйл илгээхэд алдаа гарлаа';
-          console.error('Status email error:', error);
+            console.error('Status email error:', error);
+          }
         }
       } else {
         const mockOrders = JSON.parse(localStorage.getItem('mock_orders') || '[]');
