@@ -13,34 +13,58 @@ type Message = {
 const quickQuestions = [
   'Pepe Juice надад тохирох уу?',
   'DJ Carbon Therapy-г яаж хэрэглэх вэ?',
-  'Арьсандаа юу сонгох вэ?',
-  'Хүргэлт хэд хоног вэ?',
+  'Солонгосоос ирдэг нь үнэн үү?',
+  'Админтай яаж холбогдох вэ?',
 ];
+
+function hasAny(text: string, words: string[]) {
+  return words.some(word => text.includes(word));
+}
 
 function buildFallbackReply(question: string, settings: SiteSettings) {
   const text = question.toLowerCase();
+  const phone = settings.phone || 'сайтын холбоо барих дугаар';
+  const instagram = settings.instagramUrl || 'Instagram хуудсаар';
+  const email = settings.email || 'имэйлээр';
 
-  if (text.includes('хүргэл') || text.includes('hurgelt') || text.includes('delivery')) {
-    return `Хүргэлтийн үнэ ${settings.shippingCost.toLocaleString('mn-MN')}₮. ${settings.freeShippingThreshold.toLocaleString('mn-MN')}₮-өөс дээш захиалгад хүргэлт үнэгүй. Захиалга баталгаажсаны дараа хүргэлтийн мэдээллийг админ танд мэдэгдэнэ.`;
+  if (hasAny(text, ['төлбөр', 'төлөх', 'данс', 'банк', 'payment', 'pay'])) {
+    return `Төлбөрийг банкны шилжүүлгээр төлнө. Захиалга баталгаажуулах хэсэгт очиход төлөх дүн болон төлбөрийн мэдээлэл харагдана. Гүйлгээний утга дээр захиалгын дугаараа бичвэл админ хурдан тулгаж баталгаажуулна.`;
   }
 
-  if (text.includes('төлбөр') || text.includes('банк') || text.includes('payment')) {
-    return 'Төлбөрийг банкны шилжүүлгээр төлнө. Захиалга илгээсний дараа дансны мэдээлэл гарч ирнэ. Гүйлгээний утга дээр захиалгын дугаараа бичвэл баталгаажуулахад хурдан.';
+  if (hasAny(text, ['солонгос', 'korea', 'korean', 'хаанаас', 'ирдэг', 'жинхэнэ', 'original', 'оригинал'])) {
+    return 'Тийм ээ, UJ Cosmetic нь Солонгосоос Монгол руу чанартай гоо сайхан болон эрүүл мэндийн нэмэлт бүтээгдэхүүн санал болгодог онлайн дэлгүүрийн концепцтой. Тухайн бүтээгдэхүүний дэлгэрэнгүй мэдээлэл, зураг, тайлбарыг бүтээгдэхүүний хуудсаас шалгаарай. Баталгаажуулах зүйл байвал админтай шууд холбогдоод лавлаж болно.';
   }
 
-  if (text.includes('захиал') || text.includes('сагс') || text.includes('order')) {
-    return 'Бүтээгдэхүүнээ сонгоод "Сагсанд хийх" эсвэл "Шууд авах" товч дарна. Дараа нь checkout хэсэгт нэр, утас, хаягаа зөв бөглөөд захиалгаа баталгаажуулаарай.';
+  if (hasAny(text, ['админ', 'холбогдох', 'утас', 'дугаар', 'instagram', 'инстаграм', 'email', 'имэйл', 'support'])) {
+    return `Админтай ${phone} дугаараар, эсвэл Instagram: ${instagram} хаягаар холбогдож болно. Мөн ${email} хаяг руу бичиж лавлагаа үлдээж болно. Захиалгын дугаар, нэр, утсаа хамт бичвэл илүү хурдан шалгаж өгнө.`;
   }
 
-  if (text.includes('pepe') || text.includes('juice')) {
-    return 'Pepe Juice сонирхож байвал таны зорилгоос шалтгаалаад илүү зөв санал болгож болно. Арьсны өнгө, чийгшил, ядралт эсвэл дотор гоо сайхны дэмжлэгийн аль тал дээр анхаарч байгаагаа хэлээрэй. Найрлага болон хэрэглэх нарийн зааврыг бүтээгдэхүүний хуудсаас давхар шалгахыг зөвлөе.';
+  if (hasAny(text, ['хүргэл', 'хэзээ', 'хоног', 'delivery', 'shipping'])) {
+    return `Хүргэлтийн үнэ ${settings.shippingCost.toLocaleString('mn-MN')}₮. ${settings.freeShippingThreshold.toLocaleString('mn-MN')}₮-өөс дээш захиалгад хүргэлт үнэгүй. Захиалга баталгаажсаны дараа админ хүргэлтийн явцыг танд мэдэгдэнэ.`;
   }
 
-  if (text.includes('dj') || text.includes('carbon')) {
+  if (hasAny(text, ['захиал', 'сагс', 'авах', 'order', 'checkout'])) {
+    return 'Бүтээгдэхүүнээ сонгоод "Сагсанд хийх" эсвэл "Шууд авах" товч дарна. Дараа нь checkout хэсэгт нэр, утас, хүргэлтийн хаягаа зөв бөглөөд захиалгаа баталгаажуулаарай.';
+  }
+
+  if (hasAny(text, ['pepe', 'juice', 'пепе'])) {
+    return 'Pepe Juice-г сонирхож байвал таны хэрэглэх зорилгоос шалтгаалаад санал болгоно. Арьсны өнгө, чийгшил, ядралт эсвэл дотор гоо сайхны дэмжлэгийн аль тал дээр анхаарч байгаагаа хэлээрэй. Найрлага, хэрэглэх нарийн зааврыг бүтээгдэхүүний хуудсаас давхар шалгахыг зөвлөе.';
+  }
+
+  if (hasAny(text, ['dj', 'carbon', 'карбон'])) {
     return 'DJ Carbon Therapy-г арьсны бохирдол, тослогжилт, нүхжилтийн арчилгаанд сонирхож байгаа бол эхлээд 7 хоногт 1-2 удаа зөөлөн давтамжаар хэрэглэж арьсны хариу урвалыг ажиглаарай. Эмзэг, улаймтгай арьстай бол бага хэсэгт туршиж үзэх нь зүйтэй.';
   }
 
-  return 'Сайн байна уу, би UJ Cosmetic-ийн арьс арчилгааны зөвлөх байна. Pepe Juice, DJ Carbon Therapy болон Солонгос premium бүтээгдэхүүнээс таны арьсны төрөл, гол асуудалд тааруулж санал болгож өгье. Арьс тань хуурай, тослог, холимог эсвэл эмзэг үү?';
+  if (hasAny(text, ['хуурай', 'тослог', 'холимог', 'эмзэг', 'батга', 'нүхжилт', 'сэвх', 'толбо', 'арьс'])) {
+    return 'Арьсны төрөл болон гол асуудлаас хамаараад сонголт өөр байна. Хуурай бол чийгшүүлэх, тослог/нүхжилттэй бол цэвэрлэх ба тэнцвэржүүлэх, эмзэг бол тайвшруулах чиглэлийн бүтээгдэхүүнээс эхлэх нь зөөлөн. Та арьсны төрөл, нас, гол асуудлаа бичвэл илүү ойрхон санал болгож өгье.';
+  }
+
+  return 'Ойлголоо. Энэ талаар UJ Cosmetic-ийн бүтээгдэхүүн, захиалга, хүргэлт эсвэл арьс арчилгааны зөвлөгөөний аль талаас нь лавлаж байгаагаа жаахан дэлгэрүүлээд бичээрэй. Таны арьсны төрөл, хайж байгаа үр дүн, сонирхож буй бүтээгдэхүүний нэр байвал илүү оновчтой зөвлөе.';
+}
+
+function isLowQualityAiText(text: string) {
+  const cyrillicCount = (text.match(/[А-Яа-яӨөҮүЁё]/g) || []).length;
+  return text.length < 8 || cyrillicCount < Math.min(12, Math.floor(text.length * 0.2));
 }
 
 export default function ChatAssistant() {
@@ -51,7 +75,7 @@ export default function ChatAssistant() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      text: 'Сайн байна уу. Би UJ Cosmetic-ийн арьс арчилгааны зөвлөх байна. Pepe Juice, DJ Carbon Therapy болон Солонгос premium бүтээгдэхүүнээс таны арьсанд тохирохыг санал болгож өгье.',
+      text: 'Сайн байна уу. Би UJ Cosmetic-ийн арьс арчилгааны зөвлөх байна. Бүтээгдэхүүн сонголт, хэрэглэх заавар, төлбөр, хүргэлт болон админтай холбогдох мэдээллээр тусалъя.',
     },
   ]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -90,13 +114,13 @@ export default function ChatAssistant() {
       });
       const data = await response.json().catch(() => ({}));
 
-      if (!response.ok) {
-        throw new Error(data?.error || 'AI response failed');
+      if (!response.ok || !data?.text || isLowQualityAiText(data.text)) {
+        throw new Error(data?.error || 'AI response was not usable');
       }
 
       setMessages(prev => [...prev, { role: 'assistant', text: data.text }]);
     } catch (error) {
-      console.error('UJ assistant failed:', error);
+      console.error('UJ assistant failed, using local fallback:', error);
       setMessages(prev => [...prev, { role: 'assistant', text: buildFallbackReply(trimmed, settings) }]);
     } finally {
       setSending(false);
@@ -135,7 +159,7 @@ export default function ChatAssistant() {
                 className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[84%] rounded-[18px] px-4 py-3 text-sm leading-6 ${
+                  className={`max-w-[84%] whitespace-pre-line rounded-[18px] px-4 py-3 text-sm leading-6 ${
                     message.role === 'user'
                       ? 'rounded-br-[6px] bg-[#1A1A1A] text-white'
                       : 'rounded-bl-[6px] bg-[#FFF0F6] text-[#4A3A40]'
@@ -173,7 +197,7 @@ export default function ChatAssistant() {
               <input
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
-                placeholder="Арьсны төрөл эсвэл бүтээгдэхүүнээ асуугаарай..."
+                placeholder="Асуултаа бичээрэй..."
                 disabled={sending}
                 className="h-12 min-w-0 flex-1 rounded-full border border-[#F2A8C8]/70 bg-[#FFF8FB] px-4 text-sm outline-none placeholder:text-[#B79AA6] focus:border-[#FFB7D5] disabled:opacity-60"
               />
