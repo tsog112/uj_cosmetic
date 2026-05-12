@@ -14,18 +14,22 @@ const brandInstructions = `
 UJ Cosmetic нь Солонгосоос Монгол руу чанартай гоо сайхан болон эрүүл мэндийн нэмэлт бүтээгдэхүүн санал болгодог premium онлайн дэлгүүр.
 
 Заавар:
-- Зөвхөн Монгол кириллээр хариул. Өөр хэл, латин тайлбар, emoji хэрэглэхгүй.
+- Зөвхөн Монгол кириллээр хариул.
+- Хариултаа бүрэн өгүүлбэрээр дуусга. Дундаас нь тасархай өгүүлбэр үлдээж болохгүй.
 - Хэрэглэгчийн асуултад шууд хариулсны дараа хэрэгтэй бол богино зөвлөгөө нэм.
-- 2-5 богино өгүүлбэр эсвэл богино догол мөрөөр ойлгомжтой хариул.
+- 2-5 богино өгүүлбэрээр ойлгомжтой хариул.
 - Firebase context-д байгаа дэлгүүрийн тохиргоо, холбоо барих мэдээлэл, бүтээгдэхүүний мэдээллийг үндсэн эх сурвалж гэж үз.
 - Pepe Juice, DJ Carbon Therapy зэрэг барааг зөв үед санал болго.
 - Найрлага, хэрэглэх заавар product context-д байхгүй бол зохиож болохгүй. "Дэлгэрэнгүй мэдээллийг бүтээгдэхүүний хуудсаас шалгаарай" гэж хэл.
-- Арьс улайх, хорсох, тууралт гарах, жирэмсэн/хөхүүл үе, архаг өвчин, эм хэрэглэж байгаа тохиолдолд эмч эсвэл мэргэжилтнээс зөвлөгөө авахыг эелдгээр сануул.
-- Захиалга, хүргэлт, төлбөр, админтай холбогдох асуултад арьс арчилгааны ерөнхий intro давтахгүй, шууд үйлчилгээний хариу өг.
+- Захиалга, хүргэлт, төлбөр, админтай холбогдох асуултад арьс арчилгааны intro давтахгүй, шууд үйлчилгээний хариу өг.
 `.trim();
 
 function cleanText(value: unknown) {
   return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+function hasAny(text: string, words: string[]) {
+  return words.some(word => text.includes(word));
 }
 
 function productLine(product: any) {
@@ -48,7 +52,7 @@ function productLine(product: any) {
   ].filter(Boolean).join('; ');
 }
 
-async function buildContext() {
+async function getChatData() {
   const [settingsResult, productsResult] = await Promise.allSettled([
     getSiteSettings(),
     getAllProducts({ published: true }),
@@ -58,6 +62,11 @@ async function buildContext() {
     ? settingsResult.value
     : DEFAULT_SETTINGS;
   const products = productsResult.status === 'fulfilled' ? productsResult.value : [];
+
+  return { settings, products };
+}
+
+function buildContext(settings: typeof DEFAULT_SETTINGS, products: any[]) {
   const featuredProducts = products
     .filter(product => product.inStock !== false)
     .sort((a, b) => Number(b.featured) - Number(a.featured))
@@ -87,22 +96,44 @@ ${productContext}
 `.trim();
 }
 
-function buildLocalAnswer(question: string, context: string) {
+function buildServiceAnswer(question: string, settings: typeof DEFAULT_SETTINGS) {
   const text = question.toLowerCase();
 
-  if (text.includes('админ') || text.includes('холбогдох') || text.includes('утас') || text.includes('instagram')) {
-    return `Админтай холбогдох мэдээлэл Firebase тохиргоонд байна.\n\n${context.match(/- Утас:.+|- Instagram:.+|- Имэйл:.+/g)?.join('\n') || 'Холбоо барих мэдээллийг сайтын footer хэсгээс шалгаарай.'}`;
+  if (/^(сайн уу|сайн байна уу|hi|hello|hey)\??$/i.test(text.trim())) {
+    return 'Сайн байна уу. UJ Cosmetic-ийн зөвлөх байна. Та бүтээгдэхүүн сонголт, төлбөр, хүргэлт, Солонгосоос ирэх хугацаа эсвэл админтай холбогдох талаар асууж болно.';
   }
 
-  if (text.includes('төлбөр') || text.includes('төлөх') || text.includes('данс') || text.includes('банк')) {
-    return `Төлбөрийг банкны шилжүүлгээр төлнө.\n\n${context.match(/- Банк:.+|- Данс:.+|- Данс эзэмшигч:.+/g)?.join('\n') || 'Дансны мэдээллийг checkout хэсгээс шалгаарай.'}\n\nГүйлгээний утга дээр захиалгын дугаараа бичвэл админ хурдан баталгаажуулна.`;
+  if (hasAny(text, ['төлбөр', 'төлөх', 'данс', 'банк', 'payment', 'pay'])) {
+    return `Төлбөрийг банкны шилжүүлгээр төлнө.\n\nБанк: ${settings.bankName}\nДанс: ${settings.bankAccount}\nДанс эзэмшигч: ${settings.bankAccountName}\n\nГүйлгээний утга дээр захиалгын дугаараа бичвэл админ хурдан тулгаж баталгаажуулна.`;
   }
 
-  if (text.includes('солонгос') || text.includes('ирдэг') || text.includes('жинхэнэ') || text.includes('оригинал')) {
-    return 'Тийм ээ, UJ Cosmetic-ийн концепц нь Солонгосоос Монгол руу чанартай гоо сайхан болон эрүүл мэндийн нэмэлт бүтээгдэхүүн хүргэх онлайн дэлгүүр. Тухайн бүтээгдэхүүний дэлгэрэнгүй зураг, тайлбар, хэрэглэх зааврыг бүтээгдэхүүний хуудсаас шалгаад, баталгаажуулах зүйл байвал админтай шууд холбогдоорой.';
+  if (hasAny(text, ['админ', 'холбогдох', 'утас', 'дугаар', 'instagram', 'инстаграм', 'email', 'имэйл', 'support'])) {
+    return `Админтай дараах сувгаар холбогдож болно.\n\nУтас: ${settings.phone}\nInstagram: ${settings.instagramUrl}\nИмэйл: ${settings.email}\n\nЗахиалгын дугаар, нэр, утсаа хамт бичвэл илүү хурдан шалгаж өгнө.`;
+  }
+
+  if (hasAny(text, ['солонгос', 'korea', 'korean', 'ирдэг', 'жинхэнэ', 'оригинал', 'original'])) {
+    if (hasAny(text, ['хэд хоног', 'хэзээ', 'хугацаа', 'ирэх', 'тээвэр', 'хүргэлт'])) {
+      return `Тийм ээ, UJ Cosmetic нь Солонгосоос Монгол руу чанартай бүтээгдэхүүн санал болгодог онлайн дэлгүүрийн концепцтой.\n\nСолонгосоос ирэх тээвэрлэлтийн яг хугацаа тухайн үеийн татан авалт, хил гааль, хүргэлтийн ачааллаас хамаардаг тул админ захиалгыг баталгаажуулахдаа илүү тодорхой хэлж өгнө. Бэлэн байгаа бүтээгдэхүүн бол Монгол доторх хүргэлтийн үнэ ${formatPrice(settings.shippingCost)}, ${formatPrice(settings.freeShippingThreshold)}-өөс дээш захиалгад хүргэлт үнэгүй.`;
+    }
+
+    return 'Тийм ээ, UJ Cosmetic нь Солонгосоос Монгол руу чанартай гоо сайхан болон эрүүл мэндийн нэмэлт бүтээгдэхүүн санал болгодог онлайн дэлгүүрийн концепцтой. Тухайн бүтээгдэхүүний зураг, тайлбар, хэрэглэх зааврыг бүтээгдэхүүний хуудсаас шалгаад, баталгаажуулах зүйл байвал админтай шууд холбогдоорой.';
+  }
+
+  if (hasAny(text, ['хүргэл', 'хэд хоног', 'хэзээ ирэх', 'delivery', 'shipping'])) {
+    return `Монгол доторх хүргэлтийн үнэ ${formatPrice(settings.shippingCost)}. ${formatPrice(settings.freeShippingThreshold)}-өөс дээш захиалгад хүргэлт үнэгүй.\n\nЗахиалга баталгаажсаны дараа админ хүргэлтийн явц болон ойролцоо хугацааг танд мэдэгдэнэ.`;
+  }
+
+  if (hasAny(text, ['захиал', 'сагс', 'авах', 'order', 'checkout'])) {
+    return 'Бүтээгдэхүүнээ сонгоод "Сагсанд хийх" эсвэл "Шууд авах" товч дарна. Дараа нь checkout хэсэгт нэр, утас, хүргэлтийн хаягаа зөв бөглөөд захиалгаа баталгаажуулаарай.';
   }
 
   return '';
+}
+
+function isIncompleteText(text: string) {
+  const trimmed = text.trim();
+  if (trimmed.length < 12) return true;
+  return !/[.!?。！？…]$/.test(trimmed) && !/[а-яөүё]$/i.test(trimmed.slice(-1));
 }
 
 function toGeminiContent(message: ChatMessage) {
@@ -114,7 +145,6 @@ function toGeminiContent(message: ChatMessage) {
 
 export async function POST(request: Request) {
   try {
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
     const body = await request.json();
     const messages = Array.isArray(body.messages) ? body.messages as ChatMessage[] : [];
     const safeMessages = messages
@@ -125,18 +155,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Message is required.' }, { status: 400 });
     }
 
-    const context = await buildContext();
     const latestQuestion = safeMessages.filter(message => message.role === 'user').at(-1)?.text || '';
-    const localAnswer = buildLocalAnswer(latestQuestion, context);
+    const { settings, products } = await getChatData();
+    const serviceAnswer = buildServiceAnswer(latestQuestion, settings);
 
-    if (!apiKey && localAnswer) {
-      return NextResponse.json({ text: localAnswer, source: 'firebase-fallback' });
+    if (serviceAnswer) {
+      return NextResponse.json({ text: serviceAnswer, source: 'firebase-service' });
     }
 
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: 'Gemini API key is not configured.' }, { status: 500 });
+      return NextResponse.json({
+        text: 'Одоогоор AI зөвлөх түр холбогдох боломжгүй байна. Та арьсны төрөл, хайж буй үр дүн, сонирхож байгаа бүтээгдэхүүний нэрээ бичвэл админд лавлахад тохиромжтой байдлаар чиглүүлж өгье.',
+        source: 'fallback',
+      });
     }
 
+    const context = buildContext(settings, products);
     const model = process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL;
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
       method: 'POST',
@@ -147,35 +182,35 @@ export async function POST(request: Request) {
         },
         contents: safeMessages.map(toGeminiContent),
         generationConfig: {
-          temperature: 0.35,
+          temperature: 0.28,
           topP: 0.85,
-          maxOutputTokens: 640,
+          maxOutputTokens: 1024,
         },
       }),
     });
 
     const data = await response.json();
-
     if (!response.ok) {
-      if (localAnswer) {
-        console.error('Gemini request failed, using Firebase fallback:', data?.error?.message);
-        return NextResponse.json({ text: localAnswer, source: 'firebase-fallback' });
-      }
       const message = data?.error?.message || 'Gemini request failed.';
-      return NextResponse.json({ error: message }, { status: response.status });
+      console.error('Gemini request failed:', message);
+      return NextResponse.json({
+        text: 'AI зөвлөхөөс хариу авахад түр саатал гарлаа. Та асуултаа арай тодорхой бичвэл би UJ Cosmetic-ийн мэдээлэл дээр тулгуурлан тусалъя.',
+        source: 'fallback',
+      });
     }
 
     const text = data?.candidates?.[0]?.content?.parts
       ?.map((part: { text?: string }) => part.text || '')
       .join('')
       .trim();
+    const finishReason = data?.candidates?.[0]?.finishReason;
 
-    if (!text && localAnswer) {
-      return NextResponse.json({ text: localAnswer, source: 'firebase-fallback' });
-    }
-
-    if (!text) {
-      return NextResponse.json({ error: 'Gemini returned an empty response.' }, { status: 502 });
+    if (!text || finishReason === 'MAX_TOKENS' || isIncompleteText(text)) {
+      console.error('Gemini returned incomplete response:', { finishReason, text });
+      return NextResponse.json({
+        text: 'Хариулт түр дутуу ирлээ. Та арьсны төрөл, гол асуудал, сонирхож буй бүтээгдэхүүнээ нэг өгүүлбэрээр бичвэл илүү тодорхой зөвлөе.',
+        source: 'fallback',
+      });
     }
 
     return NextResponse.json({ text, source: 'gemini' });
