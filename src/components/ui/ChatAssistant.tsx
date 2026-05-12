@@ -11,13 +11,13 @@ type Message = {
 };
 
 const quickQuestions = [
-  'Хүргэлт хэд хоног вэ?',
+  'Pepe Juice надад тохирох уу?',
+  'DJ Carbon Therapy-г яаж хэрэглэх вэ?',
   'Арьсандаа юу сонгох вэ?',
-  'Захиалга яаж өгөх вэ?',
-  'Төлбөр яаж хийх вэ?',
+  'Хүргэлт хэд хоног вэ?',
 ];
 
-function buildReply(question: string, settings: SiteSettings) {
+function buildFallbackReply(question: string, settings: SiteSettings) {
   const text = question.toLowerCase();
 
   if (text.includes('хүргэл') || text.includes('hurgelt') || text.includes('delivery')) {
@@ -25,43 +25,33 @@ function buildReply(question: string, settings: SiteSettings) {
   }
 
   if (text.includes('төлбөр') || text.includes('банк') || text.includes('payment')) {
-    return `Төлбөрийг банкны шилжүүлгээр төлнө. Захиалга үүсгэсний дараа дансны мэдээлэл гарч ирнэ. Гүйлгээний утга дээр захиалгын дугаараа бичвэл баталгаажуулахад хурдан.`;
+    return 'Төлбөрийг банкны шилжүүлгээр төлнө. Захиалга илгээсний дараа дансны мэдээлэл гарч ирнэ. Гүйлгээний утга дээр захиалгын дугаараа бичвэл баталгаажуулахад хурдан.';
   }
 
   if (text.includes('захиал') || text.includes('сагс') || text.includes('order')) {
-    return 'Бүтээгдэхүүнээ сонгоод “Сагсанд нэмэх” эсвэл “Шууд худалдан авах” товч дарна. Дараа нь checkout дээр нэр, утас, хаягаа зөв бөглөөд захиалгаа илгээнэ.';
+    return 'Бүтээгдэхүүнээ сонгоод "Сагсанд хийх" эсвэл "Шууд авах" товч дарна. Дараа нь checkout хэсэгт нэр, утас, хаягаа зөв бөглөөд захиалгаа баталгаажуулаарай.';
   }
 
-  if (
-    text.includes('арьс') ||
-    text.includes('хуурай') ||
-    text.includes('тослог') ||
-    text.includes('эмзэг') ||
-    text.includes('батга') ||
-    text.includes('сонго')
-  ) {
-    return 'Арьсны төрлөөс хамаараад сонголт өөр. Хуурай бол чийгшүүлэх тос/серум, тослог бол хөнгөн бүтэцтэй toner/serum, эмзэг бол тайвшруулах найрлагатай бүтээгдэхүүнээс эхлэхийг зөвлөе. Та арьсны төрөл, гол асуудлаа бичвэл илүү нарийн чиглүүлж өгье.';
+  if (text.includes('pepe') || text.includes('juice')) {
+    return 'Pepe Juice сонирхож байвал таны зорилгоос шалтгаалаад илүү зөв санал болгож болно. Арьсны өнгө, чийгшил, ядралт эсвэл дотор гоо сайхны дэмжлэгийн аль тал дээр анхаарч байгаагаа хэлээрэй. Найрлага болон хэрэглэх нарийн зааврыг бүтээгдэхүүний хуудсаас давхар шалгахыг зөвлөе.';
   }
 
-  if (text.includes('instagram') || text.includes('инстаграм')) {
-    return `Манай Instagram хаяг: ${settings.instagramUrl}. Тэнд шинэ бүтээгдэхүүн, хэрэглээний зөвлөгөө, бодит зурагнууд ордог.`;
+  if (text.includes('dj') || text.includes('carbon')) {
+    return 'DJ Carbon Therapy-г арьсны бохирдол, тослогжилт, нүхжилтийн арчилгаанд сонирхож байгаа бол эхлээд 7 хоногт 1-2 удаа зөөлөн давтамжаар хэрэглэж арьсны хариу урвалыг ажиглаарай. Эмзэг, улаймтгай арьстай бол бага хэсэгт туршиж үзэх нь зүйтэй.';
   }
 
-  if (text.includes('утас') || text.includes('холбог') || text.includes('phone')) {
-    return `Та бидэнтэй ${settings.phone} дугаараар эсвэл Instagram-аар холбогдож болно.`;
-  }
-
-  return 'Би UJ Cosmetic-ийн туслах байна. Хүргэлт, төлбөр, захиалга, бүтээгдэхүүн сонголтын талаар асуугаарай. Арьсны төрөл болон хайж буй үр дүнгээ бичвэл илүү ойрхон зөвлөгөө өгнө.';
+  return 'Сайн байна уу, би UJ Cosmetic-ийн арьс арчилгааны зөвлөх байна. Pepe Juice, DJ Carbon Therapy болон Солонгос premium бүтээгдэхүүнээс таны арьсны төрөл, гол асуудалд тааруулж санал болгож өгье. Арьс тань хуурай, тослог, холимог эсвэл эмзэг үү?';
 }
 
 export default function ChatAssistant() {
   const [open, setOpen] = useState(false);
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
   const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      text: 'Сайн байна уу? Би UJ Cosmetic-ийн туслах. Бүтээгдэхүүн сонгох, хүргэлт, төлбөрийн талаар асуугаарай.',
+      text: 'Сайн байна уу. Би UJ Cosmetic-ийн арьс арчилгааны зөвлөх байна. Pepe Juice, DJ Carbon Therapy болон Солонгос premium бүтээгдэхүүнээс таны арьсанд тохирохыг санал болгож өгье.',
     },
   ]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -76,23 +66,41 @@ export default function ChatAssistant() {
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages, open]);
+  }, [messages, open, sending]);
 
   const instagramHandle = useMemo(
     () => settings.instagramUrl.split('/').filter(Boolean).pop() || 'uj_cosmetic',
     [settings.instagramUrl]
   );
 
-  const sendMessage = (text: string) => {
+  const sendMessage = async (text: string) => {
     const trimmed = text.trim();
-    if (!trimmed) return;
+    if (!trimmed || sending) return;
 
-    setMessages(prev => [
-      ...prev,
-      { role: 'user', text: trimmed },
-      { role: 'assistant', text: buildReply(trimmed, settings) },
-    ]);
+    const nextMessages: Message[] = [...messages, { role: 'user', text: trimmed }];
+    setMessages(nextMessages);
     setInput('');
+    setSending(true);
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: nextMessages }),
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'AI response failed');
+      }
+
+      setMessages(prev => [...prev, { role: 'assistant', text: data.text }]);
+    } catch (error) {
+      console.error('UJ assistant failed:', error);
+      setMessages(prev => [...prev, { role: 'assistant', text: buildFallbackReply(trimmed, settings) }]);
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -108,7 +116,7 @@ export default function ChatAssistant() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-[#8B6B78]">UJ Assistant</p>
-                <h3 className="mt-1 font-serif text-2xl leading-none text-[#1A1A1A]">Арьс арчилгааны туслах</h3>
+                <h3 className="mt-1 font-serif text-2xl leading-none text-[#1A1A1A]">Арьс арчилгааны зөвлөх</h3>
               </div>
               <button
                 onClick={() => setOpen(false)}
@@ -137,6 +145,14 @@ export default function ChatAssistant() {
                 </div>
               </div>
             ))}
+
+            {sending && (
+              <div className="flex justify-start">
+                <div className="max-w-[84%] rounded-[18px] rounded-bl-[6px] bg-[#FFF0F6] px-4 py-3 text-sm leading-6 text-[#8B6B78]">
+                  Танд тохирох зөвлөгөөг бэлдэж байна...
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="border-t border-[#F2A8C8]/35 bg-white p-4">
@@ -145,7 +161,8 @@ export default function ChatAssistant() {
                 <button
                   key={question}
                   onClick={() => sendMessage(question)}
-                  className="shrink-0 rounded-full border border-[#F2A8C8]/70 px-3 py-2 text-xs text-[#8B6B78] transition-colors hover:bg-[#FFF0F6] hover:text-[#1A1A1A]"
+                  disabled={sending}
+                  className="shrink-0 rounded-full border border-[#F2A8C8]/70 px-3 py-2 text-xs text-[#8B6B78] transition-colors hover:bg-[#FFF0F6] hover:text-[#1A1A1A] disabled:opacity-50"
                 >
                   {question}
                 </button>
@@ -156,12 +173,14 @@ export default function ChatAssistant() {
               <input
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
-                placeholder="Асуултаа бичээрэй..."
-                className="h-12 min-w-0 flex-1 rounded-full border border-[#F2A8C8]/70 bg-[#FFF8FB] px-4 text-sm outline-none placeholder:text-[#B79AA6] focus:border-[#FFB7D5]"
+                placeholder="Арьсны төрөл эсвэл бүтээгдэхүүнээ асуугаарай..."
+                disabled={sending}
+                className="h-12 min-w-0 flex-1 rounded-full border border-[#F2A8C8]/70 bg-[#FFF8FB] px-4 text-sm outline-none placeholder:text-[#B79AA6] focus:border-[#FFB7D5] disabled:opacity-60"
               />
               <button
                 type="submit"
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#FFB7D5] text-[#1A1A1A] transition-colors hover:bg-[#F2A8C8]"
+                disabled={sending}
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#FFB7D5] text-[#1A1A1A] transition-colors hover:bg-[#F2A8C8] disabled:opacity-50"
                 aria-label="Илгээх"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
