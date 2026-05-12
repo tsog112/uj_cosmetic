@@ -3,13 +3,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { collection, doc, getDocs, orderBy, query, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { formatMongolianDateTime } from '@/lib/format';
 import { formatPrice } from '@/types';
 
 function formatDate(date: any) {
-  if (!date) return '-';
-  if (date.toDate) return date.toDate().toLocaleString('mn-MN');
-  if (typeof date === 'string') return new Date(date).toLocaleString('mn-MN');
-  return '-';
+  return formatMongolianDateTime(date);
 }
 
 export default function AdminUsersPage() {

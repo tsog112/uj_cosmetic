@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { addToWishlist, getProductBySlug, getProductReviews, getProductsByCategory, getWishlistStatus, incrementProductViews, removeFromWishlist } from '@/lib/services/firestoreService';
+import { formatMongolianDate } from '@/lib/format';
 import { formatPrice, getCategoryName, Product, Review } from '@/types';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
@@ -46,6 +47,7 @@ export default function ProductDetailPage() {
     getProductBySlug(slug)
       .then(async (p) => {
         setProduct(p);
+        setSelectedImageIndex(0);
         if (p) {
           // Increment views
           incrementProductViews(p.id).catch(() => {});
@@ -68,6 +70,17 @@ export default function ProductDetailPage() {
       .then(setIsWishlisted)
       .catch(() => {});
   }, [user, product]);
+
+  useEffect(() => {
+    const imageCount = product?.images?.length || 0;
+    if (imageCount < 2) return;
+
+    const timer = window.setInterval(() => {
+      setSelectedImageIndex(prev => (prev + 1) % imageCount);
+    }, 4200);
+
+    return () => window.clearInterval(timer);
+  }, [product?.id, product?.images?.length]);
 
   if (loading) {
     return (
@@ -245,33 +258,33 @@ export default function ProductDetailPage() {
               <button
                 onClick={handleAddToCart}
                 disabled={!isProductInStock}
-                className={`w-full py-4 text-sm tracking-[0.1em] uppercase font-medium transition-all duration-300 ${
+                className={`w-full rounded-[12px] py-4 text-sm font-semibold transition-all duration-300 ${
                   !isProductInStock
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : isAdded
-                      ? 'bg-text-primary text-cream'
-                      : 'bg-[#FFB7D5] text-brand-black hover:bg-[#f5a0c5]'
+                      ? 'bg-[#241820] text-white'
+                      : 'bg-[#D994B5] text-white hover:bg-[#c77ea4]'
                 }`}
                 id="add-to-cart-button"
               >
-                {!isProductInStock ? 'Дуусжээ' : isAdded ? '✓ Сагсанд нэмэгдлээ' : 'Сагсанд нэмэх'}
+                {!isProductInStock ? 'Дууссан' : isAdded ? 'Сагсанд нэмэгдлээ' : 'Сагсанд хийх'}
               </button>
 
               <button
                 onClick={handleBuyNow}
                 disabled={!isProductInStock}
-                className="w-full py-4 border-2 border-brand-black bg-sand text-brand-black text-sm font-medium tracking-[0.1em] uppercase hover:bg-brand-black hover:text-white transition-colors duration-200 disabled:border-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed disabled:hover:bg-sand"
+                className="w-full rounded-[12px] border border-[#241820] bg-[#241820] py-4 text-sm font-semibold text-white transition-colors duration-200 hover:border-[#D994B5] hover:bg-[#D994B5] disabled:border-gray-300 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed"
               >
-                Шууд худалдан авах
+                Шууд авах
               </button>
 
               <button
                 onClick={handleWishlist}
                 disabled={wishlistLoading}
-                className={`w-full py-4 border border-[#F2A8C8] text-sm font-medium tracking-[0.1em] uppercase transition-colors duration-200 ${
+                className={`w-full rounded-[12px] border border-[#F2C7D8] py-4 text-sm font-semibold transition-colors duration-200 ${
                   isWishlisted
                     ? 'bg-[#FFF0F6] text-[#D86FA0]'
-                    : 'bg-white text-[#1A1A1A] hover:bg-[#FFF0F6]'
+                    : 'bg-white text-[#241820] hover:bg-[#FFF0F6]'
                 }`}
               >
                 {isWishlisted ? '♥ Дуртайд хадгалсан' : '♡ Дуртайд хадгалах'}
@@ -326,9 +339,7 @@ export default function ProductDetailPage() {
                       <div>
                         <p className="font-medium text-[#1A1A1A]">{review.userName || 'UJ хэрэглэгч'}</p>
                         <p className="mt-1 text-xs text-[#8B6B78]">
-                          {review.createdAt instanceof Date
-                            ? review.createdAt.toLocaleDateString('mn-MN')
-                            : ''}
+                          {formatMongolianDate(review.createdAt)}
                         </p>
                       </div>
                       <p className="whitespace-nowrap text-sm text-[#D894AC]">

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { collection, doc, getDoc, getDocs, orderBy, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { updateOrderStatus } from '@/lib/services/firestoreService';
+import { formatMongolianDateTime } from '@/lib/format';
 import { formatPrice, OrderStatus } from '@/types';
 
 const statusLabels: Record<OrderStatus, string> = {
@@ -58,10 +59,7 @@ function getStatusAccent(status: string) {
 }
 
 function formatDate(date: any) {
-  if (!date) return '-';
-  if (date.toDate) return date.toDate().toLocaleString('mn-MN');
-  if (typeof date === 'string') return new Date(date).toLocaleString('mn-MN');
-  return '-';
+  return formatMongolianDateTime(date);
 }
 
 export default function AdminOrdersPage() {

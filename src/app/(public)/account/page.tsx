@@ -14,6 +14,7 @@ import {
   updateUserReview,
 } from '@/lib/services/firestoreService';
 import { uploadProductImage } from '@/lib/uploadImage';
+import { formatMongolianDateTime } from '@/lib/format';
 import { formatPrice, Review, WishlistItem } from '@/types';
 import AuthGuard from '@/components/ui/AuthGuard';
 
@@ -22,17 +23,13 @@ type AccountTab = 'orders' | 'wishlist' | 'reviews';
 const statusLabels: Record<string, string> = {
   pending: 'Хүлээгдэж байна',
   confirmed: 'Баталгаажсан',
-  shipped: 'Хүргэлтэнд',
+  shipped: 'Хүргэлтэнд гарсан',
   delivered: 'Хүргэгдсэн',
   cancelled: 'Цуцлагдсан',
 };
 
 function formatDate(date: any) {
-  if (!date) return '-';
-  if (date.toDate) return date.toDate().toLocaleString('mn-MN');
-  if (date instanceof Date) return date.toLocaleString('mn-MN');
-  if (typeof date === 'string') return new Date(date).toLocaleString('mn-MN');
-  return '-';
+  return formatMongolianDateTime(date);
 }
 
 function AccountContent() {
@@ -167,7 +164,7 @@ function AccountContent() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr] lg:gap-10">
         <aside>
-          <div className="border border-[#F2A8C8]/45 bg-white p-5 shadow-[0_10px_30px_rgba(216,148,172,0.08)] lg:sticky lg:top-[120px]">
+          <div className="rounded-[14px] border border-[#F2A8C8]/45 bg-white p-5 shadow-[0_10px_30px_rgba(216,148,172,0.08)] lg:sticky lg:top-[120px]">
             <div className="flex items-center gap-4 lg:block lg:text-center">
               <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-[18px] border border-[#F2A8C8]/50 bg-[#FFF0F6] text-3xl font-medium text-[#1A1A1A] lg:mx-auto lg:mb-4">
                 {user.photoURL ? (
@@ -186,9 +183,9 @@ function AccountContent() {
               {[
                 ['Захиалга', summary.orders],
                 ['Дуртай', summary.wishlist],
-                ['Review', summary.reviews],
+                ['Сэтгэгдэл', summary.reviews],
               ].map(([label, value]) => (
-                <div key={label} className="bg-[#FFF8FB] p-3 text-center">
+                <div key={label} className="rounded-[10px] bg-[#FFF8FB] p-3 text-center">
                   <p className="text-xl font-semibold text-[#1A1A1A]">{value}</p>
                   <p className="mt-1 text-[11px] text-[#8B6B78]">{label}</p>
                 </div>
@@ -198,7 +195,7 @@ function AccountContent() {
             {isAdmin && (
               <Link
                 href="/admin"
-                className="mt-5 flex min-h-12 w-full items-center justify-center bg-[#1A1A1A] px-4 text-sm font-medium text-white transition-colors hover:bg-[#FFB7D5] hover:text-[#1A1A1A]"
+                className="mt-5 flex min-h-12 w-full items-center justify-center rounded-[10px] bg-[#241820] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#D994B5]"
               >
                 Админ самбар руу орох
               </Link>
@@ -206,7 +203,7 @@ function AccountContent() {
 
             <button
               onClick={() => signOut()}
-              className="mt-3 w-full min-h-12 border border-[#F2A8C8] bg-[#FFF8FB] text-sm font-medium text-[#1A1A1A]"
+              className="mt-3 w-full min-h-12 rounded-[10px] border border-[#F2C7D8] bg-[#FFF8FB] text-sm font-semibold text-[#241820] transition-colors hover:bg-[#FFF0F6]"
             >
               Гарах
             </button>
@@ -214,7 +211,7 @@ function AccountContent() {
         </aside>
 
         <section className="min-w-0">
-          <div className="mb-5 grid grid-cols-3 gap-2 rounded-[14px] bg-[#FFF0F6] p-1">
+          <div className="mb-5 grid grid-cols-3 gap-2 rounded-[12px] bg-[#FFF0F6] p-1">
             {[
               { value: 'orders', label: 'Захиалга' },
               { value: 'wishlist', label: 'Дуртай' },
@@ -243,7 +240,7 @@ function AccountContent() {
                   {orders.length === 0 ? (
                     <EmptyState title="Захиалга алга байна" href="/shop" label="Дэлгүүр үзэх" />
                   ) : orders.map(order => (
-                    <article key={order.id} className="border border-[#F2A8C8]/45 bg-white p-4 md:p-6">
+                    <article key={order.id} className="rounded-[14px] border border-[#F2A8C8]/45 bg-white p-4 md:p-6">
                       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#F2A8C8]/30 pb-4">
                         <div>
                           <p className="text-xs uppercase tracking-[0.14em] text-[#8B6B78]">Захиалгын дугаар</p>
@@ -292,12 +289,12 @@ function AccountContent() {
                           {formatPrice(item.salePrice ?? item.price)}
                         </p>
                         <div className="mt-4 flex gap-2">
-                          <Link href={`/shop/${item.productSlug}`} className="flex min-h-10 flex-1 items-center justify-center bg-[#1A1A1A] px-3 text-xs text-white">
-                            Авах
+                          <Link href={`/shop/${item.productSlug}`} className="flex min-h-10 flex-1 items-center justify-center rounded-[9px] bg-[#241820] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#D994B5]">
+                            Шууд авах
                           </Link>
                           <button
                             onClick={() => handleRemoveWishlist(item.productId)}
-                            className="min-h-10 border border-[#F2A8C8] px-3 text-xs text-[#8B6B78]"
+                            className="min-h-10 rounded-[9px] border border-[#F2C7D8] px-3 text-xs font-semibold text-[#7E6472] transition-colors hover:bg-[#FFF0F6]"
                           >
                             Хасах
                           </button>
@@ -313,7 +310,7 @@ function AccountContent() {
                   {reviews.length === 0 ? (
                     <EmptyState title="Бичсэн сэтгэгдэл алга байна" href="/shop" label="Бүтээгдэхүүн үзэх" />
                   ) : reviews.map(review => (
-                    <article key={review.id} className="border border-[#F2A8C8]/45 bg-white p-4 md:p-5">
+                    <article key={review.id} className="rounded-[14px] border border-[#F2A8C8]/45 bg-white p-4 md:p-5">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                           <Link href={`/shop/${review.productSlug}`} className="font-medium text-[#1A1A1A] hover:underline">
@@ -363,7 +360,7 @@ function AccountContent() {
                               ))}
                             </div>
                           )}
-                          <label className="mt-3 inline-flex min-h-10 cursor-pointer items-center justify-center border border-[#F2A8C8] px-4 text-xs text-[#8B6B78] hover:bg-[#FFF0F6]">
+                          <label className="mt-3 inline-flex min-h-10 cursor-pointer items-center justify-center rounded-[9px] border border-[#F2C7D8] px-4 text-xs font-semibold text-[#7E6472] hover:bg-[#FFF0F6]">
                             {editUploading ? 'Зураг оруулж байна...' : 'Зураг нэмэх'}
                             <input
                               type="file"
@@ -375,10 +372,10 @@ function AccountContent() {
                             />
                           </label>
                           <div className="mt-3 flex gap-2">
-                            <button onClick={() => saveReviewEdit(review)} disabled={editUploading} className="min-h-10 bg-[#1A1A1A] px-4 text-xs text-white disabled:opacity-50">
+                            <button onClick={() => saveReviewEdit(review)} disabled={editUploading} className="min-h-10 rounded-[9px] bg-[#241820] px-4 text-xs font-semibold text-white disabled:opacity-50">
                               Хадгалах
                             </button>
-                            <button onClick={() => setEditingReviewId(null)} className="min-h-10 border border-[#F2A8C8] px-4 text-xs">
+                            <button onClick={() => setEditingReviewId(null)} className="min-h-10 rounded-[9px] border border-[#F2C7D8] px-4 text-xs font-semibold hover:bg-[#FFF0F6]">
                               Болих
                             </button>
                           </div>
@@ -399,10 +396,10 @@ function AccountContent() {
                             </div>
                           )}
                           <div className="mt-4 flex gap-2">
-                            <button onClick={() => startEditReview(review)} className="min-h-10 border border-[#FFB7D5] px-4 text-xs">
+                            <button onClick={() => startEditReview(review)} className="min-h-10 rounded-[9px] border border-[#F2C7D8] px-4 text-xs font-semibold hover:bg-[#FFF0F6]">
                               Засах
                             </button>
-                            <button onClick={() => handleDeleteReview(review.id)} className="min-h-10 border border-red-200 bg-red-50 px-4 text-xs text-red-700">
+                            <button onClick={() => handleDeleteReview(review.id)} className="min-h-10 rounded-[9px] border border-red-200 bg-red-50 px-4 text-xs font-semibold text-red-700">
                               Устгах
                             </button>
                           </div>
@@ -422,9 +419,9 @@ function AccountContent() {
 
 function EmptyState({ title, href, label }: { title: string; href: string; label: string }) {
   return (
-    <div className="border border-dashed border-[#F2A8C8]/70 bg-white p-8 text-center">
+    <div className="rounded-[14px] border border-dashed border-[#F2A8C8]/70 bg-white p-8 text-center">
       <p className="font-serif text-2xl text-[#1A1A1A]">{title}</p>
-      <Link href={href} className="mt-5 inline-flex min-h-11 items-center justify-center border border-[#FFB7D5] px-5 text-sm text-[#1A1A1A] hover:bg-[#FFF0F6]">
+      <Link href={href} className="mt-5 inline-flex min-h-11 items-center justify-center rounded-[10px] border border-[#F2C7D8] px-5 text-sm font-semibold text-[#241820] hover:bg-[#FFF0F6]">
         {label}
       </Link>
     </div>
