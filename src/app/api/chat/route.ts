@@ -98,32 +98,40 @@ ${productContext}
 
 function buildServiceAnswer(question: string, settings: typeof DEFAULT_SETTINGS) {
   const text = question.toLowerCase();
+  const compact = text.replace(/[\s._-]+/g, '');
 
-  if (/^(сайн уу|сайн байна уу|hi|hello|hey)\??$/i.test(text.trim())) {
+  if (/^(сайн уу|сайн байна уу|hi|hello|hey|snu|sainuu|sainbainuu)\??$/i.test(compact) || hasAny(text, ['sain uu', 'sain baina uu'])) {
     return 'Сайн байна уу. UJ Cosmetic-ийн зөвлөх байна. Та бүтээгдэхүүн сонголт, төлбөр, хүргэлт, Солонгосоос ирэх хугацаа эсвэл админтай холбогдох талаар асууж болно.';
   }
 
-  if (hasAny(text, ['төлбөр', 'төлөх', 'данс', 'банк', 'payment', 'pay'])) {
+  if (hasAny(text, ['төлбөр', 'төлөх', 'данс', 'банк', 'payment', 'pay', 'tulbur', 'tolbor', 'tuluh', 'toloh', 'dans', 'bank'])) {
     return `Төлбөрийг банкны шилжүүлгээр төлнө.\n\nБанк: ${settings.bankName}\nДанс: ${settings.bankAccount}\nДанс эзэмшигч: ${settings.bankAccountName}\n\nГүйлгээний утга дээр захиалгын дугаараа бичвэл админ хурдан тулгаж баталгаажуулна.`;
   }
 
-  if (hasAny(text, ['админ', 'холбогдох', 'утас', 'дугаар', 'instagram', 'инстаграм', 'email', 'имэйл', 'support'])) {
+  if (hasAny(text, ['админ', 'холбогдох', 'утас', 'дугаар', 'instagram', 'инстаграм', 'email', 'имэйл', 'support', 'admin', 'holbogdoh', 'utas', 'dugaar', 'dugar'])) {
     return `Админтай дараах сувгаар холбогдож болно.\n\nУтас: ${settings.phone}\nInstagram: ${settings.instagramUrl}\nИмэйл: ${settings.email}\n\nЗахиалгын дугаар, нэр, утсаа хамт бичвэл илүү хурдан шалгаж өгнө.`;
   }
 
-  if (hasAny(text, ['солонгос', 'korea', 'korean', 'ирдэг', 'жинхэнэ', 'оригинал', 'original'])) {
-    if (hasAny(text, ['хэд хоног', 'хэзээ', 'хугацаа', 'ирэх', 'тээвэр', 'хүргэлт'])) {
+  if (
+    hasAny(text, ['mongold', 'mongol', 'zahialsan', 'zahialga', 'baraa', 'hezee', 'ireh', 'irh', 'hureh', 'hurgelt', 'honog']) &&
+    (hasAny(text, ['hezee', 'ireh', 'irh', 'hureh', 'hurgelt', 'honog']) || hasAny(text, ['захиалсан', 'хэзээ', 'ирэх', 'хүрэх']))
+  ) {
+    return `Захиалсан бараа тань хэзээ ирэх нь тухайн бүтээгдэхүүн бэлэн байгаа эсэх, Солонгосоос татан авалт хийгдэж байгаа эсэх, мөн хил гааль болон хүргэлтийн ачааллаас хамаарна.\n\nЗахиалга баталгаажсаны дараа админ танд илүү тодорхой хугацаа хэлж өгнө. Хэрэв захиалгын дугаартай бол админ руу дугаараа явуулаад явцыг нь шууд шалгуулаарай.`;
+  }
+
+  if (hasAny(text, ['солонгос', 'korea', 'korean', 'ирдэг', 'жинхэнэ', 'оригинал', 'original', 'solongos', 'solongosoos', 'ireh', 'irdeg', 'jinhene'])) {
+    if (hasAny(text, ['хэд хоног', 'хэзээ', 'хугацаа', 'ирэх', 'тээвэр', 'хүргэлт', 'hed honog', 'hezee', 'hugatsaa', 'teever', 'hurgelt', 'ireh', 'honog'])) {
       return `Тийм ээ, UJ Cosmetic нь Солонгосоос Монгол руу чанартай бүтээгдэхүүн санал болгодог онлайн дэлгүүрийн концепцтой.\n\nСолонгосоос ирэх тээвэрлэлтийн яг хугацаа тухайн үеийн татан авалт, хил гааль, хүргэлтийн ачааллаас хамаардаг тул админ захиалгыг баталгаажуулахдаа илүү тодорхой хэлж өгнө. Бэлэн байгаа бүтээгдэхүүн бол Монгол доторх хүргэлтийн үнэ ${formatPrice(settings.shippingCost)}, ${formatPrice(settings.freeShippingThreshold)}-өөс дээш захиалгад хүргэлт үнэгүй.`;
     }
 
     return 'Тийм ээ, UJ Cosmetic нь Солонгосоос Монгол руу чанартай гоо сайхан болон эрүүл мэндийн нэмэлт бүтээгдэхүүн санал болгодог онлайн дэлгүүрийн концепцтой. Тухайн бүтээгдэхүүний зураг, тайлбар, хэрэглэх зааврыг бүтээгдэхүүний хуудсаас шалгаад, баталгаажуулах зүйл байвал админтай шууд холбогдоорой.';
   }
 
-  if (hasAny(text, ['хүргэл', 'хэд хоног', 'хэзээ ирэх', 'delivery', 'shipping'])) {
+  if (hasAny(text, ['хүргэл', 'хэд хоног', 'хэзээ ирэх', 'delivery', 'shipping', 'hurgelt', 'hezee ireh', 'hed honog', 'honog'])) {
     return `Монгол доторх хүргэлтийн үнэ ${formatPrice(settings.shippingCost)}. ${formatPrice(settings.freeShippingThreshold)}-өөс дээш захиалгад хүргэлт үнэгүй.\n\nЗахиалга баталгаажсаны дараа админ хүргэлтийн явц болон ойролцоо хугацааг танд мэдэгдэнэ.`;
   }
 
-  if (hasAny(text, ['захиал', 'сагс', 'авах', 'order', 'checkout'])) {
+  if (hasAny(text, ['захиал', 'сагс', 'авах', 'order', 'checkout', 'zahial', 'zahialsan', 'sags', 'avah'])) {
     return 'Бүтээгдэхүүнээ сонгоод "Сагсанд хийх" эсвэл "Шууд авах" товч дарна. Дараа нь checkout хэсэгт нэр, утас, хүргэлтийн хаягаа зөв бөглөөд захиалгаа баталгаажуулаарай.';
   }
 
@@ -208,7 +216,7 @@ export async function POST(request: Request) {
     if (!text || finishReason === 'MAX_TOKENS' || isIncompleteText(text)) {
       console.error('Gemini returned incomplete response:', { finishReason, text });
       return NextResponse.json({
-        text: 'Хариулт түр дутуу ирлээ. Та арьсны төрөл, гол асуудал, сонирхож буй бүтээгдэхүүнээ нэг өгүүлбэрээр бичвэл илүү тодорхой зөвлөе.',
+        text: 'AI зөвлөхөөс бүрэн хариу ирсэнгүй. Гэхдээ би танд тусалж чадна: захиалга, хүргэлт, төлбөр, админтай холбогдох эсвэл бүтээгдэхүүний нэрээ бичээрэй. Арьс арчилгааны зөвлөгөө авах бол арьсны төрөл, гол асуудлаа хамт бичвэл илүү оновчтой санал болгоно.',
         source: 'fallback',
       });
     }

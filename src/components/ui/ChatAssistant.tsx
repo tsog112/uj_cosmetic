@@ -23,28 +23,40 @@ function hasAny(text: string, words: string[]) {
 
 function buildFallbackReply(question: string, settings: SiteSettings) {
   const text = question.toLowerCase();
+  const compact = text.replace(/[\s._-]+/g, '');
 
-  if (hasAny(text, ['төлбөр', 'төлөх', 'данс', 'банк', 'payment', 'pay'])) {
+  if (/^(сайн уу|сайн байна уу|hi|hello|hey|snu|sainuu|sainbainuu)\??$/i.test(compact) || hasAny(text, ['sain uu', 'sain baina uu'])) {
+    return 'Сайн байна уу. UJ Cosmetic-ийн зөвлөх байна. Та бүтээгдэхүүн сонголт, төлбөр, хүргэлт, Солонгосоос ирэх хугацаа эсвэл админтай холбогдох талаар асууж болно.';
+  }
+
+  if (hasAny(text, ['төлбөр', 'төлөх', 'данс', 'банк', 'payment', 'pay', 'tulbur', 'tolbor', 'tuluh', 'toloh', 'dans', 'bank'])) {
     return `Төлбөрийг банкны шилжүүлгээр төлнө.\n\nБанк: ${settings.bankName}\nДанс: ${settings.bankAccount}\nДанс эзэмшигч: ${settings.bankAccountName}\n\nГүйлгээний утга дээр захиалгын дугаараа бичвэл админ хурдан баталгаажуулна.`;
   }
 
-  if (hasAny(text, ['админ', 'холбогдох', 'утас', 'дугаар', 'instagram', 'инстаграм', 'email', 'имэйл', 'support'])) {
+  if (hasAny(text, ['админ', 'холбогдох', 'утас', 'дугаар', 'instagram', 'инстаграм', 'email', 'имэйл', 'support', 'admin', 'holbogdoh', 'utas', 'dugaar', 'dugar'])) {
     return `Админтай ${settings.phone} дугаараар, Instagram: ${settings.instagramUrl} хаягаар эсвэл ${settings.email} имэйлээр холбогдож болно. Захиалгын дугаар, нэр, утсаа хамт бичвэл илүү хурдан шалгаж өгнө.`;
   }
 
-  if (hasAny(text, ['солонгос', 'korea', 'ирдэг', 'жинхэнэ', 'оригинал'])) {
-    if (hasAny(text, ['хэд хоног', 'хэзээ', 'хугацаа', 'тээвэр', 'хүргэлт'])) {
+  if (
+    hasAny(text, ['mongold', 'mongol', 'zahialsan', 'zahialga', 'baraa', 'hezee', 'ireh', 'irh', 'hureh', 'hurgelt', 'honog']) &&
+    (hasAny(text, ['hezee', 'ireh', 'irh', 'hureh', 'hurgelt', 'honog']) || hasAny(text, ['захиалсан', 'хэзээ', 'ирэх', 'хүрэх']))
+  ) {
+    return 'Захиалсан бараа тань хэзээ ирэх нь тухайн бүтээгдэхүүн бэлэн байгаа эсэх, Солонгосоос татан авалт хийгдэж байгаа эсэх, мөн хил гааль болон хүргэлтийн ачааллаас хамаарна. Захиалгын дугаартай бол админ руу дугаараа явуулаад явцыг нь шууд шалгуулаарай.';
+  }
+
+  if (hasAny(text, ['солонгос', 'korea', 'ирдэг', 'жинхэнэ', 'оригинал', 'solongos', 'solongosoos', 'irdeg', 'jinhene'])) {
+    if (hasAny(text, ['хэд хоног', 'хэзээ', 'хугацаа', 'тээвэр', 'хүргэлт', 'hed honog', 'hezee', 'hugatsaa', 'teever', 'hurgelt', 'ireh', 'honog'])) {
       return `UJ Cosmetic нь Солонгосоос Монгол руу чанартай бүтээгдэхүүн санал болгодог онлайн дэлгүүрийн концепцтой.\n\nСолонгосоос ирэх яг хугацаа тухайн үеийн татан авалт, хил гааль, хүргэлтийн ачааллаас хамаардаг тул админ захиалгыг баталгаажуулахдаа илүү тодорхой хэлж өгнө. Бэлэн байгаа бүтээгдэхүүн бол Монгол доторх хүргэлтийн үнэ ${settings.shippingCost.toLocaleString('mn-MN')}₮.`;
     }
 
     return 'Тийм ээ, UJ Cosmetic нь Солонгосоос Монгол руу чанартай гоо сайхан болон эрүүл мэндийн нэмэлт бүтээгдэхүүн санал болгодог онлайн дэлгүүрийн концепцтой. Баталгаажуулах зүйл байвал админтай шууд холбогдоорой.';
   }
 
-  if (hasAny(text, ['хүргэл', 'хэд хоног', 'delivery', 'shipping'])) {
+  if (hasAny(text, ['хүргэл', 'хэд хоног', 'delivery', 'shipping', 'hurgelt', 'hezee ireh', 'hed honog', 'honog'])) {
     return `Монгол доторх хүргэлтийн үнэ ${settings.shippingCost.toLocaleString('mn-MN')}₮. ${settings.freeShippingThreshold.toLocaleString('mn-MN')}₮-өөс дээш захиалгад хүргэлт үнэгүй. Захиалга баталгаажсаны дараа админ хүргэлтийн явцыг танд мэдэгдэнэ.`;
   }
 
-  if (hasAny(text, ['захиал', 'сагс', 'авах', 'order', 'checkout'])) {
+  if (hasAny(text, ['захиал', 'сагс', 'авах', 'order', 'checkout', 'zahial', 'zahialsan', 'sags', 'avah'])) {
     return 'Бүтээгдэхүүнээ сонгоод "Сагсанд хийх" эсвэл "Шууд авах" товч дарна. Дараа нь checkout хэсэгт нэр, утас, хүргэлтийн хаягаа зөв бөглөөд захиалгаа баталгаажуулаарай.';
   }
 
