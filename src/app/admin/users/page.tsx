@@ -5,10 +5,19 @@ import { collection, doc, getDocs, orderBy, query, updateDoc } from 'firebase/fi
 import { db } from '@/lib/firebase';
 import { formatMongolianDateTime } from '@/lib/format';
 import { formatPrice } from '@/types';
+import Pagination, { paginate } from '@/components/admin/Pagination';
 
 function formatDate(date: any) {
   return formatMongolianDateTime(date);
 }
+
+const statusLabels: Record<string, string> = {
+  pending: 'Хүлээгдэж байна',
+  confirmed: 'Баталгаажсан',
+  shipped: 'Хүргэлтэнд',
+  delivered: 'Хүргэгдсэн',
+  cancelled: 'Цуцлагдсан',
+};
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<any[]>([]);
@@ -16,6 +25,7 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     fetchUsersAndOrders();
@@ -56,6 +66,12 @@ export default function AdminUsersPage() {
       (user.email?.toLowerCase() || '').includes(term)
     );
   }, [users, search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+
+  const paginatedUsers = useMemo(() => paginate(filteredUsers, page, 10), [filteredUsers, page]);
 
   async function toggleAdmin(userId: string, currentRole: string, event: React.MouseEvent) {
     event.stopPropagation();
@@ -118,7 +134,7 @@ export default function AdminUsersPage() {
             <div className="p-8 flex justify-center"><div className="w-7 h-7 border border-[#1A1A1A] border-t-transparent rounded-full animate-spin" /></div>
           ) : filteredUsers.length === 0 ? (
             <p className="p-8 text-center text-sm text-[#8B6B78]">Хэрэглэгч олдсонгүй</p>
-          ) : filteredUsers.map(user => (
+          ) : paginatedUsers.map(user => (
             <div key={user.id} className="rounded-[14px] border border-[#F2A8C8]/35 bg-white p-4 shadow-[0_8px_24px_rgba(26,26,26,0.045)]" onClick={() => setSelectedUser(user)}>
               <div className="flex items-center gap-4">
                 <div className="w-11 h-11 rounded-[12px] bg-[#FFF0F6] border border-[#F2A8C8]/50 flex items-center justify-center text-sm font-semibold">
@@ -136,7 +152,7 @@ export default function AdminUsersPage() {
                 <div><p className="text-xs text-[#8B6B78]">Захиалга</p><p>{ordersMap[user.id]?.length || 0}</p></div>
                 <div><p className="text-xs text-[#8B6B78]">Бүртгэл</p><p>{formatDate(user.createdAt)}</p></div>
               </div>
-              <button onClick={(event) => toggleAdmin(user.id, user.role, event)} className="mt-4 w-full min-h-11 rounded-[10px] border border-[#FFB7D5] bg-[#FFF8FB] text-xs tracking-[0.08em]">
+              <button onClick={(event) => toggleAdmin(user.id, user.role, event)} className="mt-4 w-full min-h-11 rounded-[10px] border border-[#F2C7D8] bg-white px-4 text-xs font-semibold text-[#241820] shadow-[0_8px_18px_rgba(91,46,67,0.05)] transition-colors hover:bg-[#FFF0F6]">
                 {user.role === 'admin' ? 'Админ эрх хасах' : 'Админ болгох'}
               </button>
             </div>
@@ -160,7 +176,7 @@ export default function AdminUsersPage() {
                 <tr><td colSpan={6} className="px-5 py-14 text-center">Уншиж байна...</td></tr>
               ) : filteredUsers.length === 0 ? (
                 <tr><td colSpan={6} className="px-5 py-14 text-center text-[#8B6B78]">Хэрэглэгч олдсонгүй</td></tr>
-              ) : filteredUsers.map(user => (
+              ) : paginatedUsers.map(user => (
                 <tr key={user.id} onClick={() => setSelectedUser(user)} className="hover:bg-[#FFF8FB] cursor-pointer">
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
@@ -179,7 +195,7 @@ export default function AdminUsersPage() {
                     </span>
                   </td>
                   <td className="px-5 py-4 text-right">
-                    <button onClick={(event) => toggleAdmin(user.id, user.role, event)} className="text-xs tracking-[0.14em] uppercase border-b border-[#FFB7D5] pb-1">
+                    <button onClick={(event) => toggleAdmin(user.id, user.role, event)} className="min-h-9 rounded-[9px] border border-[#F2C7D8] bg-white px-3 text-xs font-semibold text-[#241820] transition-colors hover:bg-[#FFF0F6]">
                       {user.role === 'admin' ? 'Эрх хасах' : 'Админ болгох'}
                     </button>
                   </td>
@@ -188,6 +204,7 @@ export default function AdminUsersPage() {
             </tbody>
           </table>
         </div>
+        <Pagination page={page} totalItems={filteredUsers.length} onPageChange={setPage} />
       </div>
 
       {selectedUser && (
@@ -217,7 +234,7 @@ export default function AdminUsersPage() {
                       <p className="text-xs tracking-[0.12em] uppercase text-[#8B6B78] mt-1">#{order.id.slice(-6)}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs text-[#8B6B78]">{order.status}</p>
+                      <p className="text-xs text-[#8B6B78]">{statusLabels[order.status] || order.status}</p>
                       <p className="font-medium mt-1">{formatPrice(order.total || 0)}</p>
                     </div>
                   </div>

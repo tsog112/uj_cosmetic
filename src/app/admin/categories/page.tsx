@@ -5,6 +5,7 @@ import { collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, s
 import { db } from '@/lib/firebase';
 import { uploadImage } from '@/lib/uploadImage';
 import type { Category } from '@/types';
+import Pagination, { paginate } from '@/components/admin/Pagination';
 
 type CategoryFormState = {
   id?: string;
@@ -39,8 +40,24 @@ export default function AdminCategoriesPage() {
   const [form, setForm] = useState<CategoryFormState>(emptyForm);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [toast, setToast] = useState('');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
 
   const sortedCategories = useMemo(() => [...categories].sort((a, b) => Number(a.order ?? 0) - Number(b.order ?? 0)), [categories]);
+  const filteredCategories = useMemo(() => {
+    const term = search.toLowerCase().trim();
+    if (!term) return sortedCategories;
+    return sortedCategories.filter(category =>
+      category.name_mn.toLowerCase().includes(term) ||
+      category.slug.toLowerCase().includes(term)
+    );
+  }, [sortedCategories, search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+
+  const paginatedCategories = useMemo(() => paginate(filteredCategories, page, 10), [filteredCategories, page]);
 
   async function fetchCategories() {
     setLoading(true);
@@ -246,7 +263,15 @@ export default function AdminCategoriesPage() {
             </div>
           </div>
 
-          {form.imageUrl && <img src={form.imageUrl} alt={form.name_mn || 'Category'} className="mt-4 h-20 w-20 rounded-[12px] object-cover border border-[#F2A8C8]/50" />}
+          <div className="mt-4 rounded-[16px] border border-dashed border-[#F2A8C8]/70 bg-[#FFF8FB] p-3">
+            {form.imageUrl ? (
+              <img src={form.imageUrl} alt={form.name_mn || 'Category'} className="h-40 w-full rounded-[12px] object-cover sm:h-48" />
+            ) : (
+              <div className="flex h-40 items-center justify-center rounded-[12px] bg-white text-sm text-[#8B6B78] sm:h-48">
+                Ангиллын зураг харагдана
+              </div>
+            )}
+          </div>
 
           <div className="mt-5 flex flex-col sm:flex-row justify-end gap-3">
             <button onClick={resetForm} className="min-h-11 px-4 rounded-[10px] border border-[#F2A8C8] text-sm">Болих</button>
@@ -258,11 +283,25 @@ export default function AdminCategoriesPage() {
       )}
 
       <div className="rounded-[16px] bg-white border border-[#F2A8C8]/40 shadow-[0_10px_30px_rgba(26,26,26,0.03)] overflow-hidden">
+        <div className="border-b border-[#F2A8C8]/40 p-4">
+          <div className="relative">
+            <input
+              value={search}
+              onChange={event => setSearch(event.target.value)}
+              placeholder="Ангиллын нэр эсвэл slug-аар хайх..."
+              className="w-full min-h-11 rounded-[10px] border border-[#F2A8C8]/60 bg-[#FFF8FB] pl-10 pr-4 text-sm outline-none placeholder:text-[#8B6B78]/70 focus:border-[#FFB7D5] focus:bg-white"
+            />
+            <svg className="absolute left-4 top-3.5 text-[#8B6B78]" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+          </div>
+        </div>
         {loading ? (
           <div className="p-10 text-center text-[#8B6B78]">Ачаалж байна...</div>
         ) : (
           <div className="space-y-3 bg-[#FFF8FB] p-3 md:divide-y md:divide-[#F2A8C8]/30 md:space-y-0 md:bg-white md:p-0">
-            {sortedCategories.map(category => (
+            {paginatedCategories.map(category => (
               <div
                 key={category.id}
                 draggable
@@ -270,14 +309,14 @@ export default function AdminCategoriesPage() {
                 onDragOver={event => event.preventDefault()}
                 onDrop={event => handleDrop(category.id, event)}
                 onDragEnd={() => setDraggedId(null)}
-                className="rounded-[14px] border border-[#F2A8C8]/35 bg-white p-4 md:rounded-none md:border-0 md:p-5 hover:bg-[#FFF8FB] transition-colors shadow-[0_8px_24px_rgba(26,26,26,0.04)] md:shadow-none"
+                className="grid gap-4 rounded-[16px] border border-[#F2A8C8]/35 bg-white p-4 shadow-[0_8px_24px_rgba(26,26,26,0.04)] transition-colors hover:bg-[#FFF8FB] md:grid-cols-[1fr_auto] md:items-center md:rounded-none md:border-0 md:p-5 md:shadow-none"
               >
-                <div className="flex items-center gap-3 md:gap-4">
+                <div className="flex items-center gap-4 md:gap-5">
                   <span className="shrink-0 text-xs text-[#8B6B78] cursor-move">⠿</span>
                   {category.imageUrl ? (
-                    <img src={category.imageUrl} alt={category.name_mn} className="h-14 w-14 md:h-12 md:w-12 rounded-[12px] object-cover border border-[#F2A8C8]/50" />
+                    <img src={category.imageUrl} alt={category.name_mn} className="h-24 w-32 shrink-0 rounded-[16px] border border-[#F2A8C8]/50 object-cover md:h-28 md:w-40" />
                   ) : (
-                    <div className="h-14 w-14 md:h-12 md:w-12 shrink-0 rounded-[12px] bg-[#FFD6E8]" />
+                    <div className="flex h-24 w-32 shrink-0 items-center justify-center rounded-[16px] border border-dashed border-[#F2A8C8]/70 bg-[#FFF0F6] text-xs text-[#8B6B78] md:h-28 md:w-40">Зураггүй</div>
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="font-medium truncate text-[15px] md:text-base">{category.name_mn}</p>
@@ -285,14 +324,15 @@ export default function AdminCategoriesPage() {
                     <p className="text-xs text-[#8B6B78] mt-0.5">{category.productCount || 0} бараа</p>
                   </div>
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-2 md:mt-0 md:flex md:justify-end">
-                  <button onClick={() => handleEdit(category)} className="min-h-10 px-3 rounded-[10px] border border-[#F2A8C8] bg-[#FFF8FB] text-xs">Засах</button>
-                  <button onClick={() => handleDelete(category)} className="min-h-10 px-3 rounded-[10px] border border-[#F1B8B8] bg-[#FFF0F0] text-[#A14E4E] text-xs">Устгах</button>
+                <div className="grid grid-cols-2 gap-2 md:flex md:justify-end">
+                  <button onClick={() => handleEdit(category)} className="min-h-10 rounded-[10px] border border-[#F2C7D8] bg-white px-4 text-xs font-semibold text-[#241820] transition-colors hover:bg-[#FFF0F6]">Засах</button>
+                  <button onClick={() => handleDelete(category)} className="min-h-10 rounded-[10px] border border-[#F1B8B8] bg-[#FFF0F0] px-4 text-xs font-semibold text-[#A14E4E] transition-colors hover:bg-red-100">Устгах</button>
                 </div>
               </div>
             ))}
           </div>
         )}
+        <Pagination page={page} totalItems={filteredCategories.length} onPageChange={setPage} />
       </div>
     </div>
   );

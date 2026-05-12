@@ -5,6 +5,7 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { collection, getDocs, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { formatPrice } from '@/types';
+import Pagination, { paginate } from '@/components/admin/Pagination';
 
 const paidStatuses = ['confirmed', 'shipped', 'delivered'];
 
@@ -13,6 +14,7 @@ export default function AnalyticsPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
+  const [productPage, setProductPage] = useState(1);
 
   useEffect(() => {
     async function fetchAnalytics() {
@@ -54,6 +56,7 @@ export default function AnalyticsPage() {
       };
     }).sort((a, b) => b.ordered - a.ordered);
   }, [products]);
+  const paginatedProductTable = useMemo(() => paginate(productTable, productPage, 10), [productTable, productPage]);
 
   const metrics = useMemo(() => {
     const paidOrders = orders.filter(order => paidStatuses.includes(order.status));
@@ -137,7 +140,7 @@ export default function AnalyticsPage() {
         <div className="md:hidden space-y-3 bg-[#FFF8FB] p-3">
           {productTable.length === 0 ? (
             <p className="p-8 text-center text-sm text-[#8B6B78]">Мэдээлэл алга</p>
-          ) : productTable.map(product => (
+          ) : paginatedProductTable.map(product => (
             <div key={product.id} className="rounded-[14px] border border-[#F2A8C8]/35 bg-white p-4 shadow-[0_8px_24px_rgba(26,26,26,0.04)]">
               <p className="font-medium">{product.name}</p>
               <div className="mt-3 grid grid-cols-3 gap-3 text-sm">
@@ -163,7 +166,7 @@ export default function AnalyticsPage() {
             <tbody className="divide-y divide-[#F2A8C8]/30">
               {productTable.length === 0 ? (
                 <tr><td colSpan={5} className="px-5 py-12 text-center text-[#8B6B78]">Мэдээлэл алга</td></tr>
-              ) : productTable.map(product => (
+              ) : paginatedProductTable.map(product => (
                 <tr key={product.id} className="hover:bg-[#FFF8FB]">
                   <td className="px-5 py-4 font-medium">{product.name}</td>
                   <td className="px-5 py-4 text-right">{product.views}</td>
@@ -175,6 +178,7 @@ export default function AnalyticsPage() {
             </tbody>
           </table>
         </div>
+        <Pagination page={productPage} totalItems={productTable.length} onPageChange={setProductPage} />
       </section>
     </div>
   );

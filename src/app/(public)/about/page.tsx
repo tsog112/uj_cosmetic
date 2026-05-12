@@ -157,7 +157,7 @@ export default function AboutPage() {
               <p className="text-sm text-text-muted">Таны мессежийг хүлээн авлаа. Бид удахгүй хариу өгөх болно.</p>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6 rounded-[18px] border border-[#F2A8C8]/45 bg-white p-5 shadow-[0_18px_50px_rgba(91,46,67,0.08)] sm:p-7">
               <div>
                 <label htmlFor="name" className="block text-xs tracking-wider uppercase text-text-muted mb-2">
                   Нэр
@@ -167,7 +167,7 @@ export default function AboutPage() {
                   id="name"
                   name="name"
                   required
-                  className="w-full bg-transparent border border-border px-4 py-3 text-sm text-text-primary placeholder:text-text-muted/50 focus:border-accent focus:outline-none transition-colors"
+                  className="w-full rounded-[12px] border border-[#F2C7D8] bg-[#FFF8FB] px-4 py-3 text-sm text-text-primary placeholder:text-[#B79AA6] transition-colors focus:border-[#D994B5] focus:bg-white focus:outline-none"
                   placeholder="Таны нэр"
                 />
               </div>
@@ -181,7 +181,7 @@ export default function AboutPage() {
                   id="email"
                   name="email"
                   required
-                  className="w-full bg-transparent border border-border px-4 py-3 text-sm text-text-primary placeholder:text-text-muted/50 focus:border-accent focus:outline-none transition-colors"
+                  className="w-full rounded-[12px] border border-[#F2C7D8] bg-[#FFF8FB] px-4 py-3 text-sm text-text-primary placeholder:text-[#B79AA6] transition-colors focus:border-[#D994B5] focus:bg-white focus:outline-none"
                   placeholder="name@example.com"
                 />
               </div>
@@ -195,12 +195,12 @@ export default function AboutPage() {
                   name="message"
                   required
                   rows={5}
-                  className="w-full bg-transparent border border-border px-4 py-3 text-sm text-text-primary placeholder:text-text-muted/50 focus:border-accent focus:outline-none transition-colors resize-none"
+                  className="w-full resize-none rounded-[12px] border border-[#F2C7D8] bg-[#FFF8FB] px-4 py-3 text-sm text-text-primary placeholder:text-[#B79AA6] transition-colors focus:border-[#D994B5] focus:bg-white focus:outline-none"
                   placeholder="Таны мессеж..."
                 />
               </div>
 
-              <button type="submit" className="btn-gold w-full py-4">
+              <button type="submit" className="flex min-h-14 w-full items-center justify-center rounded-[14px] bg-[#D994B5] px-6 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(217,148,181,0.28)] transition-colors hover:bg-[#c77ea4]">
                 Илгээх
               </button>
             </form>

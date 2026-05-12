@@ -39,8 +39,8 @@ function SuccessContent() {
         Баярлалаа. Таны захиалгын дугаар: <strong className="text-text-primary">{orderId}</strong>
       </p>
 
-      <div className="bg-cream border-2 border-accent p-8 mb-8 text-left relative overflow-hidden">
-        <div className="absolute top-0 right-0 bg-accent text-text-primary text-[10px] font-bold px-3 py-1 uppercase tracking-wider">
+      <div className="relative mb-8 overflow-hidden rounded-[18px] border border-[#F2C7D8] bg-[#FFF8FB] p-8 text-left shadow-[0_18px_50px_rgba(91,46,67,0.08)]">
+        <div className="absolute right-0 top-0 rounded-bl-[12px] bg-[#D994B5] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
           Банкны шилжүүлэг
         </div>
 
@@ -55,7 +55,7 @@ function SuccessContent() {
               <strong className="text-text-primary text-base">{settings.bankAccount}</strong>
               <button
                 onClick={handleCopy}
-                className="text-accent hover:text-text-primary transition-colors p-1"
+                className="rounded-[8px] border border-[#F2C7D8] bg-white p-2 text-[#D994B5] transition-colors hover:bg-[#FFF0F6] hover:text-[#241820]"
                 title={copied ? 'Хуулагдлаа!' : 'Хуулах'}
                 aria-label={copied ? 'Хуулагдлаа!' : 'Хуулах'}
               >
@@ -80,7 +80,7 @@ function SuccessContent() {
 
           <div className="flex justify-between items-center">
             <span className="text-text-muted">Гүйлгээний утга:</span>
-            <strong className="text-accent bg-accent/10 px-2 py-0.5">{orderId}</strong>
+            <strong className="rounded-[8px] bg-white px-2 py-1 text-[#D994B5]">{orderId}</strong>
           </div>
         </div>
       </div>
@@ -93,7 +93,7 @@ function SuccessContent() {
           href={settings.instagramUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="btn-outline w-full md:w-auto inline-flex items-center justify-center gap-3"
+          className="inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-[12px] border border-[#F2C7D8] bg-white px-6 text-sm font-semibold text-[#241820] transition-colors hover:bg-[#FFF0F6] md:w-auto"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <rect x="2" y="2" width="20" height="20" rx="5" />
@@ -104,7 +104,7 @@ function SuccessContent() {
         </a>
       </div>
 
-      <Link href="/" className="text-sm text-text-muted hover:text-accent underline underline-offset-4 transition-colors">
+      <Link href="/" className="inline-flex min-h-11 items-center justify-center rounded-[11px] bg-[#241820] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#D994B5]">
         Дэлгүүр рүү буцах
       </Link>
     </div>

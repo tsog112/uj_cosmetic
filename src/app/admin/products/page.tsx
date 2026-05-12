@@ -5,10 +5,13 @@ import { db } from '@/lib/firebase';
 import { collection, query, getDocs, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { formatPrice } from '@/types';
 import ProductForm from '@/components/admin/ProductForm';
+import Pagination, { paginate } from '@/components/admin/Pagination';
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
@@ -211,24 +214,29 @@ export default function AdminProductsPage() {
     return { total: products.length, outOfStock, hidden, lowStock };
   }, [products]);
 
+  const filteredProducts = useMemo(() => {
+    const term = search.toLowerCase().trim();
+    if (!term) return products;
+    return products.filter(product =>
+      (product.name_mn || '').toLowerCase().includes(term) ||
+      (product.name_en || '').toLowerCase().includes(term) ||
+      (product.category || '').toLowerCase().includes(term) ||
+      (product.slug || '').toLowerCase().includes(term)
+    );
+  }, [products, search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+
+  const paginatedProducts = useMemo(() => paginate(filteredProducts, page, 10), [filteredProducts, page]);
+
   return (
     <div className="space-y-4 md:space-y-8 pb-24">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-[10px] tracking-[0.1em] uppercase text-[#8B6B78]">Барааны удирдлага</p>
           <h2 className="truncate text-[22px] md:text-3xl font-semibold mt-1 text-[#1A1A1A]">Бүтээгдэхүүн</h2>
-          <label className="mt-3 flex items-center gap-3 text-sm text-[#8B6B78] cursor-pointer">
-            <input 
-              type="checkbox" 
-              className="w-4 h-4 accent-[#FFB7D5]"
-              checked={products.length > 0 && selectedIds.size === products.length}
-              onChange={(e) => {
-                if (e.target.checked) setSelectedIds(new Set(products.map(p => p._id || p.id)));
-                else setSelectedIds(new Set());
-              }}
-            />
-            Бүгдийг сонгох
-          </label>
         </div>
         <button 
           onClick={() => handleOpenForm()}
@@ -268,8 +276,37 @@ export default function AdminProductsPage() {
           <button onClick={() => handleOpenForm()} className="text-xs tracking-[0.14em] uppercase border-b border-[#FFB7D5] pb-1">Эхний барааг нэмэх</button>
         </div>
       ) : (
+        <>
+        <div className="rounded-[16px] border border-[#F2A8C8]/40 bg-white p-4 shadow-[0_10px_30px_rgba(26,26,26,0.03)]">
+          <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
+          <div className="relative">
+            <input
+              value={search}
+              onChange={event => setSearch(event.target.value)}
+              placeholder="Бүтээгдэхүүний нэр, ангилал, slug-аар хайх..."
+              className="w-full min-h-11 rounded-[10px] border border-[#F2A8C8]/60 bg-[#FFF8FB] pl-10 pr-4 text-sm outline-none placeholder:text-[#8B6B78]/70 focus:border-[#FFB7D5] focus:bg-white"
+            />
+            <svg className="absolute left-4 top-3.5 text-[#8B6B78]" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+          </div>
+          <label className="flex min-h-11 cursor-pointer items-center justify-center gap-3 rounded-[10px] border border-[#F2C7D8] bg-[#FFF8FB] px-4 text-sm font-semibold text-[#241820] transition-colors hover:bg-[#FFF0F6]">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-[#D994B5]"
+              checked={filteredProducts.length > 0 && selectedIds.size === filteredProducts.length}
+              onChange={(e) => {
+                if (e.target.checked) setSelectedIds(new Set(filteredProducts.map(p => p._id || p.id)));
+                else setSelectedIds(new Set());
+              }}
+            />
+            Бүгдийг сонгох
+          </label>
+          </div>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
-          {products.map(p => {
+          {paginatedProducts.map(p => {
             const docId = p._id || p.id;
             const stockQuantity = Number(p.stockQuantity ?? p.stock ?? (p.inStock === false ? 0 : 999));
             const inStock = stockQuantity > 0 && p.inStock !== false;
@@ -398,6 +435,8 @@ export default function AdminProductsPage() {
             </div>
           )})}
         </div>
+        <Pagination page={page} totalItems={filteredProducts.length} onPageChange={setPage} />
+        </>
       )}
 
       {/* Bulk Action Bar */}

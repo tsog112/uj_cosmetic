@@ -106,7 +106,7 @@ export default function ProductDetailPage() {
         <p className="text-text-muted text-sm mb-8">
           Уучлаарай, энэ бүтээгдэхүүн олдсонгүй.
         </p>
-        <Link href="/shop" className="btn-outline">
+        <Link href="/shop" className="inline-flex min-h-11 items-center justify-center rounded-[11px] border border-[#F2C7D8] bg-white px-5 text-sm font-semibold text-[#241820] transition-colors hover:bg-[#FFF0F6]">
           Дэлгүүр рүү буцах
         </Link>
       </div>

@@ -2,9 +2,7 @@ import type { Config } from 'tailwindcss';
 
 const config: Config = {
   content: [
-    './src/app/**/*.{js,ts,jsx,tsx,mdx}',
-    './src/components/**/*.{js,ts,jsx,tsx,mdx}',
-    './src/context/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
     extend: {
@@ -15,6 +13,9 @@ const config: Config = {
         'rose-gold': '#ECC5C0',
         charcoal: '#1A1A1A',
         border: '#EEE0E0',
+        'warm-cream': '#FFF8FB',
+        'rose-quartz': '#FFF0F6',
+        'rose-100': '#FFF0F6',
       },
       fontSize: {
         display: ['4.5rem', { lineHeight: '1.05', letterSpacing: '-0.03em' }],

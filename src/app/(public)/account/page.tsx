@@ -250,20 +250,31 @@ function AccountContent() {
                           <p className="text-xs uppercase tracking-[0.14em] text-[#8B6B78]">Огноо</p>
                           <p className="mt-1 text-sm text-[#1A1A1A]">{formatDate(order.createdAt)}</p>
                         </div>
-                        <span className="border border-[#F2A8C8]/60 bg-[#FFF8FB] px-3 py-1 text-xs text-[#8B6B78]">
+                        <span className="rounded-[999px] border border-[#F2A8C8]/60 bg-[#FFF8FB] px-3 py-1.5 text-xs font-semibold text-[#8B6B78]">
                           {statusLabels[order.status] || order.status}
                         </span>
                         <p className="font-medium text-[#D86FA0]">{formatPrice(order.total || 0)}</p>
                       </div>
                       <div className="mt-4 space-y-3">
-                        {order.items?.map((item: any, idx: number) => (
-                          <div key={`${order.id}-${idx}`} className="flex justify-between gap-4 text-sm">
-                            <span className="text-[#1A1A1A]">
-                              {item.name_mn || item.name || 'Бүтээгдэхүүн'} <span className="text-[#8B6B78]">× {item.quantity} ширхэг</span>
-                            </span>
-                            <span>{formatPrice((item.price || 0) * (item.quantity || 1))}</span>
-                          </div>
-                        ))}
+                        {order.items?.map((item: any, idx: number) => {
+                          const itemName = item.name_mn || item.name || 'Бүтээгдэхүүн';
+                          const itemImage = item.imageUrl || item.productImage || item.image || '/placeholder-product.svg';
+
+                          return (
+                            <div key={`${order.id}-${idx}`} className="grid grid-cols-[54px_1fr_auto] items-center gap-3 rounded-[12px] bg-[#FFF8FB] p-2 text-sm">
+                              <div className="relative aspect-square overflow-hidden rounded-[10px] bg-[#FFF0F6]">
+                                <Image src={itemImage} alt={itemName} fill className="object-cover" sizes="54px" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="truncate font-medium text-[#1A1A1A]">{itemName}</p>
+                                <p className="mt-1 text-xs text-[#8B6B78]">× {item.quantity || 1} ширхэг</p>
+                              </div>
+                              <span className="whitespace-nowrap font-medium text-[#241820]">
+                                {formatPrice((item.price || 0) * (item.quantity || 1))}
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </article>
                   ))}
@@ -318,7 +329,7 @@ function AccountContent() {
                           </Link>
                           <p className="mt-1 text-xs text-[#8B6B78]">{formatDate(review.createdAt)}</p>
                         </div>
-                        <span className="border border-[#F2A8C8]/50 bg-[#FFF8FB] px-2 py-1 text-[11px] text-[#8B6B78]">
+                        <span className="rounded-[999px] border border-[#F2A8C8]/50 bg-[#FFF8FB] px-3 py-1.5 text-[11px] font-semibold text-[#8B6B78]">
                           {review.approved ? 'Нийтлэгдсэн' : 'Нуусан'}
                         </span>
                       </div>

@@ -65,9 +65,6 @@ export default function AdminSettingsPage() {
           <p className="text-[10px] tracking-[0.1em] uppercase text-[#8B6B78]">Сайтын тохиргоо</p>
           <h2 className="truncate text-[22px] md:text-3xl font-semibold mt-1 text-[#1A1A1A]">Тохиргоо</h2>
         </div>
-        <button onClick={handleSave} disabled={saving} className="shrink-0 min-h-11 px-4 md:px-5 rounded-[10px] bg-[#1A1A1A] text-white text-sm disabled:opacity-50 shadow-[0_10px_24px_rgba(26,26,26,0.12)]">
-          {saving ? 'Хадгалж байна...' : 'Хадгалах'}
-        </button>
       </div>
 
       <div className="space-y-5">

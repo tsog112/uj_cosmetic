@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { deleteReview, getAllReviews, updateReviewApproval } from '@/lib/services/firestoreService';
 import type { Review } from '@/types';
+import Pagination, { paginate } from '@/components/admin/Pagination';
 
 function formatDate(date: Date) {
   if (!(date instanceof Date)) return '-';
@@ -16,6 +17,8 @@ export default function AdminReviewsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'approved' | 'hidden'>('all');
   const [toast, setToast] = useState('');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
 
   const fetchReviews = async () => {
     setLoading(true);
@@ -39,10 +42,27 @@ export default function AdminReviewsPage() {
   }), [reviews]);
 
   const filteredReviews = useMemo(() => {
-    if (filter === 'approved') return reviews.filter(review => review.approved);
-    if (filter === 'hidden') return reviews.filter(review => !review.approved);
-    return reviews;
-  }, [reviews, filter]);
+    const term = search.toLowerCase().trim();
+    return reviews.filter(review => {
+      const matchesFilter =
+        filter === 'all' ||
+        (filter === 'approved' && review.approved) ||
+        (filter === 'hidden' && !review.approved);
+      const matchesSearch =
+        !term ||
+        review.productName.toLowerCase().includes(term) ||
+        review.userName.toLowerCase().includes(term) ||
+        review.userEmail.toLowerCase().includes(term) ||
+        review.content.toLowerCase().includes(term);
+      return matchesFilter && matchesSearch;
+    });
+  }, [reviews, filter, search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filter, search]);
+
+  const paginatedReviews = useMemo(() => paginate(filteredReviews, page, 10), [filteredReviews, page]);
 
   const showToast = (message: string) => {
     setToast(message);
@@ -117,6 +137,18 @@ export default function AdminReviewsPage() {
               </button>
             ))}
           </div>
+          <div className="relative mt-3">
+            <input
+              value={search}
+              onChange={event => setSearch(event.target.value)}
+              placeholder="Бүтээгдэхүүн, хэрэглэгч, сэтгэгдлээр хайх..."
+              className="w-full min-h-11 rounded-[10px] border border-[#F2A8C8]/60 bg-[#FFF8FB] pl-10 pr-4 text-sm outline-none placeholder:text-[#8B6B78]/70 focus:border-[#FFB7D5] focus:bg-white"
+            />
+            <svg className="absolute left-4 top-3.5 text-[#8B6B78]" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+          </div>
         </div>
 
         {loading ? (
@@ -127,7 +159,7 @@ export default function AdminReviewsPage() {
           <div className="p-10 text-center text-sm text-[#8B6B78]">Сэтгэгдэл алга байна.</div>
         ) : (
           <div className="divide-y divide-[#F2A8C8]/30">
-            {filteredReviews.map(review => (
+            {paginatedReviews.map(review => (
               <article key={review.id} className="p-4 md:p-5">
                 <div className="grid gap-4 md:grid-cols-[120px_1fr_auto] md:items-start">
                   <div className="grid grid-cols-4 gap-2 md:block">
@@ -147,7 +179,7 @@ export default function AdminReviewsPage() {
 
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className={`border px-2 py-1 text-[10px] tracking-[0.12em] uppercase ${
+                      <span className={`rounded-[999px] border px-3 py-1.5 text-[10px] font-semibold tracking-[0.08em] uppercase ${
                         review.approved
                           ? 'border-green-200 bg-green-50 text-green-700'
                           : 'border-[#F2A8C8]/60 bg-[#FFF0F6] text-[#8B6B78]'
@@ -171,13 +203,13 @@ export default function AdminReviewsPage() {
                   <div className="flex gap-2 md:flex-col">
                     <button
                       onClick={() => handleToggle(review)}
-                      className="min-h-11 flex-1 border border-[#FFB7D5] px-4 text-xs text-[#1A1A1A] hover:bg-[#FFF0F6] md:flex-none"
+                      className="min-h-11 flex-1 rounded-[10px] border border-[#F2C7D8] bg-white px-4 text-xs font-semibold text-[#1A1A1A] transition-colors hover:bg-[#FFF0F6] md:flex-none"
                     >
                       {review.approved ? 'Нуух' : 'Нийтлэх'}
                     </button>
                     <button
                       onClick={() => handleDelete(review)}
-                      className="min-h-11 flex-1 border border-red-200 bg-red-50 px-4 text-xs text-red-700 hover:bg-red-100 md:flex-none"
+                      className="min-h-11 flex-1 rounded-[10px] border border-red-200 bg-red-50 px-4 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100 md:flex-none"
                     >
                       Устгах
                     </button>
@@ -187,6 +219,7 @@ export default function AdminReviewsPage() {
             ))}
           </div>
         )}
+        <Pagination page={page} totalItems={filteredReviews.length} onPageChange={setPage} />
       </div>
     </div>
   );

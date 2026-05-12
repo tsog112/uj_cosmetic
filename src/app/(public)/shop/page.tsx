@@ -96,7 +96,7 @@ function ShopContent() {
     return (
       <div className="max-w-[1400px] mx-auto px-6 lg:px-10 py-20 text-center">
         <p className="text-sm text-red-500 mb-4">Мэдээлэл ачаалахад алдаа гарлаа. Дахин оролдоно уу.</p>
-        <button onClick={() => window.location.reload()} className="btn-outline">Дахин оролдох</button>
+        <button onClick={() => window.location.reload()} className="inline-flex min-h-11 items-center justify-center rounded-[11px] border border-[#F2C7D8] bg-white px-5 text-sm font-semibold text-[#241820] transition-colors hover:bg-[#FFF0F6]">Дахин оролдох</button>
       </div>
     );
   }
