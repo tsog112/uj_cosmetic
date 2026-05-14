@@ -301,12 +301,7 @@ export default function AdminOrdersPage() {
       </div>
 
       <div className="overflow-hidden rounded-[18px] border border-[#F2A8C8]/45 bg-white shadow-[0_18px_45px_rgba(26,26,26,0.045)]">
-        <div className="z-20 space-y-3 border-b border-[#F2A8C8]/35 bg-white/95 p-3 backdrop-blur-md md:sticky md:top-20 md:p-4">
-          <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8B6B78]">Захиалгын жагсаалт</p>
-            </div>
-          </div>
+        <div className="z-20 space-y-3 border-b border-[#F2A8C8]/35 bg-white/95 p-3 backdrop-blur-md md:p-4">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
             {tabs.map(tab => (
               <button
@@ -395,17 +390,27 @@ export default function AdminOrdersPage() {
         </div>
 
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full min-w-[1120px] table-auto text-left text-sm">
-            <thead className="bg-[#FFF8FB] text-[11px] tracking-[0.08em] uppercase text-[#8B6B78]">
+          <table className="w-full min-w-[1350px] table-fixed text-left text-sm">
+            <colgroup>
+              <col className="w-[170px]" />
+              <col className="w-[240px]" />
+              <col className="w-[160px]" />
+              <col className="w-[110px]" />
+              <col className="w-[150px]" />
+              <col className="w-[230px]" />
+              <col className="w-[190px]" />
+              <col className="w-[140px]" />
+            </colgroup>
+            <thead className="border-b border-[#F2A8C8]/35 bg-[#FFF8FB] text-[11px] font-semibold uppercase tracking-[0.08em] text-[#8B6B78]">
               <tr>
-                <th className="px-5 py-6 font-medium">Захиалга</th>
-                <th className="px-5 py-6 font-medium">Харилцагч</th>
-                <th className="px-5 py-6 font-medium">Утас</th>
-                <th className="px-5 py-6 font-medium text-center">Тоо</th>
-                <th className="px-5 py-6 font-medium text-right">Дүн</th>
-                <th className="px-5 py-6 font-medium">Огноо</th>
-                <th className="px-5 py-6 font-medium text-center">Төлөв</th>
-                <th className="px-5 py-6 font-medium text-right">Үйлдэл</th>
+                <th className="px-5 py-3 text-left">Захиалгын дугаар</th>
+                <th className="px-5 py-3 text-left">Харилцагч</th>
+                <th className="px-5 py-3 text-left">Утасны дугаар</th>
+                <th className="px-5 py-3 text-center">Барааны тоо</th>
+                <th className="px-5 py-3 text-right">Дүн</th>
+                <th className="px-5 py-3 text-left">Огноо</th>
+                <th className="px-5 py-3 text-center">Төлөв</th>
+                <th className="px-5 py-3 text-right">Үйлдэл</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F2A8C8]/30">
@@ -414,19 +419,19 @@ export default function AdminOrdersPage() {
               ) : filteredOrders.length === 0 ? (
                 <tr><td colSpan={8} className="px-5 py-14 text-center text-[#8B6B78]">Захиалга олдсонгүй</td></tr>
               ) : paginatedOrders.map(order => (
-                <tr key={order.id} className="transition-colors hover:bg-warm-cream min-h-[80px]">
-                  <td className="px-5 py-6 text-xs tracking-[0.08em] text-[#8B6B78]">#{order.id.slice(0, 8)}</td>
-                  <td className="px-5 py-6 font-medium">{order.customerName || '-'}</td>
-                  <td className="px-5 py-6 text-[#8B6B78]">{order.phone || '-'}</td>
-                  <td className="px-5 py-6 text-center">{order.items?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0}</td>
-                  <td className="px-5 py-6 text-right font-semibold tabular-nums whitespace-nowrap">{formatPrice(order.total || 0)}</td>
-                  <td className="px-5 py-6 text-[#8B6B78]">{formatDate(order.createdAt)}</td>
-                  <td className="px-5 py-6 text-center">
-                    <span className={`inline-flex rounded-[999px] border px-3 py-1.5 text-[10px] font-semibold tracking-[0.08em] uppercase ${getStatusColor(order.status)}`}>
+                <tr key={order.id} className="transition-colors hover:bg-warm-cream">
+                  <td className="px-5 py-4 text-xs tracking-[0.08em] text-[#8B6B78]">#{order.id.slice(0, 8)}</td>
+                  <td className="px-5 py-4 font-medium"><span className="block truncate">{order.customerName || '-'}</span></td>
+                  <td className="px-5 py-4 text-[#8B6B78]"><span className="block truncate">{order.phone || '-'}</span></td>
+                  <td className="px-5 py-4 text-center">{order.items?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0}</td>
+                  <td className="px-5 py-4 text-right font-semibold tabular-nums whitespace-nowrap">{formatPrice(order.total || 0)}</td>
+                  <td className="px-5 py-4 text-[#8B6B78]">{formatDate(order.createdAt)}</td>
+                  <td className="px-5 py-4 text-center">
+                    <span className={`inline-flex max-w-full rounded-[999px] border px-3 py-1.5 text-[10px] font-semibold tracking-[0.08em] uppercase ${getStatusColor(order.status)}`}>
                       {statusLabels[order.status as OrderStatus] || order.status}
                     </span>
                   </td>
-                  <td className="px-5 py-6 text-right">
+                  <td className="px-5 py-4 text-right">
                     <button onClick={() => openDrawer(order)} className="min-h-9 rounded-[10px] border border-[#F2C7D8] bg-white px-3 text-xs font-semibold text-[#241820] shadow-[0_8px_18px_rgba(26,26,26,0.035)] transition-colors hover:bg-rose-quartz">
                       Дэлгэрэнгүй
                     </button>

@@ -160,15 +160,23 @@ export default function AdminUsersPage() {
         </div>
 
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-[#FFF8FB] text-[11px] tracking-[0.14em] uppercase text-[#8B6B78]">
+          <table className="w-full min-w-[1040px] table-fixed text-left text-sm">
+            <colgroup>
+              <col className="w-[260px]" />
+              <col className="w-[300px]" />
+              <col className="w-[220px]" />
+              <col className="w-[110px]" />
+              <col className="w-[130px]" />
+              <col className="w-[150px]" />
+            </colgroup>
+            <thead className="border-b border-[#F2A8C8]/35 bg-[#FFF8FB] text-[11px] font-semibold tracking-[0.08em] uppercase text-[#8B6B78]">
               <tr>
-                <th className="px-5 py-4 font-medium">Харилцагч</th>
-                <th className="px-5 py-4 font-medium">Имэйл</th>
-                <th className="px-5 py-4 font-medium">Бүртгэл</th>
-                <th className="px-5 py-4 font-medium text-center">Захиалга</th>
-                <th className="px-5 py-4 font-medium text-center">Эрх</th>
-                <th className="px-5 py-4 font-medium text-right">Үйлдэл</th>
+                <th className="px-5 py-3 text-left">Харилцагч</th>
+                <th className="px-5 py-3 text-left">Имэйл</th>
+                <th className="px-5 py-3 text-left">Бүртгэл</th>
+                <th className="px-5 py-3 text-center">Захиалга</th>
+                <th className="px-5 py-3 text-center">Эрх</th>
+                <th className="px-5 py-3 text-right">Үйлдэл</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F2A8C8]/30">
@@ -183,10 +191,10 @@ export default function AdminUsersPage() {
                        <div className="w-10 h-10 rounded-[10px] bg-[#FFF0F6] border border-[#F2A8C8]/50 flex items-center justify-center text-sm font-semibold">
                         {(user.displayName || user.email || 'U').charAt(0).toUpperCase()}
                       </div>
-                      <span className="font-medium">{user.displayName || 'Нэргүй'}</span>
+                      <span className="min-w-0 truncate font-medium">{user.displayName || 'Нэргүй'}</span>
                     </div>
                   </td>
-                  <td className="px-5 py-4 text-[#8B6B78]">{user.email}</td>
+                  <td className="px-5 py-4 text-[#8B6B78]"><span className="block truncate">{user.email}</span></td>
                   <td className="px-5 py-4 text-[#8B6B78]">{formatDate(user.createdAt)}</td>
                   <td className="px-5 py-4 text-center">{ordersMap[user.id]?.length || 0}</td>
                   <td className="px-5 py-4 text-center">

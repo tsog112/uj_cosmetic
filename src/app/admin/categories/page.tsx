@@ -300,7 +300,15 @@ export default function AdminCategoriesPage() {
         {loading ? (
           <div className="p-10 text-center text-[#8B6B78]">Ачаалж байна...</div>
         ) : (
-          <div className="space-y-3 bg-[#FFF8FB] p-3 md:divide-y md:divide-[#F2A8C8]/30 md:space-y-0 md:bg-white md:p-0">
+          <div className="space-y-3 bg-[#FFF8FB] p-3 md:space-y-0 md:bg-white md:p-0">
+            <div className="hidden grid-cols-[56px_184px_minmax(220px,1fr)_120px_170px] items-center border-b border-[#F2A8C8]/35 bg-[#FFF8FB] px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#8B6B78] md:grid">
+              <span></span>
+              <span>Зураг</span>
+              <span>Ангилал</span>
+              <span className="text-center">Бараа</span>
+              <span className="text-right">Үйлдэл</span>
+            </div>
+            <div className="md:divide-y md:divide-[#F2A8C8]/30">
             {paginatedCategories.map(category => (
               <div
                 key={category.id}
@@ -309,27 +317,29 @@ export default function AdminCategoriesPage() {
                 onDragOver={event => event.preventDefault()}
                 onDrop={event => handleDrop(category.id, event)}
                 onDragEnd={() => setDraggedId(null)}
-                className="grid gap-4 rounded-[16px] border border-[#F2A8C8]/35 bg-white p-4 shadow-[0_8px_24px_rgba(26,26,26,0.04)] transition-colors hover:bg-[#FFF8FB] md:grid-cols-[1fr_auto] md:items-center md:rounded-none md:border-0 md:p-5 md:shadow-none"
+                className="grid gap-4 rounded-[16px] border border-[#F2A8C8]/35 bg-white p-4 shadow-[0_8px_24px_rgba(26,26,26,0.04)] transition-colors hover:bg-[#FFF8FB] md:grid-cols-[56px_184px_minmax(220px,1fr)_120px_170px] md:items-center md:rounded-none md:border-0 md:px-5 md:py-4 md:shadow-none"
               >
-                <div className="flex items-center gap-4 md:gap-5">
-                  <span className="shrink-0 text-xs text-[#8B6B78] cursor-move">⠿</span>
+                <span className="hidden shrink-0 text-xs text-[#8B6B78] cursor-move md:block">⠿</span>
+                <div className="flex items-center gap-4 md:contents">
+                  <span className="shrink-0 text-xs text-[#8B6B78] cursor-move md:hidden">⠿</span>
                   {category.imageUrl ? (
-                    <img src={category.imageUrl} alt={category.name_mn} className="h-24 w-32 shrink-0 rounded-[16px] border border-[#F2A8C8]/50 object-cover md:h-28 md:w-40" />
+                    <img src={category.imageUrl} alt={category.name_mn} className="h-24 w-32 shrink-0 rounded-[16px] border border-[#F2A8C8]/50 object-cover md:h-20 md:w-36" />
                   ) : (
-                    <div className="flex h-24 w-32 shrink-0 items-center justify-center rounded-[16px] border border-dashed border-[#F2A8C8]/70 bg-[#FFF0F6] text-xs text-[#8B6B78] md:h-28 md:w-40">Зураггүй</div>
+                    <div className="flex h-24 w-32 shrink-0 items-center justify-center rounded-[16px] border border-dashed border-[#F2A8C8]/70 bg-[#FFF0F6] text-xs text-[#8B6B78] md:h-20 md:w-36">Зураггүй</div>
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="font-medium truncate text-[15px] md:text-base">{category.name_mn}</p>
                     <p className="text-xs text-[#8B6B78] mt-1 break-all md:break-normal md:truncate">{category.slug}</p>
-                    <p className="text-xs text-[#8B6B78] mt-0.5">{category.productCount || 0} бараа</p>
                   </div>
                 </div>
+                <div className="hidden text-center text-sm md:block">{category.productCount || 0}</div>
                 <div className="grid grid-cols-2 gap-2 md:flex md:justify-end">
                   <button onClick={() => handleEdit(category)} className="min-h-10 rounded-[10px] border border-[#F2C7D8] bg-white px-4 text-xs font-semibold text-[#241820] transition-colors hover:bg-[#FFF0F6]">Засах</button>
                   <button onClick={() => handleDelete(category)} className="min-h-10 rounded-[10px] border border-[#F1B8B8] bg-[#FFF0F0] px-4 text-xs font-semibold text-[#A14E4E] transition-colors hover:bg-red-100">Устгах</button>
                 </div>
               </div>
             ))}
+            </div>
           </div>
         )}
         <Pagination page={page} totalItems={filteredCategories.length} onPageChange={setPage} />

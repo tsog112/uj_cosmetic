@@ -215,7 +215,7 @@ export default function AdminDashboardPage() {
             </Link>
           </div>
 
-          <div className="hidden grid-cols-[minmax(0,1fr)_130px_120px_150px] items-center gap-4 border-b border-[#F2A8C8]/25 bg-warm-cream px-5 py-6 text-[10px] font-semibold uppercase tracking-[0.1em] text-[#8B6B78] md:grid">
+          <div className="hidden grid-cols-[minmax(0,1fr)_130px_120px_150px] items-center gap-4 border-b border-[#F2A8C8]/25 bg-warm-cream px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-[#8B6B78] md:grid">
             <span>Харилцагч</span>
             <span className="text-right">Дүн</span>
             <span>Огноо</span>
@@ -226,7 +226,7 @@ export default function AdminDashboardPage() {
             {recentOrders.length === 0 ? (
               <p className="p-8 text-center text-sm text-[#8B6B78]">Захиалга олдсонгүй</p>
             ) : recentOrders.map(order => (
-              <Link key={order.id} href="/admin/orders" className="block px-4 py-6 transition-colors hover:bg-warm-cream md:px-5 min-h-[100px]">
+              <Link key={order.id} href="/admin/orders" className="block px-4 py-3 transition-colors hover:bg-warm-cream md:px-5">
                 <div className="grid grid-cols-[1fr_auto] items-center gap-3 md:grid-cols-[minmax(0,1fr)_130px_120px_150px] md:gap-4">
                   <div className="min-w-0">
                     <p className="truncate text-[15px] font-semibold md:text-[15px]">{order.customerName || 'Харилцагч'}</p>

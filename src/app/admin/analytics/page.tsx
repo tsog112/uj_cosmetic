@@ -153,14 +153,21 @@ export default function AnalyticsPage() {
         </div>
 
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-[#FFF8FB] text-[11px] tracking-[0.14em] uppercase text-[#8B6B78]">
+          <table className="w-full min-w-[760px] table-fixed text-left text-sm">
+            <colgroup>
+              <col />
+              <col className="w-[110px]" />
+              <col className="w-[130px]" />
+              <col className="w-[130px]" />
+              <col className="w-[110px]" />
+            </colgroup>
+            <thead className="border-b border-[#F2A8C8]/35 bg-[#FFF8FB] text-[11px] font-semibold tracking-[0.08em] uppercase text-[#8B6B78]">
               <tr>
-                <th className="px-5 py-4 font-medium">Бараа</th>
-                <th className="px-5 py-4 font-medium text-right">Үзэлт</th>
-                <th className="px-5 py-4 font-medium text-right">Зарагдсан</th>
-                <th className="px-5 py-4 font-medium text-right">Хөрвөлт</th>
-                <th className="px-5 py-4 font-medium text-right">Нөөц</th>
+                <th className="px-5 py-3 text-left">Бараа</th>
+                <th className="px-5 py-3 text-right">Үзэлт</th>
+                <th className="px-5 py-3 text-right">Захиалга</th>
+                <th className="px-5 py-3 text-right">Хөрвөлт</th>
+                <th className="px-5 py-3 text-right">Үлдэгдэл</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F2A8C8]/30">
@@ -168,7 +175,7 @@ export default function AnalyticsPage() {
                 <tr><td colSpan={5} className="px-5 py-12 text-center text-[#8B6B78]">Мэдээлэл алга</td></tr>
               ) : paginatedProductTable.map(product => (
                 <tr key={product.id} className="hover:bg-[#FFF8FB]">
-                  <td className="px-5 py-4 font-medium">{product.name}</td>
+                  <td className="px-5 py-4 font-medium"><span className="block truncate">{product.name}</span></td>
                   <td className="px-5 py-4 text-right">{product.views}</td>
                   <td className="px-5 py-4 text-right">{product.ordered}</td>
                   <td className="px-5 py-4 text-right">{product.conversion}%</td>

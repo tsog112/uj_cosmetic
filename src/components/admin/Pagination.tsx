@@ -15,8 +15,8 @@ export default function Pagination({ page, totalItems, pageSize = 10, onPageChan
     .filter(item => item === 1 || item === pageCount || Math.abs(item - page) <= 1);
 
   return (
-    <div className="flex justify-end border-t border-[#F2A8C8]/35 bg-white px-4 py-4 text-sm text-[#8B6B78]">
-      <div className="flex flex-wrap items-center justify-end gap-2">
+    <div className="flex justify-center border-t border-[#F2A8C8]/35 bg-white px-4 py-4 text-sm text-[#8B6B78]">
+      <div className="flex flex-wrap items-center justify-center gap-2">
         <button
           type="button"
           onClick={() => onPageChange(Math.max(1, page - 1))}
