@@ -107,6 +107,7 @@ export interface SiteSettings {
   bankAccount: string;
   bankAccountName: string;
   instagramUrl: string;
+  facebookUrl?: string;
   phone: string;
   email: string;
 }
@@ -153,6 +154,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   bankAccount: '5000123456',
   bankAccountName: 'УЖ Косметик ХХК',
   instagramUrl: 'https://instagram.com/uj_cosmetic',
+  facebookUrl: '',
   phone: '+976 9900-1234',
   email: 'info@ujcosmetic.mn',
 };

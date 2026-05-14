@@ -25,38 +25,28 @@ const tabs: { value: 'all' | OrderStatus; label: string }[] = [
   { value: 'cancelled', label: 'Цуцлагдсан' },
 ];
 
+const STATUS_COLOR: Record<string, string> = {
+  pending:   'bg-status-pending-bg   text-status-pending-text   border-status-pending-border',
+  confirmed: 'bg-status-confirmed-bg text-status-confirmed-text border-status-confirmed-border',
+  shipped:   'bg-status-shipped-bg   text-status-shipped-text   border-status-shipped-border',
+  delivered: 'bg-status-delivered-bg text-status-delivered-text border-status-delivered-border',
+  cancelled: 'bg-status-cancelled-bg text-status-cancelled-text border-status-cancelled-border',
+};
+
 function getStatusColor(status: string) {
-  switch (status) {
-    case 'pending':
-      return 'bg-[#FFF7E6] text-[#9A6A14] border-[#F1D28A]';
-    case 'confirmed':
-      return 'bg-[#EEF6FF] text-[#315F8C] border-[#B9D7F2]';
-    case 'shipped':
-      return 'bg-[#F4EEFF] text-[#6A4C93] border-[#D9C8F2]';
-    case 'delivered':
-      return 'bg-[#EFF8F1] text-[#3F774D] border-[#B8DEC1]';
-    case 'cancelled':
-      return 'bg-[#FFF0F0] text-[#A14E4E] border-[#F1B8B8]';
-    default:
-      return 'bg-warm-cream text-[#8B6B78] border-rose-100';
-  }
+  return STATUS_COLOR[status] ?? 'bg-sand text-text-subtle border-border-light';
 }
 
+const STATUS_ACCENT: Record<string, string> = {
+  pending:   'bg-status-pending-text',
+  confirmed: 'bg-status-confirmed-border',
+  shipped:   'bg-status-shipped-border',
+  delivered: 'bg-status-delivered-border',
+  cancelled: 'bg-status-cancelled-border',
+};
+
 function getStatusAccent(status: string) {
-  switch (status) {
-    case 'pending':
-      return 'bg-[#D99119]';
-    case 'confirmed':
-      return 'bg-[#7AAEDB]';
-    case 'shipped':
-      return 'bg-[#A58AD6]';
-    case 'delivered':
-      return 'bg-[#73B582]';
-    case 'cancelled':
-      return 'bg-[#D38181]';
-    default:
-      return 'bg-[#FFB7D5]';
-  }
+  return STATUS_ACCENT[status] ?? 'bg-dusty-rose';
 }
 
 function formatDate(date: any) {
@@ -257,10 +247,10 @@ export default function AdminOrdersPage() {
   return (
     <div className="space-y-4 md:space-y-8">
       {toast && (
-        <div className={`fixed top-20 left-4 right-4 md:left-auto md:right-8 md:w-auto z-[120] px-4 py-3 border text-sm shadow-[0_18px_45px_rgba(26,26,26,0.08)] ${
+        <div className={`fixed top-20 left-4 right-4 md:left-auto md:right-8 md:w-auto z-[120] px-4 py-3 border text-sm shadow-brand-md ${
           toast.type === 'error'
-            ? 'bg-[#FFF0F0] text-[#A14E4E] border-[#F1B8B8]'
-            : 'bg-white text-[#1A1A1A] border-[#FFB7D5]'
+            ? 'bg-status-cancelled-bg text-status-cancelled-text border-status-cancelled-border'
+            : 'bg-white text-charcoal border-border-light'
         }`}>
           {toast.message}
         </div>
@@ -268,12 +258,12 @@ export default function AdminOrdersPage() {
 
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[10px] tracking-[0.1em] uppercase text-[#8B6B78]">Захиалгын удирдлага</p>
-          <h2 className="truncate text-[22px] md:text-3xl font-semibold mt-1 text-[#1A1A1A]">Захиалгууд</h2>
+          <p className="text-[10px] tracking-[0.1em] uppercase text-text-subtle">Захиалгын удирдлага</p>
+          <h2 className="truncate text-[22px] md:text-3xl font-semibold mt-1 text-charcoal">Захиалгууд</h2>
         </div>
         <button
           onClick={exportExcel}
-          className="shrink-0 h-11 border border-[#FFB7D5] bg-white text-[#1A1A1A] px-6 rounded-[12px] text-xs font-semibold tracking-[0.14em] uppercase transition-colors hover:bg-rose-quartz flex items-center justify-center gap-2"
+          className="shrink-0 h-11 border border-border-light bg-white text-charcoal px-6 rounded-[12px] text-xs font-semibold tracking-[0.14em] uppercase transition-colors hover:bg-blush flex items-center justify-center gap-2"
           aria-label="Excel татах"
         >
           <span className="hidden md:inline">Excel татах</span>
@@ -286,22 +276,22 @@ export default function AdminOrdersPage() {
       </div>
 
       <div className="md:hidden grid grid-cols-3 gap-2">
-        <div className="rounded-[14px] border border-[#F2A8C8]/35 bg-white px-3 py-3 shadow-[0_8px_24px_rgba(26,26,26,0.035)]">
-          <p className="text-[10px] text-[#8B6B78]">Нийт</p>
-          <p className="mt-1 text-xl font-semibold">{orderSummary.total}</p>
+        <div className="card-brand px-3 py-3">
+          <p className="text-[10px] text-text-subtle">Нийт</p>
+          <p className="mt-1 text-xl font-semibold text-charcoal">{orderSummary.total}</p>
         </div>
-        <div className="rounded-[14px] border border-[#F1D28A]/70 bg-[#FFF9EC] px-3 py-3 shadow-[0_8px_24px_rgba(26,26,26,0.035)]">
-          <p className="text-[10px] text-[#9A6A14]">Хүлээгдэж буй</p>
-          <p className="mt-1 text-xl font-semibold">{orderSummary.pending}</p>
+        <div className="rounded-card border border-status-pending-border bg-status-pending-bg px-3 py-3 shadow-brand-sm">
+          <p className="text-[10px] text-status-pending-text">Хүлээгдэж буй</p>
+          <p className="mt-1 text-xl font-semibold text-charcoal">{orderSummary.pending}</p>
         </div>
-        <div className="rounded-[14px] border border-[#F2A8C8]/35 bg-rose-quartz px-3 py-3 shadow-[0_8px_24px_rgba(26,26,26,0.035)]">
-          <p className="text-[10px] text-[#8B6B78]">Өнөөдөр</p>
-          <p className="mt-1 text-xl font-semibold">{orderSummary.today}</p>
+        <div className="rounded-card border border-border-faint bg-blush px-3 py-3 shadow-brand-sm">
+          <p className="text-[10px] text-text-subtle">Өнөөдөр</p>
+          <p className="mt-1 text-xl font-semibold text-charcoal">{orderSummary.today}</p>
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-[18px] border border-[#F2A8C8]/45 bg-white shadow-[0_18px_45px_rgba(26,26,26,0.045)]">
-        <div className="z-20 space-y-3 border-b border-[#F2A8C8]/35 bg-white/95 p-3 backdrop-blur-md md:p-4">
+      <div className="overflow-hidden rounded-[18px] border border-border-faint bg-white shadow-brand-lg">
+        <div className="z-20 space-y-3 border-b border-border-faint bg-white/95 p-3 backdrop-blur-md md:p-4">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
             {tabs.map(tab => (
               <button
@@ -312,13 +302,13 @@ export default function AdminOrdersPage() {
                 }}
                 className={`flex min-h-12 items-center justify-between gap-2 rounded-[12px] border px-3 text-left transition-colors ${
                   filter === tab.value
-                    ? 'border-[#D994B5] bg-rose-quartz text-[#1A1A1A] shadow-[0_10px_24px_rgba(217,148,181,0.12)]'
-                    : 'border-[#F2C7D8] bg-white text-[#8B6B78] hover:bg-warm-cream hover:text-[#1A1A1A]'
+                    ? 'border-dusty-rose bg-blush text-charcoal shadow-brand-sm'
+                    : 'border-border-light bg-white text-text-subtle hover:bg-sand hover:text-charcoal'
                 }`}
               >
                 <span className="truncate text-[12px] font-semibold tracking-[0.01em]">{tab.label}</span>
                 <span className={`inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-2 text-[11px] font-semibold ${
-                  filter === tab.value ? 'bg-white text-[#1A1A1A]' : 'bg-warm-cream text-[#8B6B78]'
+                  filter === tab.value ? 'bg-white text-charcoal' : 'bg-sand text-text-subtle'
                 }`}>
                   {statusCounts[tab.value]}
                 </span>
@@ -334,9 +324,9 @@ export default function AdminOrdersPage() {
                 setPage(1);
               }}
               placeholder="Захиалга, нэр эсвэл утсаар хайх..."
-              className="h-11 w-full rounded-[12px] border border-[#F2A8C8]/55 bg-warm-cream pl-10 pr-4 text-[15px] outline-none transition focus:border-[#FFB7D5] focus:bg-white placeholder:text-[#8B6B78]/70"
+              className="h-11 w-full rounded-[12px] border border-border bg-sand pl-10 pr-4 text-[15px] outline-none transition focus:border-dusty-rose focus:bg-white placeholder:text-text-subtle/70"
             />
-            <svg className="absolute left-4 top-3.5 text-[#8B6B78]" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+            <svg className="absolute left-4 top-3.5 text-text-subtle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
               <circle cx="11" cy="11" r="8" />
               <path d="M21 21l-4.35-4.35" />
             </svg>
@@ -401,7 +391,7 @@ export default function AdminOrdersPage() {
               <col className="w-[190px]" />
               <col className="w-[140px]" />
             </colgroup>
-            <thead className="border-b border-[#F2A8C8]/35 bg-[#FFF8FB] text-[11px] font-semibold uppercase tracking-[0.08em] text-[#8B6B78]">
+            <thead className="border-b border-border-faint bg-sand text-[11px] font-semibold uppercase tracking-[0.08em] text-text-subtle">
               <tr>
                 <th className="px-5 py-3 text-left">Захиалгын дугаар</th>
                 <th className="px-5 py-3 text-left">Харилцагч</th>
@@ -413,26 +403,26 @@ export default function AdminOrdersPage() {
                 <th className="px-5 py-3 text-right">Үйлдэл</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#F2A8C8]/30">
+            <tbody className="divide-y divide-border-faint">
               {loading ? (
                 <tr><td colSpan={8} className="px-5 py-14 text-center">Уншиж байна...</td></tr>
               ) : filteredOrders.length === 0 ? (
                 <tr><td colSpan={8} className="px-5 py-14 text-center text-[#8B6B78]">Захиалга олдсонгүй</td></tr>
               ) : paginatedOrders.map(order => (
-                <tr key={order.id} className="transition-colors hover:bg-warm-cream">
-                  <td className="px-5 py-4 text-xs tracking-[0.08em] text-[#8B6B78]">#{order.id.slice(0, 8)}</td>
+                <tr key={order.id} className="transition-colors hover:bg-sand">
+                  <td className="px-5 py-4 text-xs tracking-[0.08em] text-text-subtle">#{order.id.slice(0, 8)}</td>
                   <td className="px-5 py-4 font-medium"><span className="block truncate">{order.customerName || '-'}</span></td>
-                  <td className="px-5 py-4 text-[#8B6B78]"><span className="block truncate">{order.phone || '-'}</span></td>
+                  <td className="px-5 py-4 text-text-subtle"><span className="block truncate">{order.phone || '-'}</span></td>
                   <td className="px-5 py-4 text-center">{order.items?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0}</td>
                   <td className="px-5 py-4 text-right font-semibold tabular-nums whitespace-nowrap">{formatPrice(order.total || 0)}</td>
-                  <td className="px-5 py-4 text-[#8B6B78]">{formatDate(order.createdAt)}</td>
+                  <td className="px-5 py-4 text-text-subtle">{formatDate(order.createdAt)}</td>
                   <td className="px-5 py-4 text-center">
                     <span className={`inline-flex max-w-full rounded-[999px] border px-3 py-1.5 text-[10px] font-semibold tracking-[0.08em] uppercase ${getStatusColor(order.status)}`}>
                       {statusLabels[order.status as OrderStatus] || order.status}
                     </span>
                   </td>
                   <td className="px-5 py-4 text-right">
-                    <button onClick={() => openDrawer(order)} className="min-h-9 rounded-[10px] border border-[#F2C7D8] bg-white px-3 text-xs font-semibold text-[#241820] shadow-[0_8px_18px_rgba(26,26,26,0.035)] transition-colors hover:bg-rose-quartz">
+                    <button onClick={() => openDrawer(order)} className="min-h-9 rounded-btn border border-border-light bg-white px-3 text-xs font-semibold text-charcoal shadow-brand-sm transition-colors hover:bg-blush">
                       Дэлгэрэнгүй
                     </button>
                   </td>
@@ -448,12 +438,12 @@ export default function AdminOrdersPage() {
         <div className="fixed inset-0 z-[100]">
           <button className="absolute inset-0 bg-black/20 backdrop-blur-[2px]" onClick={() => setSelectedOrder(null)} aria-label="Хаах" />
           <div className="absolute right-0 top-0 h-full w-full max-w-lg bg-white shadow-2xl flex flex-col">
-            <div className="p-5 md:p-6 border-b border-[#F2A8C8]/40 bg-warm-cream flex items-center justify-between">
+            <div className="p-5 md:p-6 border-b border-border-faint bg-sand flex items-center justify-between">
               <div>
-                <p className="text-[11px] tracking-[0.18em] uppercase text-[#8B6B78]">Захиалга</p>
+                <p className="text-[11px] tracking-[0.18em] uppercase text-text-subtle">Захиалга</p>
                 <h3 className="text-xl font-semibold">#{selectedOrder.id.slice(-6)}</h3>
               </div>
-              <button onClick={() => setSelectedOrder(null)} className="w-11 h-11 text-[#8B6B78]" aria-label="Хаах">
+              <button onClick={() => setSelectedOrder(null)} className="w-11 h-11 text-text-subtle" aria-label="Хаах">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <path d="M6 6l12 12M18 6L6 18" />
                 </svg>
@@ -462,40 +452,40 @@ export default function AdminOrdersPage() {
 
             <div className="flex-1 overflow-y-auto p-5 md:p-6 space-y-8 pb-28">
               <section>
-                <h4 className="text-[11px] tracking-[0.18em] uppercase text-[#8B6B78] border-b border-[#F2A8C8]/40 pb-3 mb-4">Харилцагч</h4>
+                <h4 className="text-[11px] tracking-[0.18em] uppercase text-text-subtle border-b border-border-faint pb-3 mb-4">Харилцагч</h4>
                 <div className="space-y-3 text-sm">
-                  <div className="flex justify-between gap-4"><span className="text-[#8B6B78]">Нэр</span><span className="text-right">{selectedOrder.customerName}</span></div>
-                  <div className="flex justify-between gap-4"><span className="text-[#8B6B78]">Утас</span><span>{selectedOrder.phone}</span></div>
-                  <div className="flex justify-between gap-4"><span className="text-[#8B6B78]">Хаяг</span><span className="text-right max-w-[260px]">{selectedOrder.address}</span></div>
-                  {selectedOrder.note && <div className="flex justify-between gap-4"><span className="text-[#8B6B78]">Тэмдэглэл</span><span className="text-right max-w-[260px]">{selectedOrder.note}</span></div>}
+                  <div className="flex justify-between gap-4"><span className="text-text-subtle">Нэр</span><span className="text-right">{selectedOrder.customerName}</span></div>
+                  <div className="flex justify-between gap-4"><span className="text-text-subtle">Утас</span><span>{selectedOrder.phone}</span></div>
+                  <div className="flex justify-between gap-4"><span className="text-text-subtle">Хаяг</span><span className="text-right max-w-[260px]">{selectedOrder.address}</span></div>
+                  {selectedOrder.note && <div className="flex justify-between gap-4"><span className="text-text-subtle">Тэмдэглэл</span><span className="text-right max-w-[260px]">{selectedOrder.note}</span></div>}
                 </div>
               </section>
 
               <section>
-                <h4 className="text-[11px] tracking-[0.18em] uppercase text-[#8B6B78] border-b border-[#F2A8C8]/40 pb-3 mb-4">Бүтээгдэхүүн</h4>
+                <h4 className="text-[11px] tracking-[0.18em] uppercase text-text-subtle border-b border-border-faint pb-3 mb-4">Бүтээгдэхүүн</h4>
                 <div className="space-y-4">
                   {selectedOrder.items?.map((item: any, index: number) => (
                     <div key={`${item.productId || item.id}-${index}`} className="flex justify-between gap-4 text-sm">
                       <div>
                         <p className="font-medium">{item.name_mn || item.name}</p>
-                        <p className="text-xs text-[#8B6B78] mt-1">{formatPrice(item.price)} × {item.quantity}</p>
+                        <p className="text-xs text-text-subtle mt-1">{formatPrice(item.price)} × {item.quantity}</p>
                       </div>
                       <p className="font-medium">{formatPrice(item.price * item.quantity)}</p>
                     </div>
                   ))}
                 </div>
-                <div className="mt-5 pt-5 border-t border-[#F2A8C8]/40 flex justify-between">
-                  <span className="text-[#8B6B78]">Нийт дүн</span>
+                <div className="mt-5 pt-5 border-t border-border-faint flex justify-between">
+                  <span className="text-text-subtle">Нийт дүн</span>
                   <span className="font-medium">{formatPrice(selectedOrder.total || 0)}</span>
                 </div>
               </section>
 
               <section>
-                <h4 className="text-[11px] tracking-[0.18em] uppercase text-[#8B6B78] border-b border-[#F2A8C8]/40 pb-3 mb-4">Төлөв</h4>
+                <h4 className="text-[11px] tracking-[0.18em] uppercase text-text-subtle border-b border-border-faint pb-3 mb-4">Төлөв</h4>
                 <select
                   value={newStatus}
                   onChange={event => setNewStatus(event.target.value as OrderStatus)}
-                  className="w-full min-h-12 border border-[#F2A8C8]/60 bg-warm-cream px-4 text-sm outline-none focus:border-[#FFB7D5]"
+                  className="w-full min-h-12 border border-border bg-sand px-4 text-sm outline-none focus:border-dusty-rose"
                 >
                   {Object.entries(statusLabels).map(([value, label]) => (
                     <option key={value} value={value}>{label}</option>
@@ -504,14 +494,14 @@ export default function AdminOrdersPage() {
               </section>
             </div>
 
-            <div className="fixed md:static bottom-0 right-0 w-full max-w-lg p-4 md:p-5 border-t border-[#F2A8C8]/40 bg-white flex gap-3">
-              <button onClick={() => setSelectedOrder(null)} className="flex-1 min-h-12 rounded-[12px] border border-[#F2C7D8] text-sm font-semibold hover:bg-[#FFF0F6]">
+            <div className="fixed md:static bottom-0 right-0 w-full max-w-lg p-4 md:p-5 border-t border-border-faint bg-white flex gap-3">
+              <button onClick={() => setSelectedOrder(null)} className="flex-1 min-h-12 rounded-[12px] border border-border-light text-sm font-semibold hover:bg-blush">
                 Болих
               </button>
               <button
                 onClick={handleStatusChange}
                 disabled={newStatus === selectedOrder.status}
-                className="flex-1 min-h-12 rounded-[12px] bg-[#241820] text-white text-sm font-semibold transition-colors hover:bg-[#D994B5] disabled:opacity-40"
+                className="flex-1 min-h-12 rounded-[12px] bg-charcoal text-white text-sm font-semibold transition-colors hover:bg-dusty-rose disabled:opacity-40"
               >
                 Хадгалах
               </button>

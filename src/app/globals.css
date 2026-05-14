@@ -1,41 +1,64 @@
 @import "tailwindcss";
 
 @theme inline {
-  /* Brand Colors - Korea to Mongolia beauty & wellness palette */
-  --color-sand: #FFF8FB;
-  --color-blush: #FFF0F6;
-  --color-sand-dark: #FFE6F0;
-  --color-dusty-rose: #D994B5;
-  --color-rose-gold: #D8A15D;
-  --color-charcoal: #241820;
-  --color-sage: #98A58F;
-  --color-ink: #3A2731;
-  --color-text-primary: var(--color-charcoal);
-  --color-text-muted: #7E6472;
-  --color-border: #D994B54D;
-  --color-white: #FFFFFF;
-  --color-overlay: rgba(26, 26, 26, 0.4);
-  --color-neutral-600: #525252;
+  /* ── Brand Colors ──────────────────────────────────────────────────────── */
+  --color-sand:           #FFF8FB;   /* site background / warm-cream        */
+  --color-blush:          #FFF0F6;   /* light rose tint                     */
+  --color-sand-dark:      #FFE6F0;   /* announcement bar                    */
+  --color-dusty-rose:     #D994B5;   /* primary accent – buttons, labels    */
+  --color-rose-gold:      #D8A15D;   /* secondary accent – gold / numbered  */
+  --color-charcoal:       #241820;   /* primary dark text / bg              */
+  --color-ink:            #3A2731;   /* deep ink                            */
+  --color-sage:           #98A58F;
 
-  /* Fonts */
+  /* ── Text ─────────────────────────────────────────────────────────────── */
+  --color-text-primary:   var(--color-charcoal);
+  --color-text-muted:     #7E6472;
+  --color-text-subtle:    #8B6B78;
+  --color-text-faint:     #9A7D88;
+
+  /* ── Border ───────────────────────────────────────────────────────────── */
+  --color-border:         rgba(217,148,181,0.30);
+  --color-border-light:   #F2C7D8;
+  --color-border-faint:   rgba(242,168,200,0.40);
+
+  /* ── Surface ──────────────────────────────────────────────────────────── */
+  --color-warm-cream:     #FFF8FB;
+  --color-rose-quartz:    #FFF0F6;
+  --color-white:          #FFFFFF;
+  --color-overlay:        rgba(26,26,26,0.40);
+  --color-neutral-600:    #525252;
+
+  /* ── Fonts ────────────────────────────────────────────────────────────── */
   --font-serif: var(--font-eb-garamond), Georgia, 'Times New Roman', serif;
-  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-sans:  var(--font-inter), system-ui, -apple-system, sans-serif;
+
+  /* ── Shadows ──────────────────────────────────────────────────────────── */
+  --shadow-brand-sm:  0 1px 2px rgba(91,46,67,0.06);
+  --shadow-brand-md:  0 8px 24px rgba(91,46,67,0.10);
+  --shadow-brand-lg:  0 18px 48px rgba(91,46,67,0.14);
+  --shadow-brand-xl:  0 24px 70px rgba(91,46,67,0.16);
+  --shadow-card:      0 10px 30px rgba(26,26,26,0.03);
+  --shadow-header:    0 8px 28px rgba(89,48,67,0.07);
+  --shadow-nav:       0 -8px 24px rgba(89,48,67,0.06);
+  --shadow-dropdown:  0 18px 45px rgba(89,48,67,0.10);
 }
 
-/* Smooth rendering */
+/* ── Smooth Rendering ────────────────────────────────────────────────────── */
 * {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  box-sizing: border-box;
 }
 
-/* Base Styles */
+/* ── Base ────────────────────────────────────────────────────────────────── */
 html {
   scroll-behavior: smooth;
 }
 
 body {
   background-color: var(--color-sand);
-  color: var(--color-charcoal);
+  color: var(--color-text-primary);
   font-family: var(--font-sans);
 }
 
@@ -44,7 +67,7 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 300;
 }
 
-/* Editorial Typography Utilities */
+/* ── Typography Utilities ────────────────────────────────────────────────── */
 .editorial-heading {
   font-family: var(--font-serif);
   font-weight: 300;
@@ -62,26 +85,43 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-text-muted);
 }
 
-/* Custom Components */
+/* Section-level label (small caps, dusty-rose) */
+.section-label {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-dusty-rose);
+}
+
+/* Section heading (serif, large) */
+.section-heading {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 5vw, 3.75rem);
+  font-weight: 300;
+  line-height: 1.1;
+  color: var(--color-text-primary);
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
 .btn-premium {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem 2.5rem; /* 16px 40px */
+  padding: 1rem 2.5rem;
   background-color: var(--color-charcoal);
-  color: #FFFFFF;
+  color: #fff;
   font-family: var(--font-sans);
   font-size: 0.75rem;
   font-weight: 500;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
   border: 1px solid var(--color-charcoal);
+  transition: all 0.5s cubic-bezier(0.16,1,0.3,1);
 }
-
 .btn-premium:hover {
   background-color: var(--color-dusty-rose);
-  color: #FFFFFF;
   border-color: var(--color-dusty-rose);
 }
 
@@ -91,54 +131,62 @@ h1, h2, h3, h4, h5, h6 {
   justify-content: center;
   padding: 1rem 2.5rem;
   background-color: transparent;
-  color: var(--color-charcoal);
+  color: var(--color-text-primary);
   font-family: var(--font-sans);
   font-size: 0.75rem;
   font-weight: 500;
   letter-spacing: 0.15em;
   text-transform: uppercase;
   border: 1px solid var(--color-dusty-rose);
-  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.5s cubic-bezier(0.16,1,0.3,1);
 }
-
 .btn-premium-outline:hover {
   background-color: var(--color-dusty-rose);
-  color: #FFFFFF;
+  color: #fff;
   border-color: var(--color-dusty-rose);
 }
 
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 4px;
+/* ── Card ────────────────────────────────────────────────────────────────── */
+.card-brand {
+  background-color: #fff;
+  border: 1px solid var(--color-border-faint);
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
 }
 
-::-webkit-scrollbar-track {
-  background: var(--color-sand);
-}
+/* ── Borders ─────────────────────────────────────────────────────────────── */
+.border-thin-b { border-bottom: 1px solid var(--color-border); }
+.border-thin-t { border-top:    1px solid var(--color-border); }
 
-::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-}
+/* ── Scrollbar ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 4px; }
+::-webkit-scrollbar-track { background: var(--color-sand); }
+::-webkit-scrollbar-thumb { background: var(--color-border); }
+::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-muted);
-}
-
-/* Selection */
+/* ── Selection ───────────────────────────────────────────────────────────── */
 ::selection {
   background-color: var(--color-dusty-rose);
   color: var(--color-charcoal);
 }
 
-/* Layout Utilities */
+/* ── Layout ──────────────────────────────────────────────────────────────── */
 .max-content {
   max-width: 1440px;
   margin: 0 auto;
-  padding: 0 2rem; /* 32px horizontal gutters */
+  padding: 0 2rem;
+}
+@media (max-width: 768px) {
+  .max-content { padding: 0 1rem; }
 }
 
-@media (max-width: 768px) {
-  .max-content {
-    padding: 0 1rem; /* 16px */
-  }
+/* ── Fade-in animation (InstagramSection) ───────────────────────────────── */
+.fade-in-section {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+.fade-in-section.is-visible {
+  opacity: 1;
+  transform: translateY(0);
 }

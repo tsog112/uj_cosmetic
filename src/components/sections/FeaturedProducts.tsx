@@ -7,14 +7,16 @@ import { getFeaturedProducts } from '@/lib/services/firestoreService';
 import { motion } from 'framer-motion';
 import type { Product } from '@/types';
 
+const FEATURED_LIMIT = 4;
+
 export default function FeaturedProducts() {
   const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState(false);
 
   useEffect(() => {
     getFeaturedProducts()
-      .then(data => setProducts(data.slice(0, 4)))
+      .then(data => setProducts(data.slice(0, FEATURED_LIMIT)))
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
@@ -22,7 +24,7 @@ export default function FeaturedProducts() {
   if (error) return null;
 
   return (
-    <section className="bg-[#FFF8FB] py-16 md:py-28" id="featured-products">
+    <section className="bg-sand py-16 md:py-28" id="featured-products">
       <div className="max-content">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -32,12 +34,12 @@ export default function FeaturedProducts() {
           className="mb-10 grid gap-8 md:mb-16 md:grid-cols-[1.1fr_0.9fr] md:items-end"
         >
           <div>
-            <span className="editorial-label block mb-4 text-[#D994B5]">Санал болгох бүтээгдэхүүн</span>
-            <h2 className="max-w-3xl font-serif text-4xl leading-tight text-[#241820] md:text-6xl">
+            <span className="editorial-label mb-4 block text-dusty-rose">Санал болгох бүтээгдэхүүн</span>
+            <h2 className="max-w-3xl font-serif text-4xl leading-tight text-charcoal md:text-6xl">
               Өдөр тутамдаа хайртай болох жижиг арчилгаанууд
             </h2>
           </div>
-          <p className="max-w-xl text-sm leading-7 text-[#7E6472] md:justify-self-end">
+          <p className="max-w-xl text-sm leading-7 text-text-muted md:justify-self-end">
             Зарим өдөр арьсандаа чийг хэрэгтэй, зарим өдөр биеэ дотроос нь дэмжмээр санагддаг.
             Тийм өдөр бүрт ойр байх Солонгос бүтээгдэхүүнүүдийг эндээс сонгоорой.
           </p>
@@ -45,11 +47,11 @@ export default function FeaturedProducts() {
 
         {loading ? (
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-8">
-            {[...Array(4)].map((_, i) => (
+            {[...Array(FEATURED_LIMIT)].map((_, i) => (
               <div key={i} className="animate-pulse">
-                <div className="aspect-[4/5] bg-white" />
-                <div className="mt-5 h-4 w-3/4 bg-white" />
-                <div className="mt-3 h-3 w-1/2 bg-white" />
+                <div className="aspect-[4/5] bg-blush" />
+                <div className="mt-5 h-4 w-3/4 bg-blush" />
+                <div className="mt-3 h-3 w-1/2 bg-blush" />
               </div>
             ))}
           </div>
@@ -60,7 +62,7 @@ export default function FeaturedProducts() {
             viewport={{ once: true }}
             variants={{
               hidden: { opacity: 0 },
-              show: { opacity: 1, transition: { staggerChildren: 0.12 } },
+              show:   { opacity: 1, transition: { staggerChildren: 0.12 } },
             }}
             className="grid grid-cols-2 gap-x-3 gap-y-9 md:grid-cols-4 md:gap-x-8 md:gap-y-14"
           >
@@ -69,7 +71,7 @@ export default function FeaturedProducts() {
                 key={product.id}
                 variants={{
                   hidden: { opacity: 0, y: 18 },
-                  show: { opacity: 1, y: 0, transition: { duration: 0.7, ease: 'easeOut' as const } },
+                  show:   { opacity: 1, y: 0, transition: { duration: 0.7, ease: 'easeOut' as const } },
                 }}
                 className="h-full"
               >

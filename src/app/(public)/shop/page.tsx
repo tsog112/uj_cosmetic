@@ -181,7 +181,7 @@ function ShopContent() {
             <h3 className="text-[11px] tracking-[0.14em] lg:tracking-[0.18em] uppercase text-[#8B6B78] mb-4 lg:mb-5 font-medium">
               Ангилал
             </h3>
-            <div className="grid grid-cols-2 gap-2 lg:block lg:space-y-3">
+            <div className="grid grid-cols-2 gap-2 lg:flex lg:flex-col lg:space-y-2">
               {displayCategories.map(cat => (
                 <button
                   key={cat.id}

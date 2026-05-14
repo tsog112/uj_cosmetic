@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
@@ -32,7 +32,7 @@ export default function AnnouncementBar() {
   if (!isVisible || !active) return null;
 
   return (
-    <div className="relative overflow-hidden border-b border-[#F2C7D8] bg-[#FFE6F0] py-1.5 text-[#1F191C] md:py-2">
+    <div className="relative overflow-hidden border-b border-border-light bg-sand-dark py-1.5 text-charcoal md:py-2">
       <div className="max-content relative flex h-4 items-center">
         <motion.div
           animate={{ x: ['0%', '-50%'] }}
@@ -40,7 +40,7 @@ export default function AnnouncementBar() {
           className="flex whitespace-nowrap"
         >
           {[...Array(6)].map((_, index) => (
-            <span key={index} className="mr-12 text-[9px] font-semibold uppercase tracking-[0.2em] text-[#7B6670]">
+            <span key={index} className="mr-12 text-[9px] font-semibold uppercase tracking-[0.2em] text-text-muted">
               {text} · Korea to Mongolia ·
             </span>
           ))}
@@ -48,7 +48,7 @@ export default function AnnouncementBar() {
 
         <button
           onClick={() => setIsVisible(false)}
-          className="absolute right-0 top-1/2 z-10 flex h-6 w-8 -translate-y-1/2 items-center justify-end bg-[#FFE6F0] text-[#7B6670] transition-colors hover:text-[#1F191C]"
+          className="absolute right-0 top-1/2 z-10 flex h-6 w-8 -translate-y-1/2 items-center justify-end bg-sand-dark text-text-muted transition-colors hover:text-charcoal"
           aria-label="Мэдэгдэл хаах"
         >
           <X size={12} strokeWidth={1.8} />

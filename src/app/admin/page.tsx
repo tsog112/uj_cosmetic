@@ -9,115 +9,117 @@ import { formatPrice } from '@/types';
 
 type Period = 'today' | '7days' | '30days' | 'month';
 
-const paidStatuses = ['confirmed', 'shipped', 'delivered'];
+const PAID_STATUSES = ['confirmed', 'shipped', 'delivered'] as const;
 
-const periodLabels: Record<Period, string> = {
-  today: 'Өнөөдөр',
+const PERIOD_LABELS: Record<Period, string> = {
+  today:   'Өнөөдөр',
   '7days': '7 хоног',
-  '30days': '30 хоног',
-  month: 'Энэ сар',
+  '30days':'30 хоног',
+  month:   'Энэ сар',
 };
 
-const statusLabels: Record<string, string> = {
-  pending: 'Хүлээгдэж байна',
+const STATUS_LABELS: Record<string, string> = {
+  pending:   'Хүлээгдэж байна',
   confirmed: 'Баталгаажсан',
-  shipped: 'Хүргэлтэнд',
+  shipped:   'Хүргэлтэнд',
   delivered: 'Хүргэгдсэн',
   cancelled: 'Цуцлагдсан',
 };
 
-function getOrderTime(order: any) {
-  if (order.createdAt?.toMillis) return order.createdAt.toMillis();
-  if (order.createdAt) return new Date(order.createdAt).getTime();
+/** Tailwind class sets for each status badge */
+const STATUS_BADGE: Record<string, string> = {
+  pending:   'bg-status-pending-bg   text-status-pending-text   border-status-pending-border',
+  confirmed: 'bg-status-confirmed-bg text-status-confirmed-text border-status-confirmed-border',
+  shipped:   'bg-status-shipped-bg   text-status-shipped-text   border-status-shipped-border',
+  delivered: 'bg-status-delivered-bg text-status-delivered-text border-status-delivered-border',
+  cancelled: 'bg-status-cancelled-bg text-status-cancelled-text border-status-cancelled-border',
+};
+
+function getStatusBadgeClass(status: string) {
+  return STATUS_BADGE[status] ?? 'bg-sand text-text-subtle border-border-faint';
+}
+
+function getOrderTime(order: Record<string, unknown>): number {
+  if (order.createdAt && typeof (order.createdAt as { toMillis?: () => number }).toMillis === 'function') {
+    return (order.createdAt as { toMillis: () => number }).toMillis();
+  }
+  if (order.createdAt) return new Date(order.createdAt as string).getTime();
   return 0;
 }
 
-function getStatusColor(status: string) {
-  switch (status) {
-    case 'pending':
-      return 'bg-[#FFF7E6] text-[#9A6A14] border-[#F1D28A]';
-    case 'confirmed':
-      return 'bg-[#EEF6FF] text-[#315F8C] border-[#B9D7F2]';
-    case 'shipped':
-      return 'bg-[#F4EEFF] text-[#6A4C93] border-[#D9C8F2]';
-    case 'delivered':
-      return 'bg-[#EFF8F1] text-[#3F774D] border-[#B8DEC1]';
-    case 'cancelled':
-      return 'bg-[#FFF0F0] text-[#A14E4E] border-[#F1B8B8]';
-    default:
-      return 'bg-[#FFF8FB] text-[#8B6B78] border-[#F2A8C8]/50';
-  }
-}
-
-function getPeriodStart(period: Period) {
+function getPeriodStart(period: Period): number {
   const now = new Date();
-  if (period === 'today') return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  if (period === '7days') return now.getTime() - 7 * 24 * 60 * 60 * 1000;
-  if (period === '30days') return now.getTime() - 30 * 24 * 60 * 60 * 1000;
+  if (period === 'today')   return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  if (period === '7days')   return now.getTime() - 7  * 24 * 60 * 60 * 1000;
+  if (period === '30days')  return now.getTime() - 30 * 24 * 60 * 60 * 1000;
   return new Date(now.getFullYear(), now.getMonth(), 1).getTime();
 }
 
 export default function AdminDashboardPage() {
-  const [orders, setOrders] = useState<any[]>([]);
-  const [recentUsers, setRecentUsers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState<Period>('7days');
+  const [orders,      setOrders]      = useState<Record<string, unknown>[]>([]);
+  const [recentUsers, setRecentUsers] = useState<Record<string, unknown>[]>([]);
+  const [loading,     setLoading]     = useState(true);
+  const [period,      setPeriod]      = useState<Period>('7days');
 
   useEffect(() => {
     async function fetchDashboardData() {
       try {
-        let orderList: any[] = [];
+        let orderList: Record<string, unknown>[] = [];
 
         if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
           const ordersSnap = await getDocs(collection(db, 'orders'));
-          orderList = ordersSnap.docs.map(orderDoc => {
-            const data = orderDoc.data();
-            return { id: orderDoc.id, ...data, orderTime: getOrderTime(data) };
+          orderList = ordersSnap.docs.map(doc => {
+            const data = doc.data();
+            return { id: doc.id, ...data, orderTime: getOrderTime(data) };
           });
 
           const usersSnap = await getDocs(query(collection(db, 'users'), orderBy('createdAt', 'desc')));
-          setRecentUsers(usersSnap.docs.map(userDoc => ({ id: userDoc.id, ...userDoc.data() })));
+          setRecentUsers(usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         } else {
-          const mockOrders = JSON.parse(localStorage.getItem('mock_orders') || '[]');
-          orderList = mockOrders.map((order: any) => ({ ...order, orderTime: getOrderTime(order) }));
+          const mock = JSON.parse(localStorage.getItem('mock_orders') || '[]') as Record<string, unknown>[];
+          orderList  = mock.map(o => ({ ...o, orderTime: getOrderTime(o) }));
         }
 
-        orderList.sort((a, b) => b.orderTime - a.orderTime);
+        orderList.sort((a, b) => (b.orderTime as number) - (a.orderTime as number));
         setOrders(orderList);
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err);
       } finally {
         setLoading(false);
       }
     }
-
     fetchDashboardData();
   }, []);
 
+  /* ── Stats ───────────────────────────────────────────────────────────── */
   const stats = useMemo(() => {
-    const startOfToday = getPeriodStart('today');
-    return orders.reduce(
+    const todayStart = getPeriodStart('today');
+    type Stats = { totalOrders: number; todayOrders: number; pendingOrders: number; totalRevenue: number };
+    return orders.reduce<Stats>(
       (acc, order) => {
         acc.totalOrders += 1;
-        if (order.orderTime >= startOfToday) acc.todayOrders += 1;
-        if (order.status === 'pending') acc.pendingOrders += 1;
-        if (paidStatuses.includes(order.status)) acc.totalRevenue += Number(order.total || 0);
+        if ((order.orderTime as number) >= todayStart) acc.todayOrders   += 1;
+        if (order.status === 'pending')                acc.pendingOrders += 1;
+        if (PAID_STATUSES.includes(order.status as typeof PAID_STATUSES[number])) {
+          acc.totalRevenue += Number(order.total || 0);
+        }
         return acc;
       },
-      { totalOrders: 0, todayOrders: 0, pendingOrders: 0, totalRevenue: 0 }
+      { totalOrders: 0, todayOrders: 0, pendingOrders: 0, totalRevenue: 0 },
     );
   }, [orders]);
 
+  /* ── Chart data ──────────────────────────────────────────────────────── */
   const chartData = useMemo(() => {
     const start = getPeriodStart(period);
     const byDate: Record<string, { date: string; total: number; count: number }> = {};
 
     orders
-      .filter(order => paidStatuses.includes(order.status) && order.orderTime >= start)
-      .forEach(order => {
-        const date = new Date(order.orderTime).toISOString().slice(5, 10);
+      .filter(o => PAID_STATUSES.includes(o.status as typeof PAID_STATUSES[number]) && (o.orderTime as number) >= start)
+      .forEach(o => {
+        const date = new Date(o.orderTime as number).toISOString().slice(5, 10);
         if (!byDate[date]) byDate[date] = { date, total: 0, count: 0 };
-        byDate[date].total += Number(order.total || 0);
+        byDate[date].total += Number(o.total || 0);
         byDate[date].count += 1;
       });
 
@@ -125,60 +127,67 @@ export default function AdminDashboardPage() {
   }, [orders, period]);
 
   const recentOrders = orders.slice(0, 10);
-  const latestUsers = recentUsers.slice(0, 10);
+  const latestUsers  = recentUsers.slice(0, 10);
+
+  /* ── Stat cards ──────────────────────────────────────────────────────── */
+  const cards = [
+    { label: 'Нийт захиалга',       value: stats.totalOrders,             note: 'Бүх төлөв багтсан',             accent: 'border-l-dusty-rose' },
+    { label: 'Өнөөдрийн захиалга',  value: stats.todayOrders,             note: 'Өнөөдөр ирсэн',                 accent: 'border-l-status-confirmed-border' },
+    { label: 'Хүлээгдэж буй',       value: stats.pendingOrders,           note: 'Анхаарал шаардлагатай',         accent: 'border-l-status-pending-border' },
+    { label: 'Баталгаажсан орлого', value: formatPrice(stats.totalRevenue),note: 'Цуцлагдсан захиалга ороогүй',  accent: 'border-l-rose-gold' },
+  ];
 
   if (loading) {
     return (
       <div className="flex justify-center py-32">
-        <div className="w-8 h-8 border border-[#1A1A1A] border-t-transparent rounded-full animate-spin" />
+        <div className="h-8 w-8 animate-spin rounded-full border border-charcoal border-t-transparent" />
       </div>
     );
   }
 
-  const cards = [
-    { label: 'Нийт захиалга', value: stats.totalOrders, note: 'Бүх төлөв багтсан', accent: 'border-l-[#F2A8C8]' },
-    { label: 'Өнөөдрийн захиалга', value: stats.todayOrders, note: 'Өнөөдөр ирсэн', accent: 'border-l-[#B9D7F2]' },
-    { label: 'Хүлээгдэж буй', value: stats.pendingOrders, note: 'Анхаарал шаардлагатай', accent: 'border-l-[#F1D28A]' },
-    { label: 'Баталгаажсан орлого', value: formatPrice(stats.totalRevenue), note: 'Цуцлагдсан захиалга ороогүй', accent: 'border-l-[#FFB7D5]' },
-  ];
-
   return (
     <div className="space-y-4 md:space-y-10">
+
+      {/* ── KPI Cards ─────────────────────────────────────────────────────── */}
       <section>
         <div className="mb-5">
-          <p className="text-[10px] tracking-[0.1em] uppercase text-[#8B6B78]">Өнөөдрийн тойм</p>
-          <h2 className="text-[22px] md:text-3xl font-semibold mt-1 text-[#1A1A1A]">Гол үзүүлэлтүүд</h2>
+          <p className="text-[10px] uppercase tracking-[0.1em] text-text-subtle">Өнөөдрийн тойм</p>
+          <h2 className="mt-1 text-[22px] font-semibold text-charcoal md:text-3xl">Гол үзүүлэлтүүд</h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
           {cards.map(card => (
-            <div key={card.label} className={`rounded-[14px] bg-white border border-[#F2A8C8]/40 border-l-4 ${card.accent} p-6 shadow-[0_8px_24px_rgba(26,26,26,0.04)]`}>
-              <p className="text-[11px] text-[#8B6B78] uppercase tracking-wider">{card.label}</p>
-              <p className="text-3xl font-semibold mt-4 text-[#1A1A1A]">{card.value}</p>
-              <p className="text-xs text-[#8B6B78] mt-3">{card.note}</p>
+            <div
+              key={card.label}
+              className={`card-brand border-l-4 ${card.accent} p-6`}
+            >
+              <p className="text-[11px] uppercase tracking-wider text-text-subtle">{card.label}</p>
+              <p className="mt-4 text-3xl font-semibold text-charcoal">{card.value}</p>
+              <p className="mt-3 text-xs text-text-subtle">{card.note}</p>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="rounded-[16px] bg-white border border-[#F2A8C8]/40 p-5 md:p-7 shadow-[0_10px_30px_rgba(26,26,26,0.03)]">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 mb-7">
+      {/* ── Revenue chart ─────────────────────────────────────────────────── */}
+      <section className="card-brand p-5 md:p-7">
+        <div className="mb-7 flex flex-col justify-between gap-5 md:flex-row md:items-center">
           <div>
-            <p className="text-[10px] tracking-[0.1em] uppercase text-[#8B6B78]">Орлогын хөдөлгөөн</p>
-            <h3 className="text-lg md:text-2xl font-semibold mt-1">Баталгаажсан борлуулалт</h3>
+            <p className="text-[10px] uppercase tracking-[0.1em] text-text-subtle">Орлогын хөдөлгөөн</p>
+            <h3 className="mt-1 text-lg font-semibold text-charcoal md:text-2xl">Баталгаажсан борлуулалт</h3>
           </div>
           <div className="flex flex-wrap gap-2">
-            {(Object.keys(periodLabels) as Period[]).map(item => (
+            {(Object.keys(PERIOD_LABELS) as Period[]).map(key => (
               <button
-                key={item}
-                onClick={() => setPeriod(item)}
-                className={`min-h-10 rounded-[10px] px-3 border text-xs transition-colors ${
-                  period === item
-                    ? 'border-[#FFB7D5] bg-rose-quartz text-[#1A1A1A]'
-                    : 'border-[#F2A8C8]/50 text-[#8B6B78] hover:bg-warm-cream'
+                key={key}
+                onClick={() => setPeriod(key)}
+                className={`min-h-10 rounded-btn border px-3 text-xs transition-colors ${
+                  period === key
+                    ? 'border-dusty-rose bg-blush text-charcoal'
+                    : 'border-border-faint text-text-subtle hover:bg-sand'
                 }`}
               >
-                {periodLabels[item]}
+                {PERIOD_LABELS[key]}
               </button>
             ))}
           </div>
@@ -186,88 +195,123 @@ export default function AdminDashboardPage() {
 
         <div className="h-[260px] md:h-[360px]">
           {chartData.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-sm text-[#8B6B78]">Мэдээлэл алга</div>
+            <div className="flex h-full items-center justify-center text-sm text-text-subtle">Мэдээлэл алга</div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
                 <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fill: '#8B6B78', fontSize: 11 }} />
-                <YAxis tickLine={false} axisLine={false} tick={{ fill: '#8B6B78', fontSize: 11 }} tickFormatter={(value) => `${Number(value) / 1000}k`} />
-                <Tooltip
-                  contentStyle={{ border: '1px solid rgba(242,168,200,.45)', background: '#fff', borderRadius: 0 }}
-                  formatter={(value: any) => formatPrice(Number(value))}
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fill: '#8B6B78', fontSize: 11 }}
+                  tickFormatter={(v: number) => `${v / 1000}k`}
                 />
-                <Line type="monotone" dataKey="total" stroke="#FFB7D5" strokeWidth={2} dot={{ r: 3, fill: '#FFB7D5' }} />
+                <Tooltip
+                  contentStyle={{ border: '1px solid rgba(242,199,216,1)', background: '#fff', borderRadius: 0 }}
+                  formatter={(v) => formatPrice(Number(v ?? 0))}
+                />
+                <Line type="monotone" dataKey="total" stroke="#D994B5" strokeWidth={2} dot={{ r: 3, fill: '#D994B5' }} />
               </LineChart>
             </ResponsiveContainer>
           )}
         </div>
       </section>
 
-      <section className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2 rounded-[16px] bg-white border border-[#F2A8C8]/40 shadow-[0_10px_30px_rgba(26,26,26,0.03)] overflow-hidden">
-          <div className="p-5 md:p-6 border-b border-[#F2A8C8]/40 flex items-center justify-between">
+      {/* ── Recent orders + Users ─────────────────────────────────────────── */}
+      <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+
+        {/* Orders table */}
+        <div className="card-brand overflow-hidden xl:col-span-2">
+          <div className="flex items-center justify-between border-b border-border-faint p-5 md:p-6">
             <div>
-              <p className="text-[10px] tracking-[0.1em] uppercase text-[#8B6B78]">Сүүлийн захиалгууд</p>
-              <h3 className="text-lg font-semibold mt-1">Шинэ хөдөлгөөн</h3>
+              <p className="text-[10px] uppercase tracking-[0.1em] text-text-subtle">Сүүлийн захиалгууд</p>
+              <h3 className="mt-1 text-lg font-semibold text-charcoal">Шинэ хөдөлгөөн</h3>
             </div>
-            <Link href="/admin/orders" className="inline-flex h-11 items-center justify-center rounded-[12px] border border-[#F2C7D8] bg-white px-6 text-xs font-semibold text-[#241820] transition-colors hover:bg-rose-quartz">
+            <Link
+              href="/admin/orders"
+              className="inline-flex h-11 items-center justify-center border border-border-light bg-white px-6 text-xs font-semibold text-charcoal transition-colors hover:bg-blush"
+            >
               Бүгдийг үзэх
             </Link>
           </div>
 
-          <div className="hidden grid-cols-[minmax(0,1fr)_130px_120px_150px] items-center gap-4 border-b border-[#F2A8C8]/25 bg-warm-cream px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-[#8B6B78] md:grid">
+          {/* Table header */}
+          <div className="hidden grid-cols-[minmax(0,1fr)_130px_120px_150px] items-center gap-4 border-b border-border-faint bg-sand px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-text-subtle md:grid">
             <span>Харилцагч</span>
             <span className="text-right">Дүн</span>
             <span>Огноо</span>
             <span className="text-right">Төлөв</span>
           </div>
 
-          <div className="divide-y divide-[#F2A8C8]/25">
+          <div className="divide-y divide-border-faint">
             {recentOrders.length === 0 ? (
-              <p className="p-8 text-center text-sm text-[#8B6B78]">Захиалга олдсонгүй</p>
+              <p className="p-8 text-center text-sm text-text-subtle">Захиалга олдсонгүй</p>
             ) : recentOrders.map(order => (
-              <Link key={order.id} href="/admin/orders" className="block px-4 py-3 transition-colors hover:bg-warm-cream md:px-5">
+              <Link
+                key={order.id as string}
+                href="/admin/orders"
+                className="block px-4 py-3 transition-colors hover:bg-sand md:px-5"
+              >
                 <div className="grid grid-cols-[1fr_auto] items-center gap-3 md:grid-cols-[minmax(0,1fr)_130px_120px_150px] md:gap-4">
                   <div className="min-w-0">
-                    <p className="truncate text-[15px] font-semibold md:text-[15px]">{order.customerName || 'Харилцагч'}</p>
-                    <p className="text-xs text-[#8B6B78] mt-1 truncate">#{order.id.slice(0, 8)} · {order.phone || '-'}</p>
+                    <p className="truncate text-[15px] font-semibold text-charcoal">
+                      {String(order.customerName || 'Харилцагч')}
+                    </p>
+                    <p className="mt-1 truncate text-xs text-text-subtle">
+                      #{String(order.id).slice(0, 8)} · {String(order.phone || '-')}
+                    </p>
                   </div>
-                  <p className="hidden whitespace-nowrap text-right text-sm font-semibold tabular-nums text-[#241820] md:block">{formatPrice(order.total || 0)}</p>
-                  <p className="hidden text-xs text-[#8B6B78] md:block">{order.orderTime ? new Date(order.orderTime).toLocaleDateString('mn-MN') : '-'}</p>
-                  <span className={`ml-auto shrink-0 rounded-[999px] border px-3 py-1.5 text-[10px] font-semibold tracking-[0.04em] max-w-[150px] truncate ${getStatusColor(order.status)}`}>
-                    {statusLabels[order.status] || order.status}
+                  <p className="hidden whitespace-nowrap text-right text-sm font-semibold tabular-nums text-charcoal md:block">
+                    {formatPrice(Number(order.total || 0))}
+                  </p>
+                  <p className="hidden text-xs text-text-subtle md:block">
+                    {order.orderTime ? new Date(order.orderTime as number).toLocaleDateString('mn-MN') : '-'}
+                  </p>
+                  <span
+                    className={`ml-auto max-w-[150px] shrink-0 truncate rounded-tag border px-3 py-1.5 text-[10px] font-semibold tracking-[0.04em] ${getStatusBadgeClass(String(order.status))}`}
+                  >
+                    {STATUS_LABELS[String(order.status)] || String(order.status)}
                   </span>
                 </div>
+
+                {/* Mobile: date + total */}
                 <div className="mt-3 flex items-center justify-between text-sm md:hidden">
-                  <span className="text-[#8B6B78]">{order.orderTime ? new Date(order.orderTime).toLocaleDateString('mn-MN') : '-'}</span>
-                  <span className="font-semibold text-[#241820]">{formatPrice(order.total || 0)}</span>
+                  <span className="text-text-subtle">
+                    {order.orderTime ? new Date(order.orderTime as number).toLocaleDateString('mn-MN') : '-'}
+                  </span>
+                  <span className="font-semibold text-charcoal">{formatPrice(Number(order.total || 0))}</span>
                 </div>
               </Link>
             ))}
           </div>
         </div>
 
-        <div className="rounded-[16px] bg-white border border-[#F2A8C8]/40 shadow-[0_10px_30px_rgba(26,26,26,0.03)] overflow-hidden">
-          <div className="p-5 md:p-6 border-b border-[#F2A8C8]/40 flex items-center justify-between gap-4">
+        {/* Users */}
+        <div className="card-brand overflow-hidden">
+          <div className="flex items-center justify-between gap-4 border-b border-border-faint p-5 md:p-6">
             <div>
-              <p className="text-[10px] tracking-[0.1em] uppercase text-[#8B6B78]">Хэрэглэгчид</p>
-              <h3 className="text-lg font-semibold mt-1">Сүүлд бүртгүүлсэн</h3>
+              <p className="text-[10px] uppercase tracking-[0.1em] text-text-subtle">Хэрэглэгчид</p>
+              <h3 className="mt-1 text-lg font-semibold text-charcoal">Сүүлд бүртгүүлсэн</h3>
             </div>
-            <Link href="/admin/users" className="inline-flex h-11 items-center justify-center rounded-[12px] border border-[#F2C7D8] bg-white px-6 text-xs font-semibold text-[#241820] transition-colors hover:bg-rose-quartz">
+            <Link
+              href="/admin/users"
+              className="inline-flex h-11 items-center justify-center border border-border-light bg-white px-6 text-xs font-semibold text-charcoal transition-colors hover:bg-blush"
+            >
               Бүгдийг үзэх
             </Link>
           </div>
-          <div className="divide-y divide-[#F2A8C8]/25">
-            {recentUsers.length === 0 ? (
-              <p className="p-8 text-center text-sm text-[#8B6B78]">Хэрэглэгч олдсонгүй</p>
-            ) : latestUsers.map(user => (
-              <div key={user.id} className="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-warm-cream">
-                <div className="w-10 h-10 rounded-[10px] bg-rose-100 border border-[#F2A8C8]/50 flex items-center justify-center text-sm font-semibold">
-                  {(user.displayName || user.email || 'U').charAt(0).toUpperCase()}
+
+          <div className="divide-y divide-border-faint">
+            {latestUsers.length === 0 ? (
+              <p className="p-8 text-center text-sm text-text-subtle">Хэрэглэгч олдсонгүй</p>
+            ) : latestUsers.map(u => (
+              <div key={u.id as string} className="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-sand">
+                <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-border-faint bg-blush text-sm font-semibold text-charcoal">
+                  {(String(u.displayName || u.email || 'U')).charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm truncate">{user.displayName || 'Нэргүй хэрэглэгч'}</p>
-                  <p className="text-xs text-[#8B6B78] truncate">{user.email}</p>
+                  <p className="truncate text-sm text-charcoal">{String(u.displayName || 'Нэргүй хэрэглэгч')}</p>
+                  <p className="truncate text-xs text-text-subtle">{String(u.email || '')}</p>
                 </div>
               </div>
             ))}

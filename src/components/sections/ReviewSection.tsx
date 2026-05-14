@@ -1,10 +1,19 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { getLatestReviews } from '@/lib/services/firestoreService';
 import type { Review } from '@/types';
+
+function StarRating({ rating, total = 5 }: { rating: number; total?: number }) {
+  return (
+    <p className="whitespace-nowrap text-xs">
+      <span className="text-rose-gold">{'★'.repeat(rating)}</span>
+      <span className="text-border-light">{'★'.repeat(total - rating)}</span>
+    </p>
+  );
+}
 
 export default function ReviewSection() {
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -18,22 +27,24 @@ export default function ReviewSection() {
   }, []);
 
   return (
-    <section className="bg-[#FFF8FB] py-16 md:py-28">
+    <section className="bg-sand py-16 md:py-28">
       <div className="max-content">
+        {/* Section header */}
         <div className="mb-10 text-center md:mb-16">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#D994B5]">Сэтгэгдэл</p>
-          <h2 className="mx-auto mt-3 max-w-3xl font-serif text-4xl leading-tight text-[#241820] md:text-6xl">
+          <p className="section-label">Сэтгэгдэл</p>
+          <h2 className="mx-auto mt-3 max-w-3xl font-serif text-4xl leading-tight text-charcoal md:text-6xl">
             Хэрэглэгчдийн бодит мэдрэмж
           </h2>
-          <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-[#7E6472]">
+          <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-text-muted">
             Арьс арчилгаа, гоо сайхан, өдөр тутмын routine-д орсон бүтээгдэхүүний туршлага.
           </p>
         </div>
 
+        {/* Content */}
         {loading ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {[1, 2, 3].map(item => (
-              <div key={item} className="h-80 animate-pulse bg-white" />
+              <div key={item} className="h-80 animate-pulse bg-blush" />
             ))}
           </div>
         ) : reviews.length > 0 ? (
@@ -44,9 +55,9 @@ export default function ReviewSection() {
                 <Link
                   key={review.id}
                   href={`/shop/${review.productSlug}`}
-                  className="group overflow-hidden border border-[#F2C7D8] bg-white transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(91,46,67,0.12)]"
+                  className="group overflow-hidden border border-border-light bg-white transition-transform duration-300 hover:-translate-y-1 hover:shadow-brand-md"
                 >
-                  <div className="relative aspect-[4/3] bg-[#FFF0F6]">
+                  <div className="relative aspect-[4/3] bg-blush">
                     {cover ? (
                       <Image
                         src={cover}
@@ -56,21 +67,19 @@ export default function ReviewSection() {
                         sizes="(max-width: 768px) 100vw, 33vw"
                       />
                     ) : (
-                      <div className="absolute inset-0 flex items-center justify-center text-sm font-semibold uppercase tracking-[0.2em] text-[#D994B5]">
+                      <div className="absolute inset-0 flex items-center justify-center text-sm font-semibold uppercase tracking-[0.2em] text-dusty-rose">
                         UJ
                       </div>
                     )}
                   </div>
+
                   <div className="p-5 md:p-6">
                     <div className="flex items-center justify-between gap-4">
-                      <p className="line-clamp-1 text-sm font-semibold text-[#241820]">{review.productName}</p>
-                      <p className="whitespace-nowrap text-xs text-[#D8A15D]">
-                        {'★'.repeat(review.rating)}
-                        <span className="text-[#F2C7D8]">{'★'.repeat(5 - review.rating)}</span>
-                      </p>
+                      <p className="line-clamp-1 text-sm font-semibold text-charcoal">{review.productName}</p>
+                      <StarRating rating={review.rating} />
                     </div>
-                    <p className="mt-3 line-clamp-3 text-sm leading-7 text-[#7E6472]">{review.content}</p>
-                    <div className="mt-5 flex items-center justify-between text-xs text-[#9A7D88]">
+                    <p className="mt-3 line-clamp-3 text-sm leading-7 text-text-muted">{review.content}</p>
+                    <div className="mt-5 flex items-center justify-between text-xs text-text-faint">
                       <span>{review.userName || 'UJ хэрэглэгч'}</span>
                       <span>Дэлгэрэнгүй</span>
                     </div>
@@ -80,12 +89,15 @@ export default function ReviewSection() {
             })}
           </div>
         ) : (
-          <div className="mx-auto max-w-2xl border border-dashed border-[#D994B5]/70 bg-white px-6 py-12 text-center">
-            <p className="font-serif text-2xl text-[#241820]">Анхны сэтгэгдлүүд удахгүй нэмэгдэнэ</p>
-            <p className="mt-3 text-sm leading-7 text-[#7E6472]">
+          <div className="mx-auto max-w-2xl border border-dashed border-dusty-rose/70 bg-white px-6 py-12 text-center">
+            <p className="font-serif text-2xl text-charcoal">Анхны сэтгэгдлүүд удахгүй нэмэгдэнэ</p>
+            <p className="mt-3 text-sm leading-7 text-text-muted">
               Бүтээгдэхүүн сонгоод хэрэглэсний дараа өөрийн туршлагаа хуваалцаарай.
             </p>
-            <Link href="/shop" className="mt-6 inline-flex min-h-11 items-center justify-center border border-[#D994B5] px-6 text-xs font-semibold uppercase tracking-[0.16em] text-[#241820] transition-colors hover:bg-[#D994B5] hover:text-white">
+            <Link
+              href="/shop"
+              className="mt-6 inline-flex min-h-11 items-center justify-center border border-dusty-rose px-6 text-xs font-semibold uppercase tracking-[0.16em] text-charcoal transition-colors hover:bg-dusty-rose hover:text-white"
+            >
               Бүтээгдэхүүн үзэх
             </Link>
           </div>
