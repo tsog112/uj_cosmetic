@@ -317,7 +317,7 @@ export default function ProductDetailPage() {
       </div>
 
       {/* ── Reviews ────────────────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1400px] border-thin-t px-6 py-16 md:py-24 lg:px-10">
+      <section className="mx-auto max-w-[1400px] border-thin-t px-6 py-14 md:py-18 lg:px-10">
         <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="section-label">Review</p>
@@ -333,7 +333,7 @@ export default function ProductDetailPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[420px_1fr]">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[360px_1fr]">
           <ReviewForm product={product} onSubmitted={() => loadReviews(product.id)} />
 
           <div>
@@ -344,7 +344,7 @@ export default function ProductDetailPage() {
             ) : reviews.length > 0 ? (
               <div className="grid gap-4">
                 {reviews.map(review => (
-                  <article key={review.id} className="border border-border bg-white p-5 md:p-6">
+                  <article key={review.id} className="surface-card p-5 md:p-6">
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <p className="font-medium text-charcoal">{review.userName || 'UJ хэрэглэгч'}</p>

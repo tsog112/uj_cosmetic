@@ -98,17 +98,17 @@ export default function ReviewForm({ product, onSubmitted }: ReviewFormProps) {
   };
 
   if (loading) {
-    return <div className="h-32 bg-[#FFF0F6] animate-pulse" />;
+    return <div className="h-32 bg-blush animate-pulse" />;
   }
 
   if (!user) {
     return (
-      <div className="border border-[#F2A8C8]/50 bg-[#FFF8FB] p-6 md:p-8 text-center">
-        <p className="font-serif text-2xl text-[#1A1A1A] mb-2">Сэтгэгдэл бичих</p>
-        <p className="text-sm text-[#8B6B78] mb-5">Зурагтай сэтгэгдэл үлдээхийн тулд бүртгэлээрээ нэвтэрнэ үү.</p>
+      <div className="surface-card bg-sand p-6 text-center md:p-8">
+        <p className="font-serif text-2xl text-charcoal mb-2">Сэтгэгдэл бичих</p>
+        <p className="text-sm text-text-subtle mb-5">Зурагтай сэтгэгдэл үлдээхийн тулд бүртгэлээрээ нэвтэрнэ үү.</p>
         <Link
           href="/auth"
-          className="inline-flex min-h-11 items-center justify-center border border-[#FFB7D5] px-6 text-xs tracking-[0.16em] uppercase text-[#1A1A1A] transition-colors hover:bg-[#FFF0F6]"
+          className="inline-flex min-h-11 items-center justify-center border border-dusty-rose px-6 text-xs tracking-[0.16em] uppercase text-charcoal transition-colors hover:bg-blush"
         >
           Нэвтрэх
         </Link>
@@ -117,11 +117,11 @@ export default function ReviewForm({ product, onSubmitted }: ReviewFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="border border-[#F2A8C8]/50 bg-white p-5 md:p-7">
+    <form onSubmit={handleSubmit} className="surface-card p-5 md:p-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-[11px] tracking-[0.18em] uppercase text-[#8B6B78]">Review</p>
-          <h3 className="font-serif text-2xl text-[#1A1A1A]">Сэтгэгдэл бичих</h3>
+          <p className="text-[11px] tracking-[0.18em] uppercase text-text-subtle">Review</p>
+          <h3 className="font-serif text-2xl text-charcoal">Сэтгэгдэл бичих</h3>
         </div>
         <div className="flex gap-1" aria-label="Үнэлгээ">
           {[1, 2, 3, 4, 5].map(star => (
@@ -142,19 +142,19 @@ export default function ReviewForm({ product, onSubmitted }: ReviewFormProps) {
         value={content}
         onChange={(event) => setContent(event.target.value)}
         rows={4}
-        className="mt-5 w-full border border-[#F2A8C8]/60 bg-[#FFF8FB] px-4 py-3 text-sm text-[#1A1A1A] outline-none transition-colors placeholder:text-[#B79AA6] focus:border-[#FFB7D5]"
+        className="mt-4 min-h-32 w-full resize-none rounded-[14px] border border-border-light bg-white px-4 py-3 text-sm leading-6 text-charcoal outline-none transition-all placeholder:text-text-faint focus:border-dusty-rose focus:ring-1 focus:ring-dusty-rose shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]"
         placeholder="Бүтээгдэхүүний мэдрэмж, үр дүнгээ бичээрэй..."
       />
 
       {previews.length > 0 && (
         <div className="mt-4 grid grid-cols-4 gap-3">
           {previews.map(({ url, file }, index) => (
-            <div key={`${file.name}-${index}`} className="relative aspect-square overflow-hidden bg-[#FFF0F6]">
+            <div key={`${file.name}-${index}`} className="relative aspect-square overflow-hidden rounded-[16px] bg-blush">
               <Image src={url} alt="Review preview" fill className="object-cover" sizes="120px" />
               <button
                 type="button"
                 onClick={() => removeFile(index)}
-                className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center bg-white/90 text-sm text-[#1A1A1A]"
+                className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-sm text-charcoal"
                 aria-label="Зураг устгах"
               >
                 ×
@@ -164,28 +164,40 @@ export default function ReviewForm({ product, onSubmitted }: ReviewFormProps) {
         </div>
       )}
 
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <label className="flex min-h-11 cursor-pointer items-center justify-center border border-[#F2A8C8]/70 px-5 text-xs tracking-[0.14em] uppercase text-[#8B6B78] transition-colors hover:bg-[#FFF0F6]">
-          Зураг нэмэх
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={handleFiles}
-            className="sr-only"
-            disabled={files.length >= MAX_IMAGES || submitting}
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={submitting}
-          className="min-h-11 bg-[#1A1A1A] px-7 text-xs font-medium tracking-[0.16em] uppercase text-white transition-colors hover:bg-[#333] disabled:cursor-not-allowed disabled:bg-[#D8C7CF]"
-        >
-          {submitting ? 'Илгээж байна...' : 'Сэтгэгдэл илгээх'}
-        </button>
+      <div className="mt-5 flex flex-col gap-3">
+        <div className="flex flex-col gap-3">
+          <label className="btn-ghost flex flex-1 min-h-[48px] cursor-pointer items-center justify-center rounded-full border border-border-light px-4 text-[11px] font-semibold tracking-widest uppercase text-charcoal transition-colors hover:border-dusty-rose hover:bg-rose-quartz whitespace-nowrap shadow-sm">
+            <span className="flex items-center gap-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+              Зураг нэмэх
+            </span>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleFiles}
+              className="sr-only"
+              disabled={files.length >= MAX_IMAGES || submitting}
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="btn-premium flex-1 min-h-[48px] px-6 text-[11px] font-semibold tracking-widest uppercase whitespace-nowrap shadow-brand-sm"
+          >
+            {submitting ? 'Илгээж байна...' : 'Сэтгэгдэл илгээх'}
+          </button>
+        </div>
+        <div className="flex items-center justify-between px-1">
+          <p className="text-[11px] text-text-faint">
+            {files.length} / {MAX_IMAGES} зураг оруулсан
+          </p>
+        </div>
       </div>
-
-      <p className="mt-3 text-xs text-[#8B6B78]">4 хүртэл зураг оруулах боломжтой.</p>
       {message && <p className="mt-3 text-sm text-green-700">{message}</p>}
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
     </form>

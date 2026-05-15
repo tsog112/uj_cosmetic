@@ -19,7 +19,7 @@ function ShopContent() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 200000]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 0]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isSortOpen, setIsSortOpen] = useState(false);
 
@@ -49,6 +49,19 @@ function ShopContent() {
       .catch(() => setCategories([]));
   }, []);
 
+  const maxProductPrice = useMemo(() => {
+    return products.reduce((max, product) => {
+      const price = product?.salePrice ?? product?.price ?? 0;
+      return Math.max(max, price);
+    }, 0);
+  }, [products]);
+
+  useEffect(() => {
+    if (maxProductPrice > 0) {
+      setPriceRange([0, maxProductPrice]);
+    }
+  }, [maxProductPrice]);
+
   const filteredProducts = useMemo(() => {
     let result = [...products];
 
@@ -58,9 +71,10 @@ function ShopContent() {
     }
 
     // Price filter
+    const upperPrice = priceRange[1] || maxProductPrice;
     result = result.filter(p => {
       const price = p?.salePrice ?? p?.price ?? 0;
-      return price >= priceRange[0] && price <= priceRange[1];
+      return upperPrice <= 0 || (price >= priceRange[0] && price <= upperPrice);
     });
 
     // Sort
@@ -77,7 +91,7 @@ function ShopContent() {
     }
 
     return result;
-  }, [products, activeCategory, activeSort, priceRange]);
+  }, [products, activeCategory, activeSort, priceRange, maxProductPrice]);
 
   const updateFilters = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -94,31 +108,31 @@ function ShopContent() {
 
   if (error) {
     return (
-      <div className="max-w-[1400px] mx-auto px-6 lg:px-10 py-20 text-center">
-        <p className="text-sm text-red-500 mb-4">Мэдээлэл ачаалахад алдаа гарлаа. Дахин оролдоно уу.</p>
-        <button onClick={() => window.location.reload()} className="inline-flex min-h-11 items-center justify-center rounded-[11px] border border-[#F2C7D8] bg-white px-5 text-sm font-semibold text-[#241820] transition-colors hover:bg-[#FFF0F6]">Дахин оролдох</button>
+      <div className="max-w-[1400px] mx-auto px-6 lg:px-10 pt-28 pb-20 text-center">
+        <p className="text-sm text-status-cancelled-text mb-4">Мэдээлэл ачаалахад алдаа гарлаа. Дахин оролдоно уу.</p>
+        <button onClick={() => window.location.reload()} className="inline-flex min-h-11 items-center justify-center rounded-full border border-border-light bg-white px-6 text-sm font-semibold text-charcoal transition-colors hover:bg-blush">Дахин оролдох</button>
       </div>
     );
   }
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-10 pt-24 pb-8 md:py-22">
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-10 pt-28 md:pt-32 pb-8">
       {/* Page Header */}
-      <div className="mb-6 md:mb-18">
-        <h1 className="text-[30px] md:font-serif md:text-display font-semibold md:font-normal text-[#1A1A1A] leading-tight">
+      <div className="mb-6 md:mb-16">
+        <h1 className="text-[28px] md:text-display font-semibold md:font-light text-charcoal leading-tight">
           Бүтээгдэхүүн
         </h1>
-        <p className="text-[11px] md:text-[0.6875rem] tracking-[0.14em] md:tracking-[0.18em] uppercase text-[#8B6B78] mt-2 md:mt-4 font-medium">
+        <p className="text-[11px] tracking-[0.16em] uppercase text-text-subtle mt-2 md:mt-4 font-medium">
           {loading ? '...' : `${filteredProducts.length} бүтээгдэхүүн`}
           {activeCategory !== 'all' && ` · ${activeCategoryName}`}
         </p>
       </div>
 
-      <div className="lg:hidden sticky top-[60px] z-30 -mx-4 mb-5 border-y border-[#F2A8C8]/50 bg-sand/95 px-4 py-3 backdrop-blur-md">
+      <div className="lg:hidden sticky top-16 z-30 -mx-4 mb-5 border-y border-black/[0.04] bg-white/90 px-4 py-3 backdrop-blur-xl">
         <div className="flex gap-2">
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="min-h-11 flex-1 rounded-[12px] border border-[#F2A8C8] bg-white/70 px-4 text-sm font-medium text-[#1A1A1A] flex items-center justify-center gap-2"
+            className="flex min-h-10 flex-1 items-center justify-center gap-2 rounded-[12px] border border-border-light bg-white px-4 text-sm font-medium text-charcoal"
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
               <path d="M4 6h16M4 12h10M4 18h6" />
@@ -128,16 +142,16 @@ function ShopContent() {
           <button
             type="button"
             onClick={() => setIsSortOpen(prev => !prev)}
-            className="min-h-11 flex-1 rounded-[12px] border border-[#F2A8C8] bg-white/70 px-4 text-sm font-medium text-[#1A1A1A] flex items-center justify-center gap-2"
+            className="flex min-h-10 flex-1 items-center justify-center gap-2 rounded-[12px] border border-border-light bg-white px-4 text-sm font-medium text-charcoal"
           >
             {sortOptions.find(option => option.value === activeSort)?.label || 'Шинэ'}
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-              <path d="M3 4.5L6 7.5L9 4.5" stroke="#8B6B78" strokeWidth="1.3" />
+              <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.3" />
             </svg>
           </button>
         </div>
         {isSortOpen && (
-          <div className="absolute right-4 top-[58px] z-40 w-[180px] rounded-[14px] border border-[#F2A8C8] bg-sand shadow-[0_10px_30px_rgba(26,26,26,0.08)] overflow-hidden">
+          <div className="absolute right-4 top-[54px] z-40 w-[180px] overflow-hidden rounded-xl border border-border-light bg-white shadow-brand-lg">
             {sortOptions.map(option => (
               <button
                 key={option.value}
@@ -148,8 +162,8 @@ function ShopContent() {
                 }}
                 className={`block w-full px-4 py-3 text-left text-sm transition-colors ${
                   activeSort === option.value
-                    ? 'text-[#1A1A1A] bg-[#FFF0F6]'
-                    : 'text-[#8B6B78] hover:text-[#1A1A1A] hover:bg-[#FFF0F6]'
+                    ? 'text-charcoal bg-blush font-medium'
+                    : 'text-text-subtle hover:text-charcoal hover:bg-sand'
                 }`}
               >
                 {option.label}
@@ -163,25 +177,25 @@ function ShopContent() {
 
         {/* Sidebar */}
         <aside className={`
-          ${isSidebarOpen ? 'fixed inset-0 z-50 bg-sand p-5 overflow-y-auto lg:static lg:z-auto lg:p-0' : 'hidden'}
+          ${isSidebarOpen ? 'fixed inset-0 z-50 bg-white p-6 overflow-y-auto lg:static lg:z-auto lg:p-0' : 'hidden'}
           lg:block lg:w-[190px] lg:flex-shrink-0
         `}>
           {/* Mobile close */}
           <button
             onClick={() => setIsSidebarOpen(false)}
-            className="lg:hidden absolute top-5 right-5 w-11 h-11 rounded-[12px] border border-border bg-white/70 flex items-center justify-center text-text-primary"
+            className="lg:hidden absolute top-5 right-5 w-10 h-10 rounded-full border border-border-light bg-sand flex items-center justify-center text-charcoal"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M6 6L18 18M18 6L6 18" />
             </svg>
           </button>
 
           {/* Categories */}
           <div className="mb-8 lg:mb-12 pt-14 lg:pt-0">
-            <h3 className="text-[11px] tracking-[0.14em] lg:tracking-[0.18em] uppercase text-[#8B6B78] mb-4 lg:mb-5 font-medium">
+            <h3 className="text-[11px] tracking-[0.16em] uppercase text-text-subtle mb-4 lg:mb-5 font-semibold">
               Ангилал
             </h3>
-            <div className="grid grid-cols-2 gap-2 lg:flex lg:flex-col lg:space-y-2">
+            <div className="grid grid-cols-2 gap-2 lg:flex lg:flex-col lg:gap-1.5">
               {displayCategories.map(cat => (
                 <button
                   key={cat.id}
@@ -190,10 +204,10 @@ function ShopContent() {
                     updateFilters('category', cat.slug);
                     setIsSidebarOpen(false);
                   }}
-                  className={`min-h-11 rounded-[12px] border px-3 text-left text-sm leading-6 transition-colors lg:min-h-0 lg:rounded-none lg:border-0 lg:px-0 ${
+                  className={`min-h-10 rounded-[12px] border px-3.5 text-left text-sm transition-all lg:min-h-0 lg:rounded-lg lg:border-0 lg:px-2 lg:py-1.5 ${
                     activeCategory === cat.slug
-                      ? 'border-[#FFB7D5] bg-[#FFF0F6] text-[#1A1A1A] lg:bg-transparent lg:underline lg:underline-offset-4 lg:decoration-[#1A1A1A]'
-                      : 'border-[#F2A8C8]/50 bg-white/60 text-[#8B6B78] hover:text-[#1A1A1A] lg:bg-transparent'
+                      ? 'border-dusty-rose bg-blush text-charcoal font-medium lg:bg-blush'
+                      : 'border-border-light bg-white text-text-subtle hover:text-charcoal lg:bg-transparent lg:hover:bg-sand'
                   }`}
                 >
                   {cat.name_mn}
@@ -203,24 +217,25 @@ function ShopContent() {
           </div>
 
           {/* Price Range */}
-          <div className="border-t border-[#F2A8C8]/70 pt-6 lg:pt-8">
-            <h3 className="text-[11px] tracking-[0.14em] lg:tracking-[0.18em] uppercase text-[#8B6B78] mb-4 lg:mb-5 font-medium">
+          <div className="border-t border-border-light pt-6 lg:pt-8">
+            <h3 className="text-[11px] tracking-[0.16em] uppercase text-text-subtle mb-4 lg:mb-5 font-semibold">
               Үнийн хүрээ
             </h3>
             <input
               type="range"
               min={0}
-              max={200000}
+              max={Math.max(maxProductPrice, 1)}
               step={5000}
-              value={priceRange[1]}
+              value={priceRange[1] || maxProductPrice || 1}
               onChange={e => setPriceRange([0, parseInt(e.target.value)])}
-              className="w-full accent-[#1A1A1A]"
+              disabled={maxProductPrice <= 0}
+              className="w-full accent-charcoal"
             />
-            <div className="flex justify-between mt-3 text-[11px] tracking-[0.08em] uppercase text-[#8B6B78]">
+            <div className="flex justify-between mt-3 text-[10px] tracking-wider uppercase text-text-subtle">
               <span>0₮</span>
-              <span>{formatPrice(priceRange[1])}</span>
+              <span>{formatPrice(priceRange[1] || maxProductPrice)}</span>
             </div>
-            <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden mt-8 w-full min-h-12 rounded-[12px] bg-[#1A1A1A] text-white text-sm font-medium">
+            <button onClick={() => setIsSidebarOpen(false)} className="mt-8 min-h-12 w-full rounded-[12px] bg-charcoal text-sm font-semibold text-white lg:hidden">
               Харах
             </button>
           </div>
@@ -234,16 +249,16 @@ function ShopContent() {
               <button
                 type="button"
                 onClick={() => setIsSortOpen(prev => !prev)}
-                className="min-w-[150px] border border-[#F2A8C8] bg-transparent px-4 py-2.5 text-left text-xs uppercase tracking-[0.16em] text-[#1A1A1A] flex items-center justify-between gap-4"
+                className="flex min-w-[150px] items-center justify-between gap-4 rounded-[12px] border border-border-light bg-white px-4 py-2.5 text-left text-xs uppercase tracking-[0.16em] text-charcoal transition-colors hover:bg-sand"
               >
                 {sortOptions.find(option => option.value === activeSort)?.label || 'Шинэ'}
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                  <path d="M3 4.5L6 7.5L9 4.5" stroke="#8B6B78" strokeWidth="1.3" />
+                  <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.3" />
                 </svg>
               </button>
 
               {isSortOpen && (
-                <div className="absolute right-0 top-full z-20 mt-1 min-w-[150px] border border-[#F2A8C8] bg-sand shadow-[0_10px_30px_rgba(26,26,26,0.08)]">
+                <div className="absolute right-0 top-full z-20 mt-2 min-w-[150px] overflow-hidden rounded-xl border border-border-light bg-white shadow-brand-lg">
                   {sortOptions.map(option => (
                     <button
                       key={option.value}
@@ -254,8 +269,8 @@ function ShopContent() {
                       }}
                       className={`block w-full px-4 py-3 text-left text-xs uppercase tracking-[0.16em] transition-colors ${
                         activeSort === option.value
-                          ? 'text-[#1A1A1A] bg-[#FFF0F6]'
-                          : 'text-[#8B6B78] hover:text-[#1A1A1A] hover:bg-[#FFF0F6]'
+                          ? 'text-charcoal bg-blush font-medium'
+                          : 'text-text-subtle hover:text-charcoal hover:bg-sand'
                       }`}
                     >
                       {option.label}
@@ -271,10 +286,10 @@ function ShopContent() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-x-3 gap-y-8 md:gap-8">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="animate-pulse">
-                  <div className="aspect-[4/5] rounded-[14px] md:rounded-none bg-cream-dark mb-4" />
-                  <div className="h-3 bg-cream-dark w-16 mb-2" />
-                  <div className="h-4 bg-cream-dark w-full mb-2" />
-                  <div className="h-4 bg-cream-dark w-20" />
+                  <div className="aspect-[4/5] rounded-2xl bg-sand-dark mb-4" />
+                  <div className="h-3 rounded bg-sand-dark w-16 mb-2" />
+                  <div className="h-4 rounded bg-sand-dark w-full mb-2" />
+                  <div className="h-4 rounded bg-sand-dark w-20" />
                 </div>
               ))}
             </div>

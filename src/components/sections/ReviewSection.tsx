@@ -26,13 +26,16 @@ export default function ReviewSection() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Fixed grid with reasonable max-width to prevent cards from becoming massive
+  const reviewGridClass = 'mx-auto flex flex-wrap justify-center gap-4 md:gap-6';
+
   return (
-    <section className="bg-sand py-16 md:py-28">
+    <section className="bg-sand py-14 md:py-20">
       <div className="max-content">
         {/* Section header */}
-        <div className="mb-10 text-center md:mb-16">
+        <div className="mb-8 text-center md:mb-10">
           <p className="section-label">Сэтгэгдэл</p>
-          <h2 className="mx-auto mt-3 max-w-3xl font-serif text-4xl leading-tight text-charcoal md:text-6xl">
+          <h2 className="mx-auto mt-3 max-w-3xl font-serif text-4xl leading-tight text-charcoal md:text-5xl">
             Хэрэглэгчдийн бодит мэдрэмж
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-text-muted">
@@ -42,22 +45,22 @@ export default function ReviewSection() {
 
         {/* Content */}
         {loading ? (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
             {[1, 2, 3].map(item => (
-              <div key={item} className="h-80 animate-pulse bg-blush" />
+              <div key={item} className="h-64 animate-pulse rounded-[22px] bg-blush" />
             ))}
           </div>
         ) : reviews.length > 0 ? (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
+          <div className={reviewGridClass}>
             {reviews.map(review => {
               const cover = review.imageUrls[0];
               return (
                 <Link
                   key={review.id}
                   href={`/shop/${review.productSlug}`}
-                  className="group overflow-hidden border border-border-light bg-white transition-transform duration-300 hover:-translate-y-1 hover:shadow-brand-md"
+                  className="group overflow-hidden rounded-[22px] border border-border-light bg-white transition-transform duration-300 hover:-translate-y-1 hover:shadow-brand-md w-full max-w-[280px] md:max-w-[300px]"
                 >
-                  <div className="relative aspect-[4/3] bg-blush">
+                  <div className="relative aspect-square bg-blush">
                     {cover ? (
                       <Image
                         src={cover}
@@ -73,13 +76,13 @@ export default function ReviewSection() {
                     )}
                   </div>
 
-                  <div className="p-5 md:p-6">
-                    <div className="flex items-center justify-between gap-4">
+                  <div className="p-4">
+                    <div className="flex flex-col gap-2">
                       <p className="line-clamp-1 text-sm font-semibold text-charcoal">{review.productName}</p>
                       <StarRating rating={review.rating} />
                     </div>
-                    <p className="mt-3 line-clamp-3 text-sm leading-7 text-text-muted">{review.content}</p>
-                    <div className="mt-5 flex items-center justify-between text-xs text-text-faint">
+                    <p className="mt-3 line-clamp-2 text-sm leading-6 text-text-muted">{review.content}</p>
+                    <div className="mt-4 flex items-center justify-between text-[11px] text-text-faint">
                       <span>{review.userName || 'UJ хэрэглэгч'}</span>
                       <span>Дэлгэрэнгүй</span>
                     </div>
@@ -99,6 +102,17 @@ export default function ReviewSection() {
               className="mt-6 inline-flex min-h-11 items-center justify-center border border-dusty-rose px-6 text-xs font-semibold uppercase tracking-[0.16em] text-charcoal transition-colors hover:bg-dusty-rose hover:text-white"
             >
               Бүтээгдэхүүн үзэх
+            </Link>
+          </div>
+        )}
+
+        {!loading && reviews.length > 0 && (
+          <div className="mt-8 flex justify-center">
+            <Link
+              href="/reviews"
+              className="inline-flex min-h-12 items-center justify-center rounded-full border border-dusty-rose px-7 text-xs font-semibold uppercase tracking-[0.16em] text-charcoal transition-colors hover:bg-dusty-rose hover:text-white"
+            >
+              Бусад сэтгэгдэл үзэх
             </Link>
           </div>
         )}

@@ -15,15 +15,16 @@ export default function Pagination({ page, totalItems, pageSize = 10, onPageChan
     .filter(item => item === 1 || item === pageCount || Math.abs(item - page) <= 1);
 
   return (
-    <div className="flex justify-center border-t border-[#F2A8C8]/35 bg-white px-4 py-4 text-sm text-[#8B6B78]">
-      <div className="flex flex-wrap items-center justify-center gap-2">
+    <div className="flex justify-center border-t border-border-light/35 bg-white px-4 py-5 text-sm text-text-subtle">
+      <nav className="inline-flex items-center justify-center gap-2" aria-label="Хуудаслалт">
         <button
           type="button"
           onClick={() => onPageChange(Math.max(1, page - 1))}
           disabled={page <= 1}
-          className="min-h-10 rounded-[10px] border border-[#F2C7D8] px-4 text-xs font-semibold text-[#241820] transition-colors hover:bg-[#FFF0F6] disabled:cursor-not-allowed disabled:opacity-40"
+          className="btn-secondary h-10 w-10 min-h-10 px-0 text-base disabled:cursor-not-allowed disabled:opacity-35"
+          aria-label="Өмнөх хуудас"
         >
-          Өмнөх
+          &lt;
         </button>
         {pages.map((item, index) => {
           const previous = pages[index - 1];
@@ -31,14 +32,14 @@ export default function Pagination({ page, totalItems, pageSize = 10, onPageChan
 
           return (
             <span key={item} className="flex items-center gap-2">
-              {showGap && <span className="text-xs text-[#B79AA6]">...</span>}
+              {showGap && <span className="text-xs text-text-faint">...</span>}
               <button
                 type="button"
                 onClick={() => onPageChange(item)}
                 className={`h-10 min-w-10 rounded-[10px] border px-3 text-xs font-semibold transition-colors ${
                   page === item
-                    ? 'border-[#D994B5] bg-[#D994B5] text-white shadow-[0_10px_22px_rgba(217,148,181,0.22)]'
-                    : 'border-[#F2C7D8] bg-white text-[#241820] hover:bg-[#FFF0F6]'
+                    ? 'border-dusty-rose bg-dusty-rose text-white shadow-brand-sm'
+                    : 'border-border-light bg-white text-charcoal hover:bg-blush'
                 }`}
                 aria-current={page === item ? 'page' : undefined}
               >
@@ -51,11 +52,12 @@ export default function Pagination({ page, totalItems, pageSize = 10, onPageChan
           type="button"
           onClick={() => onPageChange(Math.min(pageCount, page + 1))}
           disabled={page >= pageCount}
-          className="min-h-10 rounded-[10px] border border-[#F2C7D8] px-4 text-xs font-semibold text-[#241820] transition-colors hover:bg-[#FFF0F6] disabled:cursor-not-allowed disabled:opacity-40"
+          className="btn-secondary h-10 w-10 min-h-10 px-0 text-base disabled:cursor-not-allowed disabled:opacity-35"
+          aria-label="Дараах хуудас"
         >
-          Дараах
+          &gt;
         </button>
-      </div>
+      </nav>
     </div>
   );
 }

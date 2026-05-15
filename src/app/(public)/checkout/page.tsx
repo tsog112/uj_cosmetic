@@ -83,7 +83,7 @@ function CheckoutContent() {
     return (
       <div className="mx-auto max-w-[1000px] px-6 py-20 text-center lg:px-10">
         <h1 className="mb-3 font-serif text-3xl text-text-primary">Сагс хоосон байна</h1>
-        <Link href="/shop" className="btn-premium mt-6 rounded-[12px] px-10">
+        <Link href="/shop" className="btn-premium mt-6 rounded-full px-10">
           Дэлгүүр рүү буцах
         </Link>
       </div>
@@ -164,23 +164,23 @@ function CheckoutContent() {
     setFormErrors(prev => ({ ...prev, [name]: '' }));
   };
 
-  const inputClass = 'w-full rounded-[12px] border bg-[#FFF8FB] p-3 text-sm outline-none transition-colors focus:border-[#D994B5] focus:bg-white';
+  const inputClass = 'field-control p-3 text-sm';
 
   return (
     <div className="mx-auto max-w-[1120px] px-4 pb-14 pt-24 sm:px-6 lg:px-10 md:py-20">
       <div className="mb-9">
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#D994B5]">Checkout</p>
-        <h1 className="mt-2 font-serif text-4xl leading-tight text-[#241820] md:text-5xl">
+        <h1 className="mt-2 font-serif text-4xl leading-tight text-charcoal md:text-5xl">
           Захиалга баталгаажуулах
         </h1>
-        <p className="mt-3 max-w-2xl text-sm leading-7 text-[#7E6472]">
+        <p className="mt-3 max-w-2xl text-sm leading-7 text-text-muted">
           Мэдээллээ шалгаад захиалгаа илгээгээрэй. Төлөв шинэчлэгдэх бүрт таны имэйл рүү мэдэгдэл очно.
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px] lg:gap-12">
-        <form id="checkout-form" onSubmit={handleSubmit} className="rounded-[18px] border border-[#F2C7D8] bg-white p-5 shadow-[0_18px_50px_rgba(91,46,67,0.06)] md:p-7" noValidate>
-          <h2 className="mb-6 font-serif text-2xl text-[#241820]">Хүргэлтийн мэдээлэл</h2>
+        <form id="checkout-form" onSubmit={handleSubmit} className="surface-card p-5 shadow-brand-md md:p-7" noValidate>
+          <h2 className="mb-6 font-serif text-2xl text-charcoal">Хүргэлтийн мэдээлэл</h2>
 
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <Field label="Нэр *" error={formErrors.customerName}>
@@ -189,7 +189,7 @@ function CheckoutContent() {
                 name="customerName"
                 value={formData.customerName}
                 onChange={handleChange}
-                className={`${inputClass} ${formErrors.customerName ? 'border-red-300' : 'border-[#F2C7D8]'}`}
+                className={`${inputClass} ${formErrors.customerName ? 'border-red-300' : 'border-border-light'}`}
                 placeholder="Таны нэр"
               />
             </Field>
@@ -200,7 +200,7 @@ function CheckoutContent() {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className={`${inputClass} ${formErrors.email ? 'border-red-300' : 'border-[#F2C7D8]'}`}
+                className={`${inputClass} ${formErrors.email ? 'border-red-300' : 'border-border-light'}`}
                 placeholder="example@mail.com"
               />
             </Field>
@@ -213,7 +213,7 @@ function CheckoutContent() {
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
-                className={`${inputClass} ${formErrors.phone ? 'border-red-300' : 'border-[#F2C7D8]'}`}
+                className={`${inputClass} ${formErrors.phone ? 'border-red-300' : 'border-border-light'}`}
                 placeholder="99112233"
               />
             </Field>
@@ -224,7 +224,7 @@ function CheckoutContent() {
                 value={formData.address}
                 onChange={handleChange}
                 rows={3}
-                className={`${inputClass} resize-none ${formErrors.address ? 'border-red-300' : 'border-[#F2C7D8]'}`}
+                className={`${inputClass} resize-none ${formErrors.address ? 'border-red-300' : 'border-border-light'}`}
                 placeholder="Дүүрэг, хороо, байр, орц, тоот..."
               />
             </Field>
@@ -235,7 +235,7 @@ function CheckoutContent() {
                 value={formData.note}
                 onChange={handleChange}
                 rows={2}
-                className={`${inputClass} resize-none border-[#F2C7D8]`}
+                className={`${inputClass} resize-none border-border-light`}
                 placeholder="Нэмэлт мэдээлэл байвал бичээрэй..."
               />
             </Field>
@@ -244,42 +244,42 @@ function CheckoutContent() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="mt-7 flex min-h-14 w-full items-center justify-center rounded-[14px] bg-[#D994B5] px-6 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(217,148,181,0.28)] transition-colors hover:bg-[#c77ea4] disabled:opacity-50 lg:hidden"
+            className="btn-primary mt-7 min-h-14 w-full px-6 text-sm shadow-brand-md disabled:opacity-50 lg:hidden"
           >
             {isSubmitting ? 'Захиалга илгээж байна...' : 'Захиалга баталгаажуулах'}
           </button>
         </form>
 
         <aside className="lg:sticky lg:top-[120px] self-start">
-          <div className="rounded-[18px] border border-[#F2C7D8] bg-[#FFF8FB] p-6 shadow-[0_18px_50px_rgba(91,46,67,0.08)]">
+          <div className="rounded-[18px] border border-border-light bg-sand p-6 shadow-[0_18px_50px_rgba(91,46,67,0.08)]">
             <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-[#D994B5]">Захиалгын дэлгэрэнгүй</h2>
 
             <div className="mt-6 max-h-[300px] space-y-4 overflow-y-auto pr-2">
               {items.map(item => (
                 <div key={item.product.id} className="flex justify-between gap-4 text-sm">
-                  <span className="flex-1 text-[#241820]">
-                    {item.product.name_mn} <span className="text-[#7E6472]">× {item.quantity}</span>
+                  <span className="flex-1 text-charcoal">
+                    {item.product.name_mn} <span className="text-text-muted">× {item.quantity}</span>
                   </span>
-                  <span className="font-semibold text-[#241820]">
+                  <span className="font-semibold text-charcoal">
                     {formatPrice((item.product.salePrice ?? item.product.price) * item.quantity)}
                   </span>
                 </div>
               ))}
             </div>
 
-            <div className="mt-6 space-y-4 border-t border-[#F2C7D8] pt-6">
+            <div className="mt-6 space-y-4 border-t border-border-light pt-6">
               <div className="flex justify-between text-sm">
-                <span className="text-[#7E6472]">Барааны дүн</span>
-                <span className="font-semibold text-[#241820]">{formatPrice(cartSubtotal)}</span>
+                <span className="text-text-muted">Барааны дүн</span>
+                <span className="font-semibold text-charcoal">{formatPrice(cartSubtotal)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-[#7E6472]">Хүргэлт</span>
-                <span className="font-semibold text-[#241820]">{shippingCost === 0 ? 'Үнэгүй' : formatPrice(shippingCost)}</span>
+                <span className="text-text-muted">Хүргэлт</span>
+                <span className="font-semibold text-charcoal">{shippingCost === 0 ? 'Үнэгүй' : formatPrice(shippingCost)}</span>
               </div>
             </div>
 
-            <div className="mt-6 flex justify-between border-t border-[#F2C7D8] pt-6">
-              <span className="text-sm font-semibold text-[#241820]">Төлөх дүн</span>
+            <div className="mt-6 flex justify-between border-t border-border-light pt-6">
+              <span className="text-sm font-semibold text-charcoal">Төлөх дүн</span>
               <span className="font-serif text-2xl text-[#D994B5]">{formatPrice(cartTotal)}</span>
             </div>
 
@@ -287,7 +287,7 @@ function CheckoutContent() {
               type="submit"
               form="checkout-form"
               disabled={isSubmitting}
-              className="mt-7 hidden min-h-14 w-full items-center justify-center rounded-[14px] bg-[#D994B5] px-6 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(217,148,181,0.28)] transition-colors hover:bg-[#c77ea4] disabled:opacity-50 lg:flex"
+              className="btn-primary mt-7 hidden min-h-14 w-full px-6 text-sm shadow-brand-md disabled:opacity-50 lg:flex"
             >
               {isSubmitting ? 'Захиалга илгээж байна...' : 'Захиалга баталгаажуулах'}
             </button>
@@ -301,7 +301,7 @@ function CheckoutContent() {
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-semibold text-[#241820]">{label}</span>
+      <span className="mb-2 block text-sm font-semibold text-charcoal">{label}</span>
       {children}
       {error && <span className="mt-1 block text-xs text-red-500">{error}</span>}
     </label>

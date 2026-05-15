@@ -126,7 +126,7 @@ export default function AdminInstagramPage() {
       <div className="space-y-6 animate-pulse">
         <div className="h-8 bg-[#FFD6E8] w-56 rounded-[10px]" />
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: SLOT_COUNT }, (_, index) => <div key={index} className="aspect-square rounded-[16px] bg-[#FFF0F6]" />)}
+          {Array.from({ length: SLOT_COUNT }, (_, index) => <div key={index} className="aspect-square rounded-[16px] bg-blush" />)}
         </div>
       </div>
     );
@@ -137,45 +137,45 @@ export default function AdminInstagramPage() {
   return (
     <div className="space-y-4 md:space-y-8">
       {toast && (
-        <div className="fixed top-20 left-4 right-4 md:left-auto md:right-8 md:w-auto z-[120] px-4 py-3 bg-white border border-[#FFB7D5] text-sm shadow-[0_18px_45px_rgba(26,26,26,0.08)]">
+        <div className="fixed top-20 left-4 right-4 md:left-auto md:right-8 md:w-auto z-[120] px-4 py-3 bg-white border border-dusty-rose text-sm shadow-[0_18px_45px_rgba(26,26,26,0.08)]">
           {toast}
         </div>
       )}
 
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[10px] tracking-[0.1em] uppercase text-[#8B6B78]">Нүүр хуудасны gallery</p>
-          <h2 className="truncate text-[22px] md:text-3xl font-semibold mt-1 text-[#1A1A1A]">Instagram зургууд</h2>
+          <p className="text-[10px] tracking-[0.1em] uppercase text-text-subtle">Нүүр хуудасны gallery</p>
+          <h2 className="truncate text-[22px] md:text-3xl font-semibold mt-1 text-charcoal">Instagram зургууд</h2>
         </div>
         <button
           onClick={handleSave}
           disabled={saving || uploadingSlot !== null}
-          className="shrink-0 min-h-11 px-4 md:px-5 rounded-[10px] bg-[#1A1A1A] text-white text-sm disabled:opacity-50 shadow-[0_10px_24px_rgba(26,26,26,0.12)]"
+          className="btn-primary min-h-11 shrink-0 px-4 text-sm disabled:opacity-50 md:px-5"
         >
           {saving ? 'Хадгалж байна...' : 'Хадгалах'}
         </button>
       </div>
 
       <div className="md:hidden grid grid-cols-3 gap-2">
-        <div className="rounded-[14px] border border-[#F2A8C8]/35 bg-white px-3 py-3 shadow-[0_8px_24px_rgba(26,26,26,0.035)]">
-          <p className="text-[10px] text-[#8B6B78]">Слот</p>
+        <div className="rounded-2xl border border-border-light/35 bg-white px-3 py-3 shadow-[0_8px_24px_rgba(26,26,26,0.035)]">
+          <p className="text-[10px] text-text-subtle">Слот</p>
           <p className="mt-1 text-xl font-semibold">{SLOT_COUNT}</p>
         </div>
-        <div className="rounded-[14px] border border-[#F2A8C8]/35 bg-[#FFF0F6] px-3 py-3 shadow-[0_8px_24px_rgba(26,26,26,0.035)]">
-          <p className="text-[10px] text-[#8B6B78]">Зурагтай</p>
+        <div className="rounded-2xl border border-border-light/35 bg-blush px-3 py-3 shadow-[0_8px_24px_rgba(26,26,26,0.035)]">
+          <p className="text-[10px] text-text-subtle">Зурагтай</p>
           <p className="mt-1 text-xl font-semibold">{activeCount}</p>
         </div>
-        <div className="rounded-[14px] border border-[#F1D28A]/70 bg-[#FFF9EC] px-3 py-3 shadow-[0_8px_24px_rgba(26,26,26,0.035)]">
+        <div className="rounded-2xl border border-[#F1D28A]/70 bg-[#FFF9EC] px-3 py-3 shadow-[0_8px_24px_rgba(26,26,26,0.035)]">
           <p className="text-[10px] text-[#9A6A14]">Хоосон</p>
           <p className="mt-1 text-xl font-semibold">{SLOT_COUNT - activeCount}</p>
         </div>
       </div>
 
-      <div className="rounded-[16px] border border-[#F2A8C8]/40 bg-white/70 p-4 text-sm text-[#8B6B78]">
+      <div className="surface-card p-4 text-sm text-text-subtle">
         Public нүүр хуудас дээр iframe биш зөвхөн цэвэр cover зураг харагдана. Instagram URL нь хэрэглэгч дарахад шинэ tab-д нээгдэнэ.
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 md:gap-5">
         {slots.map((slot, index) => (
           <div
             key={slot.id}
@@ -184,14 +184,14 @@ export default function AdminInstagramPage() {
             onDragOver={event => event.preventDefault()}
             onDrop={event => handleDrop(slot.id, event)}
             onDragEnd={() => setDraggedSlotId(null)}
-            className="rounded-[16px] bg-white border border-[#F2A8C8]/40 p-3 md:p-4 shadow-[0_8px_24px_rgba(26,26,26,0.045)]"
+            className="surface-card p-3 md:p-4"
           >
             <div className="flex items-center justify-between mb-3">
-              <span className="text-[11px] font-medium text-[#8B6B78]">Слот {index + 1}</span>
-              <span className="text-[13px] text-[#8B6B78] cursor-move">...</span>
+              <span className="text-[11px] font-medium text-text-subtle">Слот {index + 1}</span>
+              <span className="text-[13px] text-text-subtle cursor-move">...</span>
             </div>
 
-            <label className="group relative block aspect-square rounded-[12px] bg-[#FFF0F6] overflow-hidden border border-[#F2A8C8]/30 cursor-pointer">
+            <label className="group relative block aspect-[4/5] overflow-hidden rounded-[24px] border border-border-light/30 bg-blush cursor-pointer">
               {slot.imageUrl ? (
                 <img src={slot.imageUrl} alt={`Instagram ${index + 1}`} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
               ) : (
@@ -201,7 +201,7 @@ export default function AdminInstagramPage() {
                 </div>
               )}
               <input type="file" accept="image/*" onChange={event => handleImageUpload(index, event)} className="sr-only" />
-              <span className="absolute inset-x-3 bottom-3 min-h-9 rounded-[10px] bg-white/90 flex items-center justify-center text-xs font-medium text-[#1A1A1A] opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="absolute inset-x-3 bottom-3 min-h-9 rounded-[10px] bg-white/90 flex items-center justify-center text-xs font-medium text-charcoal opacity-0 group-hover:opacity-100 transition-opacity">
                 {uploadingSlot === index ? 'Оруулж байна...' : 'Зураг солих'}
               </span>
             </label>
@@ -211,11 +211,11 @@ export default function AdminInstagramPage() {
               placeholder="https://www.instagram.com/p/xxx/"
               value={slot.instagramUrl}
               onChange={event => handleUrlChange(index, event.target.value)}
-              className="w-full mt-3 min-h-11 rounded-[10px] px-3 text-xs border border-[#F2A8C8]/60 bg-[#FFF8FB] outline-none focus:border-[#FFB7D5] focus:bg-white"
+              className="field-control mt-3 min-h-11 px-3 text-xs"
             />
 
             {(slot.instagramUrl || slot.imageUrl) && (
-              <button type="button" onClick={() => clearSlot(index)} className="mt-2 text-xs text-[#8B6B78] hover:text-[#A14E4E]">
+              <button type="button" onClick={() => clearSlot(index)} className="mt-2 text-xs text-text-subtle hover:text-[#A14E4E]">
                 Цэвэрлэх
               </button>
             )}

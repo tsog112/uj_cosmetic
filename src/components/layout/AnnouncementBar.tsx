@@ -24,15 +24,24 @@ export default function AnnouncementBar() {
         if (settings) {
           setText(normalizeAnnouncement(settings.announcementText));
           setActive(settings.announcementActive);
+          window.dispatchEvent(new CustomEvent('announcement-visibility-change', {
+            detail: settings.announcementActive,
+          }));
         }
       })
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('announcement-visibility-change', {
+      detail: isVisible && active,
+    }));
+  }, [active, isVisible]);
+
   if (!isVisible || !active) return null;
 
   return (
-    <div className="relative overflow-hidden border-b border-border-light bg-sand-dark py-1.5 text-charcoal md:py-2">
+    <div className="fixed inset-x-0 top-0 z-[60] overflow-hidden border-b border-border-light bg-sand-dark py-1.5 text-charcoal md:py-2">
       <div className="max-content relative flex h-4 items-center">
         <motion.div
           animate={{ x: ['0%', '-50%'] }}

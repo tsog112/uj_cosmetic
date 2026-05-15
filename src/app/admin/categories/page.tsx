@@ -206,16 +206,16 @@ export default function AdminCategoriesPage() {
     await saveOrder(ordered);
   }
 
-  const inputClass = 'w-full min-h-11 rounded-[10px] border border-[#F2A8C8]/60 bg-[#FFF8FB] px-3 text-sm outline-none focus:border-[#FFB7D5] focus:bg-white';
+  const inputClass = 'w-full min-h-11 rounded-xl border border-border-light/60 bg-sand px-3 text-sm outline-none focus:border-dusty-rose focus:bg-white';
 
   return (
-    <div className="space-y-4 md:space-y-8">
-      {toast && <div className="fixed top-20 left-4 right-4 md:left-auto md:right-8 z-[120] px-4 py-3 bg-white border border-[#FFB7D5] text-sm shadow-[0_18px_45px_rgba(26,26,26,0.08)]">{toast}</div>}
+    <div className="mx-auto w-full max-w-[1180px] space-y-4 overflow-hidden md:space-y-8">
+      {toast && <div className="fixed top-20 left-4 right-4 md:left-auto md:right-8 z-[120] px-4 py-3 bg-white border border-dusty-rose text-sm shadow-[0_18px_45px_rgba(26,26,26,0.08)]">{toast}</div>}
 
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[10px] tracking-[0.1em] uppercase text-[#8B6B78]">Ангиллын удирдлага</p>
-          <h2 className="truncate text-[22px] md:text-3xl font-semibold mt-1 text-[#1A1A1A]">Ангилал</h2>
+          <p className="text-[10px] tracking-[0.1em] uppercase text-text-subtle">Ангиллын удирдлага</p>
+          <h2 className="truncate text-[22px] md:text-3xl font-semibold mt-1 text-charcoal">Ангилал</h2>
         </div>
         <button
           onClick={() => {
@@ -223,7 +223,7 @@ export default function AdminCategoriesPage() {
             setEditingId(null);
             setShowForm(true);
           }}
-          className="shrink-0 min-h-11 px-4 md:px-5 rounded-[10px] bg-[#1A1A1A] text-white text-sm shadow-[0_10px_24px_rgba(26,26,26,0.12)]"
+          className="btn-primary h-12 w-12 shrink-0 px-0 shadow-brand-md transition-transform active:scale-95 sm:h-auto sm:w-auto sm:min-h-11 sm:px-5"
         >
           <span className="hidden sm:inline">Шинэ ангилал нэмэх</span>
           <span className="sm:hidden text-lg leading-none">+</span>
@@ -231,84 +231,84 @@ export default function AdminCategoriesPage() {
       </div>
 
       <div className="md:hidden grid grid-cols-3 gap-2">
-        <div className="rounded-[14px] border border-[#F2A8C8]/35 bg-white px-3 py-3 shadow-[0_8px_24px_rgba(26,26,26,0.035)]">
-          <p className="text-[10px] text-[#8B6B78]">Нийт</p>
+        <div className="metric-card px-3 py-3">
+          <p className="text-[10px] text-text-subtle">Нийт</p>
           <p className="mt-1 text-xl font-semibold">{sortedCategories.length}</p>
         </div>
-        <div className="rounded-[14px] border border-[#F2A8C8]/35 bg-[#FFF0F6] px-3 py-3 shadow-[0_8px_24px_rgba(26,26,26,0.035)]">
-          <p className="text-[10px] text-[#8B6B78]">Зурагтай</p>
+        <div className="metric-card bg-blush px-3 py-3">
+          <p className="text-[10px] text-text-subtle">Зурагтай</p>
           <p className="mt-1 text-xl font-semibold">{sortedCategories.filter(category => category.imageUrl).length}</p>
         </div>
-        <div className="rounded-[14px] border border-[#F1D28A]/70 bg-[#FFF9EC] px-3 py-3 shadow-[0_8px_24px_rgba(26,26,26,0.035)]">
-          <p className="text-[10px] text-[#9A6A14]">Бараа</p>
+        <div className="metric-card border-status-pending-border bg-status-pending-bg px-3 py-3">
+          <p className="text-[10px] text-status-pending-text">Бараа</p>
           <p className="mt-1 text-xl font-semibold">{sortedCategories.reduce((sum, category) => sum + Number(category.productCount || 0), 0)}</p>
         </div>
       </div>
 
       {showForm && (
-        <div className="rounded-[16px] bg-white border border-[#F2A8C8]/40 p-5 md:p-6 shadow-[0_10px_30px_rgba(26,26,26,0.03)]">
-          <h3 className="text-sm font-semibold text-[#1A1A1A] mb-5">{editingId ? 'Ангилал засах' : 'Шинэ ангилал'}</h3>
+        <div className="surface-panel p-5 md:p-6">
+          <h3 className="text-sm font-semibold text-charcoal mb-5">{editingId ? 'Ангилал засах' : 'Шинэ ангилал'}</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm text-[#8B6B78] mb-1.5">Ангиллын нэр *</label>
+              <label className="block text-sm text-text-subtle mb-1.5">Ангиллын нэр *</label>
               <input value={form.name_mn} onChange={event => handleNameChange(event.target.value)} className={inputClass} placeholder="Серум" />
             </div>
             <div>
-              <label className="block text-sm text-[#8B6B78] mb-1.5">Slug *</label>
+              <label className="block text-sm text-text-subtle mb-1.5">Slug *</label>
               <input value={form.slug} onChange={event => setForm(prev => ({ ...prev, slug: transliterateName(event.target.value) }))} className={inputClass} placeholder="serum" />
             </div>
             <div>
-              <label className="block text-sm text-[#8B6B78] mb-1.5">Зураг</label>
+              <label className="block text-sm text-text-subtle mb-1.5">Зураг</label>
               <input type="file" accept="image/*" onChange={handleImageUpload} disabled={!form.slug || uploading} className={inputClass} />
             </div>
           </div>
 
-          <div className="mt-4 rounded-[16px] border border-dashed border-[#F2A8C8]/70 bg-[#FFF8FB] p-3">
+          <div className="mt-4 rounded-[16px] border border-dashed border-border-light/70 bg-sand p-3">
             {form.imageUrl ? (
-              <img src={form.imageUrl} alt={form.name_mn || 'Category'} className="h-40 w-full rounded-[12px] object-cover sm:h-48" />
+              <img src={form.imageUrl} alt={form.name_mn || 'Category'} className="h-40 w-full rounded-[20px] object-cover sm:h-48" />
             ) : (
-              <div className="flex h-40 items-center justify-center rounded-[12px] bg-white text-sm text-[#8B6B78] sm:h-48">
+              <div className="flex h-40 items-center justify-center rounded-[20px] bg-white text-sm text-text-subtle sm:h-48">
                 Ангиллын зураг харагдана
               </div>
             )}
           </div>
 
           <div className="mt-5 flex flex-col sm:flex-row justify-end gap-3">
-            <button onClick={resetForm} className="min-h-11 px-4 rounded-[10px] border border-[#F2A8C8] text-sm">Болих</button>
-            <button onClick={handleSubmit} disabled={saving || uploading || !form.name_mn || !form.slug} className="min-h-11 px-5 rounded-[10px] bg-[#1A1A1A] text-white text-sm disabled:opacity-50">
+            <button onClick={resetForm} className="btn-secondary">Болих</button>
+            <button onClick={handleSubmit} disabled={saving || uploading || !form.name_mn || !form.slug} className="btn-primary disabled:opacity-50">
               {editingId ? 'Хадгалах' : 'Нэмэх'}
             </button>
           </div>
         </div>
       )}
 
-      <div className="rounded-[16px] bg-white border border-[#F2A8C8]/40 shadow-[0_10px_30px_rgba(26,26,26,0.03)] overflow-hidden">
-        <div className="border-b border-[#F2A8C8]/40 p-4">
+      <div className="surface-panel max-w-full">
+        <div className="border-b border-border-light/40 p-4">
           <div className="relative">
             <input
               value={search}
               onChange={event => setSearch(event.target.value)}
               placeholder="Ангиллын нэр эсвэл slug-аар хайх..."
-              className="w-full min-h-11 rounded-[10px] border border-[#F2A8C8]/60 bg-[#FFF8FB] pl-10 pr-4 text-sm outline-none placeholder:text-[#8B6B78]/70 focus:border-[#FFB7D5] focus:bg-white"
+              className="w-full min-h-11 rounded-full border border-border-light/60 bg-sand pl-10 pr-4 text-sm outline-none placeholder:text-text-subtle/70 focus:border-dusty-rose focus:bg-white"
             />
-            <svg className="absolute left-4 top-3.5 text-[#8B6B78]" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+            <svg className="absolute left-4 top-3.5 text-text-subtle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
               <circle cx="11" cy="11" r="8" />
               <path d="M21 21l-4.35-4.35" />
             </svg>
           </div>
         </div>
         {loading ? (
-          <div className="p-10 text-center text-[#8B6B78]">Ачаалж байна...</div>
+          <div className="p-10 text-center text-text-subtle">Ачаалж байна...</div>
         ) : (
-          <div className="space-y-3 bg-[#FFF8FB] p-3 md:space-y-0 md:bg-white md:p-0">
-            <div className="hidden grid-cols-[56px_184px_minmax(220px,1fr)_120px_170px] items-center border-b border-[#F2A8C8]/35 bg-[#FFF8FB] px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#8B6B78] md:grid">
+          <div className="space-y-3 bg-sand p-2.5 sm:p-3 md:space-y-0 md:bg-white md:p-0">
+            <div className="hidden grid-cols-[56px_184px_minmax(220px,1fr)_120px_170px] items-center border-b border-border-light/35 bg-sand px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-text-subtle md:grid">
               <span></span>
               <span>Зураг</span>
               <span>Ангилал</span>
               <span className="text-center">Бараа</span>
               <span className="text-right">Үйлдэл</span>
             </div>
-            <div className="md:divide-y md:divide-[#F2A8C8]/30">
+            <div className="max-w-full md:divide-y md:divide-[#F2A8C8]/30">
             {paginatedCategories.map(category => (
               <div
                 key={category.id}
@@ -317,25 +317,28 @@ export default function AdminCategoriesPage() {
                 onDragOver={event => event.preventDefault()}
                 onDrop={event => handleDrop(category.id, event)}
                 onDragEnd={() => setDraggedId(null)}
-                className="grid gap-4 rounded-[16px] border border-[#F2A8C8]/35 bg-white p-4 shadow-[0_8px_24px_rgba(26,26,26,0.04)] transition-colors hover:bg-[#FFF8FB] md:grid-cols-[56px_184px_minmax(220px,1fr)_120px_170px] md:items-center md:rounded-none md:border-0 md:px-5 md:py-4 md:shadow-none"
+                className="grid max-w-full grid-cols-[18px_104px_minmax(0,1fr)] items-center gap-x-3 gap-y-4 overflow-hidden rounded-[24px] border border-border-light/35 bg-white p-3 shadow-brand-sm transition-colors hover:bg-sand sm:grid-cols-[18px_128px_minmax(0,1fr)] sm:p-4 md:grid md:grid-cols-[56px_184px_minmax(220px,1fr)_120px_170px] md:gap-4 md:overflow-visible md:rounded-none md:border-0 md:px-5 md:py-4 md:shadow-none"
               >
-                <span className="hidden shrink-0 text-xs text-[#8B6B78] cursor-move md:block">⠿</span>
-                <div className="flex items-center gap-4 md:contents">
-                  <span className="shrink-0 text-xs text-[#8B6B78] cursor-move md:hidden">⠿</span>
+                <span className="hidden shrink-0 text-xs text-text-subtle cursor-move md:block">⠿</span>
+                <span className="flex h-10 items-center justify-center text-xs text-text-subtle cursor-move md:hidden">⠿</span>
+                <div className="contents md:contents">
                   {category.imageUrl ? (
-                    <img src={category.imageUrl} alt={category.name_mn} className="h-24 w-32 shrink-0 rounded-[16px] border border-[#F2A8C8]/50 object-cover md:h-20 md:w-36" />
+                    <img src={category.imageUrl} alt={category.name_mn} className="h-[96px] w-full rounded-[22px] border border-border-light/50 object-cover sm:h-[108px] md:h-20 md:w-36 md:rounded-[14px]" />
                   ) : (
-                    <div className="flex h-24 w-32 shrink-0 items-center justify-center rounded-[16px] border border-dashed border-[#F2A8C8]/70 bg-[#FFF0F6] text-xs text-[#8B6B78] md:h-20 md:w-36">Зураггүй</div>
+                    <div className="flex h-[96px] w-full items-center justify-center rounded-[22px] border border-dashed border-border-light/70 bg-blush text-xs text-text-subtle sm:h-[108px] md:h-20 md:w-36 md:rounded-[14px]">Зураггүй</div>
                   )}
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium truncate text-[15px] md:text-base">{category.name_mn}</p>
-                    <p className="text-xs text-[#8B6B78] mt-1 break-all md:break-normal md:truncate">{category.slug}</p>
+                  <div className="min-w-0 self-center">
+                    <p className="truncate text-[16px] font-semibold leading-6 text-charcoal md:text-base">{category.name_mn}</p>
+                    <p className="mt-1 truncate text-sm text-text-subtle md:text-xs">{category.slug}</p>
+                    <span className="mt-3 inline-flex min-h-7 items-center rounded-full border border-border-light/60 bg-sand px-3 text-[11px] font-semibold text-text-subtle md:hidden">
+                      {category.productCount || 0} бараа
+                    </span>
                   </div>
                 </div>
                 <div className="hidden text-center text-sm md:block">{category.productCount || 0}</div>
-                <div className="grid grid-cols-2 gap-2 md:flex md:justify-end">
-                  <button onClick={() => handleEdit(category)} className="min-h-10 rounded-[10px] border border-[#F2C7D8] bg-white px-4 text-xs font-semibold text-[#241820] transition-colors hover:bg-[#FFF0F6]">Засах</button>
-                  <button onClick={() => handleDelete(category)} className="min-h-10 rounded-[10px] border border-[#F1B8B8] bg-[#FFF0F0] px-4 text-xs font-semibold text-[#A14E4E] transition-colors hover:bg-red-100">Устгах</button>
+                <div className="col-span-3 grid min-w-0 grid-cols-2 gap-2 md:col-span-1 md:flex md:justify-end">
+                  <button onClick={() => handleEdit(category)} className="btn-secondary min-w-0 px-3 md:min-h-10 md:px-4 md:text-xs">Засах</button>
+                  <button onClick={() => handleDelete(category)} className="btn-danger min-w-0 px-3 md:min-h-10 md:px-4 md:text-xs">Устгах</button>
                 </div>
               </div>
             ))}

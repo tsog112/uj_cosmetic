@@ -2,8 +2,8 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { getSiteSettings } from '@/lib/services/firestoreService';
-import { DEFAULT_SETTINGS, SiteSettings } from '@/types';
+import { getSiteSettings, getAllProducts } from '@/lib/services/firestoreService';
+import { DEFAULT_SETTINGS, SiteSettings, Product } from '@/types';
 
 type Message = {
   role: 'assistant' | 'user';
@@ -11,85 +11,132 @@ type Message = {
 };
 
 const quickQuestions = [
-  'Pepe Juice надад тохирох уу?',
-  'DJ Carbon Therapy-г яаж хэрэглэх вэ?',
-  'Солонгосоос хэд хоног болж ирэх вэ?',
+  'Арьсанд тохирох бүтээгдэхүүн санал болго',
+  'Хүргэлтийн үнэ хэд вэ?',
+  'Төлбөрийг яаж төлөх вэ?',
   'Админтай яаж холбогдох вэ?',
 ];
 
 function hasAny(text: string, words: string[]) {
-  return words.some(word => text.includes(word));
+  return words.some(w => text.includes(w));
 }
 
-function buildFallbackReply(question: string, settings: SiteSettings) {
-  const text = question.toLowerCase();
+/** Find products whose name matches the question */
+function findMatchingProducts(question: string, products: Product[]): Product[] {
+  const q = question.toLowerCase();
+  return products.filter(p => {
+    const name = (p.name_mn || p.name_en || '').toLowerCase();
+    const slug = (p.slug || '').toLowerCase();
+    // check if any 3+ char word in the product name appears in the question
+    const words = name.split(/\s+/).filter(w => w.length >= 3);
+    return words.some(w => q.includes(w)) || q.includes(slug.replace(/-/g, ' '));
+  });
+}
+
+function buildProductReply(product: Product): string {
+  const name  = product.name_mn || product.name_en || 'Бүтээгдэхүүн';
+  const price = product.salePrice
+    ? `${product.salePrice.toLocaleString('mn-MN')}₮ (хямдарсан)`
+    : `${(product.price || 0).toLocaleString('mn-MN')}₮`;
+  const stock   = product.inStock !== false ? 'Бэлэн байгаа' : 'Дууссан';
+  const desc    = product.description_mn || '';
+  const howTo   = product.howToUse ? `\n\nХэрэглэх заавар: ${product.howToUse}` : '';
+  const ingr    = product.ingredients ? `\n\nНайрлага: ${product.ingredients.slice(0, 200)}${product.ingredients.length > 200 ? '…' : ''}` : '';
+
+  return `**${name}**\n\nҮнэ: ${price}\nТөлөв: ${stock}${desc ? `\n\n${desc}` : ''}${howTo}${ingr}`;
+}
+
+function buildFallbackReply(question: string, settings: SiteSettings, products: Product[]) {
+  const text    = question.toLowerCase();
   const compact = text.replace(/[\s._-]+/g, '');
 
-  if (/^(сайн уу|сайн байна уу|hi|hello|hey|snu|sainuu|sainbainuu)\??$/i.test(compact) || hasAny(text, ['sain uu', 'sain baina uu'])) {
-    return 'Сайн байна уу. UJ Cosmetic-ийн зөвлөх байна. Та бүтээгдэхүүн сонголт, төлбөр, хүргэлт, Солонгосоос ирэх хугацаа эсвэл админтай холбогдох талаар асууж болно.';
+  // greeting
+  if (/^(сайн уу|сайнуу|hi|hello|hey|snu|sainuu)(\?)?$/i.test(compact)) {
+    return 'Сайн байна уу. UJ Cosmetic-ийн арьс арчилгааны зөвлөх байна. Бүтээгдэхүүн сонголт, хэрэглэх заавар, төлбөр, хүргэлт болон дэлгүүрийн мэдээллээр тусалъя.';
   }
 
-  if (hasAny(text, ['төлбөр', 'төлөх', 'данс', 'банк', 'payment', 'pay', 'tulbur', 'tolbor', 'tuluh', 'toloh', 'dans', 'bank'])) {
-    return `Төлбөрийг банкны шилжүүлгээр төлнө.\n\nБанк: ${settings.bankName}\nДанс: ${settings.bankAccount}\nДанс эзэмшигч: ${settings.bankAccountName}\n\nГүйлгээний утга дээр захиалгын дугаараа бичвэл админ хурдан баталгаажуулна.`;
-  }
-
-  if (hasAny(text, ['админ', 'холбогдох', 'утас', 'дугаар', 'instagram', 'инстаграм', 'email', 'имэйл', 'support', 'admin', 'holbogdoh', 'utas', 'dugaar', 'dugar'])) {
-    return `Админтай ${settings.phone} дугаараар, Instagram: ${settings.instagramUrl} хаягаар эсвэл ${settings.email} имэйлээр холбогдож болно. Захиалгын дугаар, нэр, утсаа хамт бичвэл илүү хурдан шалгаж өгнө.`;
-  }
-
-  if (
-    hasAny(text, ['mongold', 'mongol', 'zahialsan', 'zahialga', 'baraa', 'hezee', 'ireh', 'irh', 'hureh', 'hurgelt', 'honog']) &&
-    (hasAny(text, ['hezee', 'ireh', 'irh', 'hureh', 'hurgelt', 'honog']) || hasAny(text, ['захиалсан', 'хэзээ', 'ирэх', 'хүрэх']))
-  ) {
-    return 'Захиалсан бараа тань хэзээ ирэх нь тухайн бүтээгдэхүүн бэлэн байгаа эсэх, Солонгосоос татан авалт хийгдэж байгаа эсэх, мөн хил гааль болон хүргэлтийн ачааллаас хамаарна. Захиалгын дугаартай бол админ руу дугаараа явуулаад явцыг нь шууд шалгуулаарай.';
-  }
-
-  if (hasAny(text, ['солонгос', 'korea', 'ирдэг', 'жинхэнэ', 'оригинал', 'solongos', 'solongosoos', 'irdeg', 'jinhene'])) {
-    if (hasAny(text, ['хэд хоног', 'хэзээ', 'хугацаа', 'тээвэр', 'хүргэлт', 'hed honog', 'hezee', 'hugatsaa', 'teever', 'hurgelt', 'ireh', 'honog'])) {
-      return `UJ Cosmetic нь Солонгосоос Монгол руу чанартай бүтээгдэхүүн санал болгодог онлайн дэлгүүрийн концепцтой.\n\nСолонгосоос ирэх яг хугацаа тухайн үеийн татан авалт, хил гааль, хүргэлтийн ачааллаас хамаардаг тул админ захиалгыг баталгаажуулахдаа илүү тодорхой хэлж өгнө. Бэлэн байгаа бүтээгдэхүүн бол Монгол доторх хүргэлтийн үнэ ${settings.shippingCost.toLocaleString('mn-MN')}₮.`;
+  // product-specific question
+  if (products.length > 0) {
+    const matched = findMatchingProducts(question, products);
+    if (matched.length === 1) {
+      return buildProductReply(matched[0]);
     }
-
-    return 'Тийм ээ, UJ Cosmetic нь Солонгосоос Монгол руу чанартай гоо сайхан болон эрүүл мэндийн нэмэлт бүтээгдэхүүн санал болгодог онлайн дэлгүүрийн концепцтой. Баталгаажуулах зүйл байвал админтай шууд холбогдоорой.';
+    if (matched.length > 1) {
+      const list = matched.slice(0, 4).map(p => `• ${p.name_mn || p.name_en || p.slug}`).join('\n');
+      return `Дараах бүтээгдэхүүнүүд таны хайлттай таарч байна:\n\n${list}\n\nДэлгэрэнгүй мэдээллийг /shop хуудаснаас үзнэ үү.`;
+    }
   }
 
-  if (hasAny(text, ['хүргэл', 'хэд хоног', 'delivery', 'shipping', 'hurgelt', 'hezee ireh', 'hed honog', 'honog'])) {
-    return `Монгол доторх хүргэлтийн үнэ ${settings.shippingCost.toLocaleString('mn-MN')}₮. ${settings.freeShippingThreshold.toLocaleString('mn-MN')}₮-өөс дээш захиалгад хүргэлт үнэгүй. Захиалга баталгаажсаны дараа админ хүргэлтийн явцыг танд мэдэгдэнэ.`;
+  // skin type recommendation
+  if (hasAny(text, ['арьс', 'хуурай', 'тосло', 'мэдрэмтгий', 'хутар', 'acne', 'ageing', 'хөгшрөлт', 'тодотгол', 'тунгалаг', 'гялалз'])) {
+    const inStock = products.filter(p => p.inStock !== false).slice(0, 3);
+    if (inStock.length > 0) {
+      const list = inStock.map(p => `• ${p.name_mn || p.name_en}`).join('\n');
+      return `Арьс арчилгааны асуудалд зориулж дараах бүтээгдэхүүнийг санал болгож болно:\n\n${list}\n\nТодорхой бүтээгдэхүүний нэрийг бичвэл дэлгэрэнгүй мэдээлэл өгье.`;
+    }
+    return 'Арьсны төрлөөсөө хамааран зөв бүтээгдэхүүн сонгоход тусалъя. Хуурай, тосло, мэдрэмтгий, эсвэл хутартай гэдгийг хэлбэл оновчтой санал болгоно.';
   }
 
-  if (hasAny(text, ['захиал', 'сагс', 'авах', 'order', 'checkout', 'zahial', 'zahialsan', 'sags', 'avah'])) {
-    return 'Бүтээгдэхүүнээ сонгоод "Сагсанд хийх" эсвэл "Шууд авах" товч дарна. Дараа нь checkout хэсэгт нэр, утас, хүргэлтийн хаягаа зөв бөглөөд захиалгаа баталгаажуулаарай.';
+  // payment
+  if (hasAny(text, ['төлбөр', 'данс', 'банк', 'payment', 'шилжүүлэг'])) {
+    return `Төлбөрийг банкны шилжүүлгээр төлнө.\n\nБанк: ${settings.bankName}\nДанс: ${settings.bankAccount}\nДанс эзэмшигч: ${settings.bankAccountName}\n\nГүйлгээний утга дээр захиалгын дугаараа бичнэ үү.`;
   }
 
-  return 'Ойлголоо. Та асуултаа арай дэлгэрэнгүй бичвэл UJ Cosmetic-ийн мэдээлэл дээр тулгуурлаад илүү тодорхой хариулъя.';
+  // contact
+  if (hasAny(text, ['админ', 'холбогдох', 'утас', 'instagram', 'имэйл'])) {
+    return `Дараах сувгаар холбогдоно уу:\n\nУтас: ${settings.phone}\nInstagram: ${settings.instagramUrl}\nИмэйл: ${settings.email}`;
+  }
+
+  // shipping
+  if (hasAny(text, ['хүргэлт', 'хэд хоног', 'хэзээ ирэх', 'delivery'])) {
+    return `Монгол доторх хүргэлт: ${settings.shippingCost.toLocaleString('mn-MN')}₮.\n${settings.freeShippingThreshold.toLocaleString('mn-MN')}₮-өөс дээш захиалгад хүргэлт үнэгүй.\n\nЗахиалга баталгаажсаны дараа админ хүргэлтийн явцыг мэдэгдэнэ.`;
+  }
+
+  // order
+  if (hasAny(text, ['захиалах', 'сагс', 'checkout'])) {
+    return 'Бүтээгдэхүүнээ сонгоод "Сагсанд хийх" эсвэл "Шууд авах" товч дарна. Дараа нь нэр, утас, хаягаа бөглөөд захиалгаа баталгаажуулаарай.';
+  }
+
+  // product list
+  if (hasAny(text, ['бүтээгдэхүүн', 'бараа', 'юу байна', 'жагсаалт', 'product'])) {
+    if (products.length > 0) {
+      const list = products.filter(p => p.inStock !== false).slice(0, 5).map(p => `• ${p.name_mn || p.name_en}`).join('\n');
+      return `Одоогийн бэлэн бүтээгдэхүүнүүдийн зарим нь:\n\n${list}\n\nБүгдийг /shop хуудаснаас харна уу.`;
+    }
+  }
+
+  return 'Ойлголоо. Тодорхой бүтээгдэхүүний нэр эсвэл арьсны асуудлаа бичвэл UJ Cosmetic-ийн мэдээлэл дээр тулгуурлаад хариулъя.';
 }
 
 function isLowQualityAiText(text: string) {
   const trimmed = text.trim();
   const cyrillicCount = (trimmed.match(/[А-Яа-яӨөҮүЁё]/g) || []).length;
   const tooLittleMongolian = cyrillicCount < Math.min(12, Math.floor(trimmed.length * 0.2));
-  const looksCutOff = trimmed.length < 20 || /(?:үеи|зөвл|хугацаа тухайн үеи)$/i.test(trimmed);
-  return tooLittleMongolian || looksCutOff;
+  return tooLittleMongolian || trimmed.length < 20;
 }
 
 export default function ChatAssistant() {
-  const [open, setOpen] = useState(false);
+  const [open,     setOpen]     = useState(false);
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
-  const [input, setInput] = useState('');
-  const [sending, setSending] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [input,    setInput]    = useState('');
+  const [sending,  setSending]  = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      text: 'Сайн байна уу. Би UJ Cosmetic-ийн арьс арчилгааны зөвлөх байна. Бүтээгдэхүүн сонголт, хэрэглэх заавар, төлбөр, хүргэлт болон админтай холбогдох мэдээллээр тусалъя.',
+      text: 'Сайн байна уу. Би UJ Cosmetic-ийн арьс арчилгааны зөвлөх байна. Бүтээгдэхүүн сонголт, хэрэглэх заавар, төлбөр, хүргэлт болон дэлгүүрийн мэдээллээр тусалъя.',
     },
   ]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    getSiteSettings()
-      .then(siteSettings => {
-        if (siteSettings) setSettings(siteSettings);
-      })
-      .catch(() => {});
+    Promise.all([
+      getSiteSettings().catch(() => null),
+      getAllProducts({ published: true }).catch(() => [] as Product[]),
+    ]).then(([s, p]) => {
+      if (s) setSettings(s);
+      setProducts(p);
+    });
   }, []);
 
   useEffect(() => {
@@ -123,9 +170,9 @@ export default function ChatAssistant() {
       }
 
       setMessages(prev => [...prev, { role: 'assistant', text: data.text }]);
-    } catch (error) {
-      console.error('UJ assistant failed, using local fallback:', error);
-      setMessages(prev => [...prev, { role: 'assistant', text: buildFallbackReply(trimmed, settings) }]);
+    } catch {
+      const fallback = buildFallbackReply(trimmed, settings, products);
+      setMessages(prev => [...prev, { role: 'assistant', text: fallback }]);
     } finally {
       setSending(false);
     }
@@ -139,16 +186,17 @@ export default function ChatAssistant() {
   return (
     <div className="fixed bottom-[92px] right-4 z-50 md:bottom-7 md:right-7">
       {open && (
-        <div className="mb-3 flex h-[min(620px,76vh)] w-[calc(100vw-2rem)] max-w-[390px] flex-col overflow-hidden rounded-[22px] border border-[#F2A8C8]/60 bg-white shadow-[0_24px_70px_rgba(216,148,172,0.25)]">
-          <div className="border-b border-[#F2A8C8]/40 bg-[#FFF8FB] px-5 py-4">
+        <div className="mb-3 flex h-[min(620px,76vh)] w-[calc(100vw-2rem)] max-w-[390px] flex-col overflow-hidden rounded-[22px] border border-border-faint bg-white shadow-brand-xl">
+          {/* Header */}
+          <div className="border-b border-border-faint bg-sand px-5 py-4">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-[#8B6B78]">UJ Assistant</p>
-                <h3 className="mt-1 font-serif text-2xl leading-none text-[#1A1A1A]">Арьс арчилгааны зөвлөх</h3>
+                <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-text-subtle">UJ Assistant</p>
+                <h3 className="mt-1 font-serif text-2xl leading-none text-charcoal">Арьс арчилгааны зөвлөх</h3>
               </div>
               <button
                 onClick={() => setOpen(false)}
-                className="flex h-9 w-9 items-center justify-center rounded-full text-[#8B6B78] transition-colors hover:bg-[#FFF0F6] hover:text-[#1A1A1A]"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-text-subtle transition-colors hover:bg-blush hover:text-charcoal"
                 aria-label="Чат хаах"
               >
                 ×
@@ -156,6 +204,7 @@ export default function ChatAssistant() {
             </div>
           </div>
 
+          {/* Messages */}
           <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-[#FFFDFD] px-4 py-4">
             {messages.map((message, index) => (
               <div
@@ -165,8 +214,8 @@ export default function ChatAssistant() {
                 <div
                   className={`max-w-[84%] whitespace-pre-line rounded-[18px] px-4 py-3 text-sm leading-6 ${
                     message.role === 'user'
-                      ? 'rounded-br-[6px] bg-[#1A1A1A] text-white'
-                      : 'rounded-bl-[6px] bg-[#FFF0F6] text-[#4A3A40]'
+                      ? 'rounded-br-[6px] bg-charcoal text-white'
+                      : 'rounded-bl-[6px] bg-blush text-charcoal'
                   }`}
                 >
                   {message.text}
@@ -176,21 +225,22 @@ export default function ChatAssistant() {
 
             {sending && (
               <div className="flex justify-start">
-                <div className="max-w-[84%] rounded-[18px] rounded-bl-[6px] bg-[#FFF0F6] px-4 py-3 text-sm leading-6 text-[#8B6B78]">
+                <div className="max-w-[84%] rounded-[18px] rounded-bl-[6px] bg-blush px-4 py-3 text-sm leading-6 text-text-subtle">
                   Танд тохирох зөвлөгөөг бэлдэж байна...
                 </div>
               </div>
             )}
           </div>
 
-          <div className="border-t border-[#F2A8C8]/35 bg-white p-4">
+          {/* Input area */}
+          <div className="border-t border-border-faint bg-white p-4">
             <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
               {quickQuestions.map(question => (
                 <button
                   key={question}
                   onClick={() => sendMessage(question)}
                   disabled={sending}
-                  className="shrink-0 rounded-full border border-[#F2A8C8]/70 px-3 py-2 text-xs text-[#8B6B78] transition-colors hover:bg-[#FFF0F6] hover:text-[#1A1A1A] disabled:opacity-50"
+                  className="shrink-0 rounded-full border border-border-light px-3 py-2 text-xs text-text-subtle transition-colors hover:bg-blush hover:text-charcoal disabled:opacity-50"
                 >
                   {question}
                 </button>
@@ -203,12 +253,12 @@ export default function ChatAssistant() {
                 onChange={(event) => setInput(event.target.value)}
                 placeholder="Асуултаа бичээрэй..."
                 disabled={sending}
-                className="h-12 min-w-0 flex-1 rounded-full border border-[#F2A8C8]/70 bg-[#FFF8FB] px-4 text-sm outline-none placeholder:text-[#B79AA6] focus:border-[#FFB7D5] disabled:opacity-60"
+                className="h-12 min-w-0 flex-1 rounded-full border border-border-light bg-sand px-4 text-sm outline-none placeholder:text-text-faint focus:border-dusty-rose disabled:opacity-60"
               />
               <button
                 type="submit"
                 disabled={sending}
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#FFB7D5] text-[#1A1A1A] transition-colors hover:bg-[#F2A8C8] disabled:opacity-50"
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-dusty-rose text-white transition-colors hover:bg-charcoal disabled:opacity-50"
                 aria-label="Илгээх"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
@@ -218,9 +268,9 @@ export default function ChatAssistant() {
               </button>
             </form>
 
-            <div className="mt-3 flex items-center justify-between text-xs text-[#8B6B78]">
-              <Link href="/shop" className="hover:text-[#1A1A1A]">Дэлгүүр үзэх</Link>
-              <a href={settings.instagramUrl} target="_blank" rel="noopener noreferrer" className="hover:text-[#1A1A1A]">
+            <div className="mt-3 flex items-center justify-between text-xs text-text-subtle">
+              <Link href="/shop" className="hover:text-charcoal">Дэлгүүр үзэх</Link>
+              <a href={settings.instagramUrl} target="_blank" rel="noopener noreferrer" className="hover:text-charcoal">
                 @{instagramHandle}
               </a>
             </div>
@@ -230,7 +280,7 @@ export default function ChatAssistant() {
 
       <button
         onClick={() => setOpen(prev => !prev)}
-        className="ml-auto flex h-[58px] w-[58px] items-center justify-center rounded-full bg-[#1A1A1A] text-white shadow-[0_16px_45px_rgba(216,148,172,0.35)] ring-4 ring-[#FFF0F6] transition-transform hover:scale-105"
+        className="ml-auto flex h-[58px] w-[58px] items-center justify-center rounded-full bg-charcoal text-white shadow-brand-xl ring-4 ring-blush transition-transform hover:scale-105"
         aria-label={open ? 'Чат хаах' : 'Чат нээх'}
       >
         {open ? (

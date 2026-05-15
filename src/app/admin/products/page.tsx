@@ -229,18 +229,19 @@ export default function AdminProductsPage() {
     setPage(1);
   }, [search]);
 
-  const paginatedProducts = useMemo(() => paginate(filteredProducts, page, 10), [filteredProducts, page]);
+  const pageSize = 12;
+  const paginatedProducts = useMemo(() => paginate(filteredProducts, page, pageSize), [filteredProducts, page]);
 
   return (
     <div className="space-y-4 md:space-y-8 pb-24">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[10px] tracking-[0.1em] uppercase text-[#8B6B78]">Барааны удирдлага</p>
-          <h2 className="truncate text-[22px] md:text-3xl font-semibold mt-1 text-[#1A1A1A]">Бүтээгдэхүүн</h2>
+          <p className="text-[10px] tracking-[0.1em] uppercase text-text-subtle">Барааны удирдлага</p>
+          <h2 className="truncate text-[22px] md:text-3xl font-semibold mt-1 text-charcoal">Бүтээгдэхүүн</h2>
         </div>
         <button 
           onClick={() => handleOpenForm()}
-          className="shrink-0 min-h-11 px-4 md:px-5 rounded-[10px] bg-[#1A1A1A] text-white text-sm shadow-[0_10px_24px_rgba(26,26,26,0.12)]"
+          className="btn-primary min-h-11 shrink-0 px-4 text-sm shadow-brand-sm md:px-5"
         >
           <span className="hidden sm:inline">Бараа нэмэх</span>
           <span className="sm:hidden text-lg leading-none">+</span>
@@ -248,20 +249,20 @@ export default function AdminProductsPage() {
       </div>
 
       <div className="md:hidden grid grid-cols-4 gap-2">
-        <div className="rounded-[14px] border border-[#F2A8C8]/35 bg-white px-3 py-3 shadow-[0_8px_24px_rgba(26,26,26,0.035)]">
-          <p className="text-[10px] text-[#8B6B78]">Нийт</p>
+        <div className="metric-card px-3 py-3">
+          <p className="text-[10px] text-text-subtle">Нийт</p>
           <p className="mt-1 text-xl font-semibold">{productSummary.total}</p>
         </div>
-        <div className="rounded-[14px] border border-[#F1D28A]/70 bg-[#FFF9EC] px-3 py-3 shadow-[0_8px_24px_rgba(26,26,26,0.035)]">
-          <p className="text-[10px] text-[#9A6A14]">Бага</p>
+        <div className="metric-card border-status-pending-border bg-status-pending-bg px-3 py-3">
+          <p className="text-[10px] text-status-pending-text">Бага</p>
           <p className="mt-1 text-xl font-semibold">{productSummary.lowStock}</p>
         </div>
-        <div className="rounded-[14px] border border-[#F1B8B8]/70 bg-[#FFF0F0] px-3 py-3 shadow-[0_8px_24px_rgba(26,26,26,0.035)]">
-          <p className="text-[10px] text-[#A14E4E]">Дууссан</p>
+        <div className="metric-card border-status-cancelled-border bg-status-cancelled-bg px-3 py-3">
+          <p className="text-[10px] text-status-cancelled-text">Дууссан</p>
           <p className="mt-1 text-xl font-semibold">{productSummary.outOfStock}</p>
         </div>
-        <div className="rounded-[14px] border border-[#F2A8C8]/35 bg-[#FFF0F6] px-3 py-3 shadow-[0_8px_24px_rgba(26,26,26,0.035)]">
-          <p className="text-[10px] text-[#8B6B78]">Нуусан</p>
+        <div className="metric-card bg-blush px-3 py-3">
+          <p className="text-[10px] text-text-subtle">Нуусан</p>
           <p className="mt-1 text-xl font-semibold">{productSummary.hidden}</p>
         </div>
       </div>
@@ -271,27 +272,27 @@ export default function AdminProductsPage() {
           <div className="w-8 h-8 border border-charcoal border-t-transparent rounded-full animate-spin"/>
         </div>
       ) : products.length === 0 ? (
-        <div className="bg-white border border-[#F2A8C8]/40 p-12 md:p-20 text-center shadow-[0_10px_30px_rgba(26,26,26,0.03)]">
-          <p className="font-serif text-xl text-[#8B6B78] mb-6">Бүтээгдэхүүн олдсонгүй.</p>
-          <button onClick={() => handleOpenForm()} className="text-xs tracking-[0.14em] uppercase border-b border-[#FFB7D5] pb-1">Эхний барааг нэмэх</button>
+        <div className="bg-white border border-border-light/40 p-12 md:p-20 text-center shadow-[0_10px_30px_rgba(26,26,26,0.03)]">
+          <p className="font-serif text-xl text-text-subtle mb-6">Бүтээгдэхүүн олдсонгүй.</p>
+          <button onClick={() => handleOpenForm()} className="text-xs tracking-[0.14em] uppercase border-b border-dusty-rose pb-1">Эхний барааг нэмэх</button>
         </div>
       ) : (
         <>
-        <div className="rounded-[16px] border border-[#F2A8C8]/40 bg-white p-4 shadow-[0_10px_30px_rgba(26,26,26,0.03)]">
+        <div className="surface-card p-4">
           <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
           <div className="relative">
             <input
               value={search}
               onChange={event => setSearch(event.target.value)}
               placeholder="Бүтээгдэхүүний нэр, ангилал, slug-аар хайх..."
-              className="w-full min-h-11 rounded-[10px] border border-[#F2A8C8]/60 bg-[#FFF8FB] pl-10 pr-4 text-sm outline-none placeholder:text-[#8B6B78]/70 focus:border-[#FFB7D5] focus:bg-white"
+              className="field-control min-h-11 pl-10 pr-4 text-sm placeholder:text-text-subtle/70"
             />
-            <svg className="absolute left-4 top-3.5 text-[#8B6B78]" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+            <svg className="absolute left-4 top-3.5 text-text-subtle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
               <circle cx="11" cy="11" r="8" />
               <path d="M21 21l-4.35-4.35" />
             </svg>
           </div>
-          <label className="flex min-h-11 cursor-pointer items-center justify-center gap-3 rounded-[10px] border border-[#F2C7D8] bg-[#FFF8FB] px-4 text-sm font-semibold text-[#241820] transition-colors hover:bg-[#FFF0F6]">
+          <label className="btn-secondary min-h-11 cursor-pointer gap-3 px-4 text-sm">
             <input
               type="checkbox"
               className="h-4 w-4 accent-[#D994B5]"
@@ -305,7 +306,7 @@ export default function AdminProductsPage() {
           </label>
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
+        <div className="grid grid-cols-1 justify-center gap-4 sm:grid-cols-2 xl:grid-cols-4 md:justify-start md:gap-6">
           {paginatedProducts.map(p => {
             const docId = p._id || p.id;
             const stockQuantity = Number(p.stockQuantity ?? p.stock ?? (p.inStock === false ? 0 : 999));
@@ -318,7 +319,7 @@ export default function AdminProductsPage() {
             }
 
             return (
-            <div key={docId} className={`bg-white border flex flex-col relative overflow-hidden rounded-[14px] transition-all duration-300 shadow-[0_8px_24px_rgba(26,26,26,0.045)] ${selectedIds.has(docId) ? 'border-[#FFB7D5]' : 'border-[#F2A8C8]/40'}`}>
+            <div key={docId} className={`surface-card relative flex min-h-full flex-col overflow-hidden transition-all duration-300 ${selectedIds.has(docId) ? 'border-dusty-rose' : ''}`}>
               
               {/* Checkbox */}
               <div className="absolute top-3 right-3 z-10">
@@ -332,7 +333,7 @@ export default function AdminProductsPage() {
 
               {/* Hover Quick Edit Overlay */}
               <div className={`absolute inset-0 z-20 bg-white/95 backdrop-blur-sm p-5 flex flex-col transition-opacity duration-300 ${quickEditId === docId ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-                <h4 className="text-lg font-semibold text-[#1A1A1A] mb-5 border-b border-[#F2A8C8]/40 pb-3">Хурдан засах</h4>
+                <h4 className="text-lg font-semibold text-charcoal mb-5 border-b border-border-light/40 pb-3">Хурдан засах</h4>
                 <div className="space-y-6 flex-1">
                   <div>
                     <label className="editorial-label block mb-2">Үнэ (₮)</label>
@@ -340,7 +341,7 @@ export default function AdminProductsPage() {
                       type="number"
                       value={quickEditData.price}
                       onChange={e => setQuickEditData({...quickEditData, price: e.target.value})}
-                      className="w-full p-3 bg-[#FFF8FB] border border-[#F2A8C8]/60 text-sm focus:outline-none focus:border-[#FFB7D5]"
+                      className="w-full p-3 bg-sand border border-border-light/60 text-sm focus:outline-none focus:border-dusty-rose"
                     />
                   </div>
                   <label className="flex items-center justify-between cursor-pointer">
@@ -357,14 +358,14 @@ export default function AdminProductsPage() {
                   </label>
                 </div>
                 <div className="flex gap-3 mt-6">
-                  <button onClick={(e) => {e.stopPropagation(); setQuickEditId(null);}} className="flex-1 min-h-11 rounded-[10px] border border-[#F2A8C8] text-sm hover:bg-[#FFF8FB] transition-colors">Цуцлах</button>
-                  <button onClick={(e) => saveQuickEdit(docId, e)} className="flex-1 min-h-11 rounded-[10px] bg-[#1A1A1A] text-white text-sm">Хадгалах</button>
+                  <button onClick={(e) => {e.stopPropagation(); setQuickEditId(null);}} className="btn-secondary min-h-11 flex-1 text-sm">Цуцлах</button>
+                  <button onClick={(e) => saveQuickEdit(docId, e)} className="btn-primary min-h-11 flex-1 text-sm">Хадгалах</button>
                 </div>
               </div>
 
-              <div className="aspect-[4/5] relative bg-[#FFF0F6] border-b border-[#F2A8C8]/40 overflow-hidden cursor-pointer" onClick={() => handleOpenForm(p)}>
+              <div className="relative aspect-square overflow-hidden border-b border-border-light/40 bg-white cursor-pointer" onClick={() => handleOpenForm(p)}>
                 {p.images?.[0] ? (
-                  <img src={p.images[0]} alt={p.name_mn} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out-expo" />
+                  <img src={p.images[0]} alt={p.name_mn} className="h-full w-full object-cover transition-transform duration-700 ease-out-expo group-hover:scale-105" />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center editorial-label text-neutral-400">
                     Зураггүй
@@ -383,7 +384,7 @@ export default function AdminProductsPage() {
                       Нууцлагдсан
                     </span>
                   )}
-                  <span className={`rounded-[7px] border px-2 py-1 text-[9px] tracking-[0.08em] uppercase bg-white/90 ${stockQuantity === 0 ? 'border-[#F1B8B8] text-[#A14E4E]' : stockQuantity <= 5 ? 'border-[#F1D28A] text-[#9A6A14]' : 'border-[#F2A8C8]/50 text-[#1A1A1A]'}`}>
+                  <span className={`status-badge bg-white/90 px-2 py-1 text-[9px] uppercase tracking-[0.08em] ${stockQuantity === 0 ? 'border-status-cancelled-border text-status-cancelled-text' : stockQuantity <= 5 ? 'border-status-pending-border text-status-pending-text' : 'border-border-light/50 text-charcoal'}`}>
                     Нөөц: {stockQuantity}
                   </span>
                 </div>
@@ -397,13 +398,13 @@ export default function AdminProductsPage() {
               
               <div className="p-4 md:p-5 flex-1 flex flex-col group cursor-pointer" onClick={() => handleOpenForm(p)}>
                 <div className="flex justify-between items-start mb-2">
-                  <p className="text-[10px] tracking-[0.1em] uppercase text-[#8B6B78]">{p.category || 'Ангилалгүй'}</p>
+                  <p className="text-[10px] tracking-[0.1em] uppercase text-text-subtle">{p.category || 'Ангилалгүй'}</p>
                   <button onClick={(e) => openQuickEdit(p, e)} className="text-neutral-400 hover:text-charcoal transition-colors">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                   </button>
                 </div>
                 
-                <h3 className="text-[15px] font-semibold text-[#1A1A1A] leading-snug mb-4 flex-1">{p.name_mn}</h3>
+                <h3 className="text-[15px] font-semibold text-charcoal leading-snug mb-4 flex-1">{p.name_mn}</h3>
                 
                 <div className="flex items-center gap-3 mb-6">
                   <p className="font-sans text-sm font-medium tracking-wide text-charcoal">
@@ -414,8 +415,8 @@ export default function AdminProductsPage() {
                   )}
                 </div>
                 
-                <div className="mt-auto border-t border-[#F2A8C8]/35 pt-4 flex items-center justify-between" onClick={e => e.stopPropagation()}>
-                  <span className={`text-[10px] tracking-[0.1em] uppercase ${inStock ? 'text-[#1A1A1A]' : 'text-[#A14E4E]'}`}>
+                <div className="mt-auto border-t border-border-light/35 pt-4 flex items-center justify-between" onClick={e => e.stopPropagation()}>
+                  <span className={`text-[10px] tracking-[0.1em] uppercase ${inStock ? 'text-charcoal' : 'text-status-cancelled-text'}`}>
                     {inStock ? 'Боломжтой' : 'Дууссан'}
                   </span>
                   <label className="relative inline-flex items-center cursor-pointer">
@@ -428,20 +429,20 @@ export default function AdminProductsPage() {
                       })}
                       className="sr-only peer"
                     />
-                    <div className="w-9 h-5 bg-[#E9DDE2] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[#F2A8C8]/60 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#1A1A1A]"></div>
+                    <div className="w-9 h-5 bg-[#E9DDE2] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border-light/60 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#1A1A1A]"></div>
                   </label>
                 </div>
               </div>
             </div>
           )})}
         </div>
-        <Pagination page={page} totalItems={filteredProducts.length} onPageChange={setPage} />
+        <Pagination page={page} totalItems={filteredProducts.length} pageSize={pageSize} onPageChange={setPage} />
         </>
       )}
 
       {/* Bulk Action Bar */}
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-[62px] md:bottom-0 left-0 md:left-64 right-0 bg-white/95 backdrop-blur-md border-t border-[#F2A8C8]/40 p-4 md:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 md:gap-6 z-40 shadow-[0_-12px_28px_rgba(26,26,26,0.06)]">
+        <div className="fixed bottom-[62px] md:bottom-0 left-0 md:left-64 right-0 bg-white/95 backdrop-blur-md border-t border-border-light/40 p-4 md:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 md:gap-6 z-40 shadow-[0_-12px_28px_rgba(26,26,26,0.06)]">
           <div className="flex items-center gap-4">
             <span className="font-serif italic text-xl text-charcoal">{selectedIds.size}</span>
             <span className="editorial-label text-charcoal mt-1">Бараа сонгогдсон</span>

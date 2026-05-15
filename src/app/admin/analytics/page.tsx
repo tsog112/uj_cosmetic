@@ -99,23 +99,23 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-4 md:space-y-8">
       <div>
-        <p className="text-[10px] tracking-[0.1em] uppercase text-[#8B6B78]">Борлуулалтын тойм</p>
-        <h2 className="text-[22px] md:text-3xl font-semibold mt-1 text-[#1A1A1A]">Аналитик</h2>
+        <p className="text-[10px] tracking-[0.1em] uppercase text-text-subtle">Борлуулалтын тойм</p>
+        <h2 className="text-[22px] md:text-3xl font-semibold mt-1 text-charcoal">Аналитик</h2>
       </div>
 
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-2 md:gap-4">
         {cards.map(card => (
-          <div key={card.label} className={`rounded-[14px] bg-white border border-[#F2A8C8]/40 border-l-4 ${card.accent} p-4 md:p-5 shadow-[0_8px_24px_rgba(26,26,26,0.04)]`}>
-            <p className="text-[10px] md:text-[11px] text-[#8B6B78]">{card.label}</p>
+          <div key={card.label} className={`rounded-2xl bg-white border border-border-light/40 border-l-4 ${card.accent} p-4 md:p-5 shadow-[0_8px_24px_rgba(26,26,26,0.04)]`}>
+            <p className="text-[10px] md:text-[11px] text-text-subtle">{card.label}</p>
             <p className="text-xl md:text-3xl font-semibold mt-3">{card.value}</p>
-            <p className="text-xs text-[#8B6B78] mt-2">{card.note}</p>
+            <p className="text-xs text-text-subtle mt-2">{card.note}</p>
           </div>
         ))}
       </div>
 
-      <section className="rounded-[16px] bg-white border border-[#F2A8C8]/40 p-5 md:p-6 shadow-[0_10px_30px_rgba(26,26,26,0.03)]">
+      <section className="rounded-[16px] bg-white border border-border-light/40 p-5 md:p-6 shadow-[0_10px_30px_rgba(26,26,26,0.03)]">
         <div className="mb-6">
-          <p className="text-[10px] tracking-[0.1em] uppercase text-[#8B6B78]">Захиалгын төлөв</p>
+          <p className="text-[10px] tracking-[0.1em] uppercase text-text-subtle">Захиалгын төлөв</p>
           <h3 className="text-lg md:text-2xl font-semibold mt-1">Төлөвийн задаргаа</h3>
         </div>
         <div className="h-[280px]">
@@ -131,22 +131,22 @@ export default function AnalyticsPage() {
         </div>
       </section>
 
-      <section className="rounded-[16px] bg-white border border-[#F2A8C8]/40 shadow-[0_10px_30px_rgba(26,26,26,0.03)] overflow-hidden">
-        <div className="p-5 md:p-6 border-b border-[#F2A8C8]/40">
-          <p className="text-[10px] tracking-[0.1em] uppercase text-[#8B6B78]">Бүтээгдэхүүн</p>
+      <section className="rounded-[16px] bg-white border border-border-light/40 shadow-[0_10px_30px_rgba(26,26,26,0.03)] overflow-hidden">
+        <div className="p-5 md:p-6 border-b border-border-light/40">
+          <p className="text-[10px] tracking-[0.1em] uppercase text-text-subtle">Бүтээгдэхүүн</p>
           <h3 className="text-lg md:text-2xl font-semibold mt-1">Бүтээгдэхүүний үзүүлэлт</h3>
         </div>
 
-        <div className="md:hidden space-y-3 bg-[#FFF8FB] p-3">
+        <div className="md:hidden space-y-3 bg-sand p-3">
           {productTable.length === 0 ? (
-            <p className="p-8 text-center text-sm text-[#8B6B78]">Мэдээлэл алга</p>
+            <p className="p-8 text-center text-sm text-text-subtle">Мэдээлэл алга</p>
           ) : paginatedProductTable.map(product => (
-            <div key={product.id} className="rounded-[14px] border border-[#F2A8C8]/35 bg-white p-4 shadow-[0_8px_24px_rgba(26,26,26,0.04)]">
+            <div key={product.id} className="rounded-2xl border border-border-light/35 bg-white p-4 shadow-[0_8px_24px_rgba(26,26,26,0.04)]">
               <p className="font-medium">{product.name}</p>
               <div className="mt-3 grid grid-cols-3 gap-3 text-sm">
-                <div><p className="text-xs text-[#8B6B78]">Үзэлт</p><p>{product.views}</p></div>
-                <div><p className="text-xs text-[#8B6B78]">Зарагдсан</p><p>{product.ordered}</p></div>
-                <div><p className="text-xs text-[#8B6B78]">Хөрвөлт</p><p>{product.conversion}%</p></div>
+                <div><p className="text-xs text-text-subtle">Үзэлт</p><p>{product.views}</p></div>
+                <div><p className="text-xs text-text-subtle">Зарагдсан</p><p>{product.ordered}</p></div>
+                <div><p className="text-xs text-text-subtle">Хөрвөлт</p><p>{product.conversion}%</p></div>
               </div>
             </div>
           ))}
@@ -161,7 +161,7 @@ export default function AnalyticsPage() {
               <col className="w-[130px]" />
               <col className="w-[110px]" />
             </colgroup>
-            <thead className="border-b border-[#F2A8C8]/35 bg-[#FFF8FB] text-[11px] font-semibold tracking-[0.08em] uppercase text-[#8B6B78]">
+            <thead className="border-b border-border-light/35 bg-sand text-[11px] font-semibold tracking-[0.08em] uppercase text-text-subtle">
               <tr>
                 <th className="px-5 py-3 text-left">Бараа</th>
                 <th className="px-5 py-3 text-right">Үзэлт</th>
@@ -172,9 +172,9 @@ export default function AnalyticsPage() {
             </thead>
             <tbody className="divide-y divide-[#F2A8C8]/30">
               {productTable.length === 0 ? (
-                <tr><td colSpan={5} className="px-5 py-12 text-center text-[#8B6B78]">Мэдээлэл алга</td></tr>
+                <tr><td colSpan={5} className="px-5 py-12 text-center text-text-subtle">Мэдээлэл алга</td></tr>
               ) : paginatedProductTable.map(product => (
-                <tr key={product.id} className="hover:bg-[#FFF8FB]">
+                <tr key={product.id} className="hover:bg-sand">
                   <td className="px-5 py-4 font-medium"><span className="block truncate">{product.name}</span></td>
                   <td className="px-5 py-4 text-right">{product.views}</td>
                   <td className="px-5 py-4 text-right">{product.ordered}</td>

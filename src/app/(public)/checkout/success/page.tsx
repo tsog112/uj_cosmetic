@@ -39,8 +39,8 @@ function SuccessContent() {
         Баярлалаа. Таны захиалгын дугаар: <strong className="text-text-primary">{orderId}</strong>
       </p>
 
-      <div className="relative mb-8 overflow-hidden rounded-[18px] border border-[#F2C7D8] bg-[#FFF8FB] p-8 text-left shadow-[0_18px_50px_rgba(91,46,67,0.08)]">
-        <div className="absolute right-0 top-0 rounded-bl-[12px] bg-[#D994B5] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
+      <div className="relative mb-8 overflow-hidden rounded-[18px] border border-border-light bg-sand p-8 text-left shadow-[0_18px_50px_rgba(91,46,67,0.08)]">
+        <div className="absolute right-0 top-0 rounded-bl-[12px] bg-dusty-rose px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
           Банкны шилжүүлэг
         </div>
 
@@ -49,13 +49,13 @@ function SuccessContent() {
         </h3>
 
         <div className="space-y-4 text-sm">
-          <div className="flex justify-between items-center border-thin-b pb-3 border-[#F2A8C8]/50">
+          <div className="flex justify-between items-center border-thin-b pb-3 border-border-light/50">
             <span className="text-text-muted">Дансны дугаар:</span>
             <div className="flex items-center gap-3">
               <strong className="text-text-primary text-base">{settings.bankAccount}</strong>
               <button
                 onClick={handleCopy}
-                className="rounded-[8px] border border-[#F2C7D8] bg-white p-2 text-[#D994B5] transition-colors hover:bg-[#FFF0F6] hover:text-[#241820]"
+                className="rounded-[8px] border border-border-light bg-white p-2 text-[#D994B5] transition-colors hover:bg-blush hover:text-charcoal"
                 title={copied ? 'Хуулагдлаа!' : 'Хуулах'}
                 aria-label={copied ? 'Хуулагдлаа!' : 'Хуулах'}
               >
@@ -73,7 +73,7 @@ function SuccessContent() {
             </div>
           </div>
 
-          <div className="flex justify-between items-center border-thin-b pb-3 border-[#F2A8C8]/50">
+          <div className="flex justify-between items-center border-thin-b pb-3 border-border-light/50">
             <span className="text-text-muted">Хүлээн авагч:</span>
             <strong className="text-text-primary">{settings.bankAccountName}</strong>
           </div>
@@ -93,7 +93,7 @@ function SuccessContent() {
           href={settings.instagramUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-[12px] border border-[#F2C7D8] bg-white px-6 text-sm font-semibold text-[#241820] transition-colors hover:bg-[#FFF0F6] md:w-auto"
+          className="inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-full border border-border-light bg-white px-6 text-sm font-semibold text-charcoal transition-colors hover:bg-blush md:w-auto"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <rect x="2" y="2" width="20" height="20" rx="5" />
@@ -104,7 +104,7 @@ function SuccessContent() {
         </a>
       </div>
 
-      <Link href="/" className="inline-flex min-h-11 items-center justify-center rounded-[11px] bg-[#241820] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#D994B5]">
+      <Link href="/" className="inline-flex min-h-11 items-center justify-center rounded-[11px] bg-[#241820] px-6 text-sm font-semibold text-white transition-colors hover:bg-dusty-rose">
         Дэлгүүр рүү буцах
       </Link>
     </div>

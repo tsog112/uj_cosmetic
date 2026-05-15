@@ -70,7 +70,7 @@ export default function CategorySection() {
           </div>
           <Link
             href="/shop"
-            className="inline-flex min-h-11 items-center border-b border-charcoal/30 text-sm font-semibold text-charcoal hover:border-charcoal"
+            className="btn-ghost rounded-full border border-border-light text-charcoal"
           >
             Бүгдийг үзэх
           </Link>

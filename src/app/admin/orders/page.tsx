@@ -26,9 +26,9 @@ const tabs: { value: 'all' | OrderStatus; label: string }[] = [
 ];
 
 const STATUS_COLOR: Record<string, string> = {
-  pending:   'bg-status-pending-bg   text-status-pending-text   border-status-pending-border',
+  pending:   'bg-status-pending-bg text-status-pending-text border-status-pending-border',
   confirmed: 'bg-status-confirmed-bg text-status-confirmed-text border-status-confirmed-border',
-  shipped:   'bg-status-shipped-bg   text-status-shipped-text   border-status-shipped-border',
+  shipped:   'bg-status-shipped-bg text-status-shipped-text border-status-shipped-border',
   delivered: 'bg-status-delivered-bg text-status-delivered-text border-status-delivered-border',
   cancelled: 'bg-status-cancelled-bg text-status-cancelled-text border-status-cancelled-border',
 };
@@ -38,11 +38,11 @@ function getStatusColor(status: string) {
 }
 
 const STATUS_ACCENT: Record<string, string> = {
-  pending:   'bg-status-pending-text',
-  confirmed: 'bg-status-confirmed-border',
-  shipped:   'bg-status-shipped-border',
-  delivered: 'bg-status-delivered-border',
-  cancelled: 'bg-status-cancelled-border',
+  pending:   'bg-orange-500',
+  confirmed: 'bg-blue-500',
+  shipped:   'bg-purple-500',
+  delivered: 'bg-green-500',
+  cancelled: 'bg-red-500',
 };
 
 function getStatusAccent(status: string) {
@@ -247,10 +247,10 @@ export default function AdminOrdersPage() {
   return (
     <div className="space-y-4 md:space-y-8">
       {toast && (
-        <div className={`fixed top-20 left-4 right-4 md:left-auto md:right-8 md:w-auto z-[120] px-4 py-3 border text-sm shadow-brand-md ${
+        <div className={`fixed top-20 left-4 right-4 md:left-auto md:right-8 md:w-auto z-[120] rounded-xl px-5 py-3.5 border text-sm shadow-brand-lg backdrop-blur-sm ${
           toast.type === 'error'
-            ? 'bg-status-cancelled-bg text-status-cancelled-text border-status-cancelled-border'
-            : 'bg-white text-charcoal border-border-light'
+            ? 'bg-status-cancelled-bg/95 text-status-cancelled-text border-status-cancelled-border'
+            : 'bg-white/95 text-charcoal border-border-light'
         }`}>
           {toast.message}
         </div>
@@ -258,12 +258,12 @@ export default function AdminOrdersPage() {
 
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[10px] tracking-[0.1em] uppercase text-text-subtle">Захиалгын удирдлага</p>
+          <p className="text-[10px] tracking-[0.12em] uppercase text-text-subtle">Захиалгын удирдлага</p>
           <h2 className="truncate text-[22px] md:text-3xl font-semibold mt-1 text-charcoal">Захиалгууд</h2>
         </div>
         <button
           onClick={exportExcel}
-          className="shrink-0 h-11 border border-border-light bg-white text-charcoal px-6 rounded-[12px] text-xs font-semibold tracking-[0.14em] uppercase transition-colors hover:bg-blush flex items-center justify-center gap-2"
+          className="btn-secondary h-11 shrink-0 px-6 text-xs uppercase tracking-[0.14em]"
           aria-label="Excel татах"
         >
           <span className="hidden md:inline">Excel татах</span>
@@ -290,8 +290,8 @@ export default function AdminOrdersPage() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-[18px] border border-border-faint bg-white shadow-brand-lg">
-        <div className="z-20 space-y-3 border-b border-border-faint bg-white/95 p-3 backdrop-blur-md md:p-4">
+      <div className="surface-panel shadow-brand-md">
+        <div className="z-20 space-y-4 border-b border-border-faint bg-gradient-to-b from-white to-sand/55 p-4 backdrop-blur-md md:p-5">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
             {tabs.map(tab => (
               <button
@@ -300,15 +300,15 @@ export default function AdminOrdersPage() {
                   setFilter(tab.value);
                   setPage(1);
                 }}
-                className={`flex min-h-12 items-center justify-between gap-2 rounded-[12px] border px-3 text-left transition-colors ${
+                className={`flex min-h-11 items-center justify-between gap-2 rounded-full border px-3.5 text-left transition-all ${
                   filter === tab.value
                     ? 'border-dusty-rose bg-blush text-charcoal shadow-brand-sm'
                     : 'border-border-light bg-white text-text-subtle hover:bg-sand hover:text-charcoal'
                 }`}
               >
-                <span className="truncate text-[12px] font-semibold tracking-[0.01em]">{tab.label}</span>
-                <span className={`inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-2 text-[11px] font-semibold ${
-                  filter === tab.value ? 'bg-white text-charcoal' : 'bg-sand text-text-subtle'
+                <span className="truncate text-[11px] font-semibold">{tab.label}</span>
+                <span className={`inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-bold ${
+                  filter === tab.value ? 'bg-dusty-rose text-white' : 'bg-sand text-text-subtle'
                 }`}>
                   {statusCounts[tab.value]}
                 </span>
@@ -324,7 +324,7 @@ export default function AdminOrdersPage() {
                 setPage(1);
               }}
               placeholder="Захиалга, нэр эсвэл утсаар хайх..."
-              className="h-11 w-full rounded-[12px] border border-border bg-sand pl-10 pr-4 text-[15px] outline-none transition focus:border-dusty-rose focus:bg-white placeholder:text-text-subtle/70"
+              className="h-11 w-full rounded-full border border-border bg-sand pl-10 pr-4 text-sm outline-none transition focus:border-dusty-rose focus:bg-white placeholder:text-text-subtle/60"
             />
             <svg className="absolute left-4 top-3.5 text-text-subtle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
               <circle cx="11" cy="11" r="8" />
@@ -333,96 +333,96 @@ export default function AdminOrdersPage() {
           </div>
         </div>
 
-        <div className="md:hidden space-y-3 bg-warm-cream p-3">
+        <div className="md:hidden space-y-3 bg-sand/45 p-3">
           {loading ? (
             <div className="p-8 flex justify-center">
-              <div className="w-7 h-7 border border-[#1A1A1A] border-t-transparent rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-charcoal border-t-transparent rounded-full animate-spin" />
             </div>
           ) : filteredOrders.length === 0 ? (
-            <p className="p-8 text-center text-sm text-[#8B6B78]">Захиалга олдсонгүй</p>
+            <p className="p-8 text-center text-sm text-text-subtle">Захиалга олдсонгүй</p>
           ) : paginatedOrders.map(order => (
             <button
               key={order.id}
               onClick={() => openDrawer(order)}
-              className="relative block w-full overflow-hidden rounded-[14px] border border-[#F2A8C8]/35 bg-white p-4 pl-5 text-left shadow-[0_8px_24px_rgba(26,26,26,0.045)] transition active:scale-[0.99] active:bg-rose-quartz"
+              className="relative block w-full overflow-hidden rounded-[24px] border border-border-light bg-white p-4 text-left shadow-brand-sm transition-all active:scale-[0.98]"
             >
-              <span className={`absolute left-0 top-4 bottom-4 w-1 rounded-r-full ${getStatusAccent(order.status)}`} />
+              <span className={`absolute bottom-0 left-0 top-0 w-[5px] ${getStatusAccent(order.status)}`} />
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-semibold truncate text-[15px]">{order.customerName || 'Харилцагч'}</p>
-                  <p className="text-[11px] text-[#8B6B78] mt-1">#{order.id.slice(0, 8)} · {order.items?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0} ширхэг</p>
+                  <p className="font-semibold truncate text-[14px]">{order.customerName || 'Харилцагч'}</p>
+                  <p className="text-[11px] text-text-subtle mt-0.5">#{order.id.slice(0, 8)} · {order.items?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0} ширхэг</p>
                 </div>
-                <span className={`shrink-0 rounded-[7px] border px-2 py-1 text-[10px] tracking-[0.04em] ${getStatusColor(order.status)}`}>
+                <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold ${getStatusColor(order.status)}`}>
                   {statusLabels[order.status as OrderStatus] || order.status}
                 </span>
               </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-3 text-[15px]">
+              <div className="mt-3 grid grid-cols-2 gap-2.5 text-[13px]">
                 <div>
-                  <p className="text-[11px] text-[#8B6B78]">Утас</p>
-                  <p>{order.phone || '-'}</p>
+                  <p className="text-[10px] text-text-subtle">Утас</p>
+                  <p className="mt-0.5">{order.phone || '-'}</p>
                 </div>
                 <div>
-                  <p className="text-[11px] text-[#8B6B78]">Дүн</p>
-                  <p className="font-semibold">{formatPrice(order.total || 0)}</p>
+                  <p className="text-[10px] text-text-subtle">Дүн</p>
+                  <p className="mt-0.5 font-semibold">{formatPrice(order.total || 0)}</p>
                 </div>
                 <div>
-                  <p className="text-[11px] text-[#8B6B78]">Хаяг</p>
-                  <p className="truncate">{order.address || '-'}</p>
+                  <p className="text-[10px] text-text-subtle">Хаяг</p>
+                  <p className="mt-0.5 truncate">{order.address || '-'}</p>
                 </div>
                 <div>
-                  <p className="text-[11px] text-[#8B6B78]">Огноо</p>
-                  <p className="truncate">{formatDate(order.createdAt)}</p>
+                  <p className="text-[10px] text-text-subtle">Огноо</p>
+                  <p className="mt-0.5 truncate">{formatDate(order.createdAt)}</p>
                 </div>
               </div>
             </button>
           ))}
         </div>
 
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full min-w-[1350px] table-fixed text-left text-sm">
+        <div className="hidden md:block overflow-hidden">
+          <table className="w-full table-fixed text-left text-sm">
             <colgroup>
-              <col className="w-[170px]" />
-              <col className="w-[240px]" />
-              <col className="w-[160px]" />
               <col className="w-[110px]" />
+              <col className="w-[34%]" />
               <col className="w-[150px]" />
-              <col className="w-[230px]" />
-              <col className="w-[190px]" />
-              <col className="w-[140px]" />
+              <col className="w-[130px]" />
+              <col className="w-[160px]" />
+              <col className="w-[150px]" />
             </colgroup>
-            <thead className="border-b border-border-faint bg-sand text-[11px] font-semibold uppercase tracking-[0.08em] text-text-subtle">
+            <thead className="border-b border-border-faint bg-white text-[11px] font-semibold uppercase tracking-[0.08em] text-text-subtle">
               <tr>
-                <th className="px-5 py-3 text-left">Захиалгын дугаар</th>
-                <th className="px-5 py-3 text-left">Харилцагч</th>
-                <th className="px-5 py-3 text-left">Утасны дугаар</th>
-                <th className="px-5 py-3 text-center">Барааны тоо</th>
-                <th className="px-5 py-3 text-right">Дүн</th>
-                <th className="px-5 py-3 text-left">Огноо</th>
-                <th className="px-5 py-3 text-center">Төлөв</th>
-                <th className="px-5 py-3 text-right">Үйлдэл</th>
+                <th className="px-4 py-3 text-left">Дугаар</th>
+                <th className="px-4 py-3 text-left">Харилцагч</th>
+                <th className="px-4 py-3 text-left">Утас</th>
+                <th className="px-4 py-3 text-right">Дүн</th>
+                <th className="px-4 py-3 text-center">Төлөв</th>
+                <th className="px-4 py-3 text-right">Үйлдэл</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-faint">
               {loading ? (
-                <tr><td colSpan={8} className="px-5 py-14 text-center">Уншиж байна...</td></tr>
+                <tr><td colSpan={6} className="px-4 py-14 text-center">Уншиж байна...</td></tr>
               ) : filteredOrders.length === 0 ? (
-                <tr><td colSpan={8} className="px-5 py-14 text-center text-[#8B6B78]">Захиалга олдсонгүй</td></tr>
+                <tr><td colSpan={6} className="px-4 py-14 text-center text-text-subtle">Захиалга олдсонгүй</td></tr>
               ) : paginatedOrders.map(order => (
-                <tr key={order.id} className="transition-colors hover:bg-sand">
-                  <td className="px-5 py-4 text-xs tracking-[0.08em] text-text-subtle">#{order.id.slice(0, 8)}</td>
-                  <td className="px-5 py-4 font-medium"><span className="block truncate">{order.customerName || '-'}</span></td>
-                  <td className="px-5 py-4 text-text-subtle"><span className="block truncate">{order.phone || '-'}</span></td>
-                  <td className="px-5 py-4 text-center">{order.items?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0}</td>
-                  <td className="px-5 py-4 text-right font-semibold tabular-nums whitespace-nowrap">{formatPrice(order.total || 0)}</td>
-                  <td className="px-5 py-4 text-text-subtle">{formatDate(order.createdAt)}</td>
-                  <td className="px-5 py-4 text-center">
-                    <span className={`inline-flex max-w-full rounded-[999px] border px-3 py-1.5 text-[10px] font-semibold tracking-[0.08em] uppercase ${getStatusColor(order.status)}`}>
+                <tr key={order.id} className="transition-colors hover:bg-blush/45">
+                  <td className="px-5 py-5 text-xs text-text-subtle">#{order.id.slice(0, 8)}</td>
+                  <td className="min-w-0 px-5 py-5 font-medium">
+                    <p className="truncate">{order.customerName || '-'}</p>
+                    <p className="text-xs text-text-subtle truncate">{formatDate(order.createdAt)}</p>
+                  </td>
+                  <td className="px-5 py-5 text-sm text-text-subtle">{order.phone || '-'}</td>
+                  <td className="px-5 py-5 text-right font-semibold tabular-nums whitespace-nowrap">{formatPrice(order.total || 0)}</td>
+                  <td className="px-5 py-5 text-center">
+                    <span className={`status-badge px-3 py-1.5 uppercase ${getStatusColor(order.status)}`}>
                       {statusLabels[order.status as OrderStatus] || order.status}
                     </span>
                   </td>
-                  <td className="px-5 py-4 text-right">
-                    <button onClick={() => openDrawer(order)} className="min-h-9 rounded-btn border border-border-light bg-white px-3 text-xs font-semibold text-charcoal shadow-brand-sm transition-colors hover:bg-blush">
+                  <td className="px-5 py-5 text-right">
+                    <button
+                      onClick={() => openDrawer(order)}
+                      className="btn-secondary min-h-9 whitespace-nowrap px-4 text-xs shadow-brand-sm"
+                    >
                       Дэлгэрэнгүй
                     </button>
                   </td>
@@ -436,9 +436,9 @@ export default function AdminOrdersPage() {
 
       {selectedOrder && (
         <div className="fixed inset-0 z-[100]">
-          <button className="absolute inset-0 bg-black/20 backdrop-blur-[2px]" onClick={() => setSelectedOrder(null)} aria-label="Хаах" />
-          <div className="absolute right-0 top-0 h-full w-full max-w-lg bg-white shadow-2xl flex flex-col">
-            <div className="p-5 md:p-6 border-b border-border-faint bg-sand flex items-center justify-between">
+          <button className="absolute inset-0 bg-charcoal/35 rounded-none cursor-default" onClick={() => setSelectedOrder(null)} aria-label="Хаах" />
+          <div className="absolute right-0 top-0 flex h-full w-full max-w-[560px] flex-col overflow-hidden border-l border-border-light bg-sand shadow-[0_24px_80px_rgba(44,27,36,0.28)]">
+            <div className="flex items-center justify-between border-b border-border-faint bg-white px-5 py-5 md:px-7">
               <div>
                 <p className="text-[11px] tracking-[0.18em] uppercase text-text-subtle">Захиалга</p>
                 <h3 className="text-xl font-semibold">#{selectedOrder.id.slice(-6)}</h3>
@@ -450,8 +450,8 @@ export default function AdminOrdersPage() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-5 md:p-6 space-y-8 pb-28">
-              <section>
+            <div className="flex-1 space-y-5 overflow-y-auto p-4 pb-28 md:p-6">
+              <section className="rounded-[22px] border border-border-light bg-white p-5 shadow-brand-sm">
                 <h4 className="text-[11px] tracking-[0.18em] uppercase text-text-subtle border-b border-border-faint pb-3 mb-4">Харилцагч</h4>
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between gap-4"><span className="text-text-subtle">Нэр</span><span className="text-right">{selectedOrder.customerName}</span></div>
@@ -461,7 +461,7 @@ export default function AdminOrdersPage() {
                 </div>
               </section>
 
-              <section>
+              <section className="rounded-[22px] border border-border-light bg-white p-5 shadow-brand-sm">
                 <h4 className="text-[11px] tracking-[0.18em] uppercase text-text-subtle border-b border-border-faint pb-3 mb-4">Бүтээгдэхүүн</h4>
                 <div className="space-y-4">
                   {selectedOrder.items?.map((item: any, index: number) => (
@@ -480,7 +480,7 @@ export default function AdminOrdersPage() {
                 </div>
               </section>
 
-              <section>
+              <section className="rounded-[22px] border border-border-light bg-white p-5 shadow-brand-sm">
                 <h4 className="text-[11px] tracking-[0.18em] uppercase text-text-subtle border-b border-border-faint pb-3 mb-4">Төлөв</h4>
                 <select
                   value={newStatus}
@@ -494,14 +494,14 @@ export default function AdminOrdersPage() {
               </section>
             </div>
 
-            <div className="fixed md:static bottom-0 right-0 w-full max-w-lg p-4 md:p-5 border-t border-border-faint bg-white flex gap-3">
-              <button onClick={() => setSelectedOrder(null)} className="flex-1 min-h-12 rounded-[12px] border border-border-light text-sm font-semibold hover:bg-blush">
+            <div className="fixed bottom-0 right-0 flex w-full max-w-[560px] gap-3 border-t border-border-faint bg-white p-4 md:static md:p-5">
+              <button onClick={() => setSelectedOrder(null)} className="btn-secondary min-h-12 flex-1 text-sm">
                 Болих
               </button>
               <button
                 onClick={handleStatusChange}
                 disabled={newStatus === selectedOrder.status}
-                className="flex-1 min-h-12 rounded-[12px] bg-charcoal text-white text-sm font-semibold transition-colors hover:bg-dusty-rose disabled:opacity-40"
+                className="btn-primary min-h-12 flex-1 text-sm disabled:opacity-40"
               >
                 Хадгалах
               </button>

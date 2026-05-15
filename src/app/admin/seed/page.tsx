@@ -93,19 +93,19 @@ export default function AdminSeedPage() {
   return (
     <div className="space-y-4 md:space-y-8 max-w-2xl">
       <div>
-        <p className="text-[10px] tracking-[0.1em] uppercase text-[#8B6B78]">Системийн хэрэгсэл</p>
-        <h2 className="text-[22px] md:text-3xl font-semibold mt-1 text-[#1A1A1A]">Өгөгдөл оруулах</h2>
+        <p className="text-[10px] tracking-[0.1em] uppercase text-text-subtle">Системийн хэрэгсэл</p>
+        <h2 className="text-[22px] md:text-3xl font-semibold mt-1 text-charcoal">Өгөгдөл оруулах</h2>
       </div>
 
-      <div className="rounded-[16px] bg-white border border-[#F2A8C8]/40 p-5 md:p-6 shadow-[0_10px_30px_rgba(26,26,26,0.03)]">
-        <p className="text-sm text-[#8B6B78] leading-7 mb-6">
+      <div className="rounded-[16px] bg-white border border-border-light/40 p-5 md:p-6 shadow-[0_10px_30px_rgba(26,26,26,0.03)]">
+        <p className="text-sm text-text-subtle leading-7 mb-6">
           Firestore-д жишээ бүтээгдэхүүнүүдийг batch хэлбэрээр нэмнэ. Энэ үйлдэл одоо байгаа document-уудыг merge хийнэ.
         </p>
         <button
           onClick={handleSeed}
           disabled={seeding}
           className={`min-h-11 rounded-[10px] px-5 text-sm w-full md:w-auto disabled:opacity-50 ${
-            done ? 'bg-[#FFF0F6] border border-[#FFB7D5] text-[#1A1A1A]' : 'bg-[#1A1A1A] text-white'
+            done ? 'bg-blush border border-dusty-rose text-charcoal' : 'bg-[#1A1A1A] text-white'
           }`}
         >
           {seeding ? 'Түр хүлээнэ үү...' : done ? 'Амжилттай' : 'Өгөгдөл оруулах'}

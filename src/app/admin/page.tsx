@@ -221,22 +221,22 @@ export default function AdminDashboardPage() {
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
 
         {/* Orders table */}
-        <div className="card-brand overflow-hidden xl:col-span-2">
-          <div className="flex items-center justify-between border-b border-border-faint p-5 md:p-6">
+        <div className="surface-panel xl:col-span-2">
+          <div className="flex items-center justify-between gap-4 border-b border-border-faint bg-gradient-to-r from-white to-blush/45 p-5 md:p-6">
             <div>
               <p className="text-[10px] uppercase tracking-[0.1em] text-text-subtle">Сүүлийн захиалгууд</p>
               <h3 className="mt-1 text-lg font-semibold text-charcoal">Шинэ хөдөлгөөн</h3>
             </div>
             <Link
               href="/admin/orders"
-              className="inline-flex h-11 items-center justify-center border border-border-light bg-white px-6 text-xs font-semibold text-charcoal transition-colors hover:bg-blush"
+              className="btn-secondary h-11 px-6 text-xs"
             >
               Бүгдийг үзэх
             </Link>
           </div>
 
           {/* Table header */}
-          <div className="hidden grid-cols-[minmax(0,1fr)_130px_120px_150px] items-center gap-4 border-b border-border-faint bg-sand px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-text-subtle md:grid">
+          <div className="hidden grid-cols-[minmax(0,1fr)_130px_120px_150px] items-center gap-4 border-b border-border-faint bg-sand/75 px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-text-subtle md:grid">
             <span>Харилцагч</span>
             <span className="text-right">Дүн</span>
             <span>Огноо</span>
@@ -250,7 +250,7 @@ export default function AdminDashboardPage() {
               <Link
                 key={order.id as string}
                 href="/admin/orders"
-                className="block px-4 py-3 transition-colors hover:bg-sand md:px-5"
+                className="block px-5 py-4 transition-colors hover:bg-sand/80"
               >
                 <div className="grid grid-cols-[1fr_auto] items-center gap-3 md:grid-cols-[minmax(0,1fr)_130px_120px_150px] md:gap-4">
                   <div className="min-w-0">
@@ -268,7 +268,7 @@ export default function AdminDashboardPage() {
                     {order.orderTime ? new Date(order.orderTime as number).toLocaleDateString('mn-MN') : '-'}
                   </p>
                   <span
-                    className={`ml-auto max-w-[150px] shrink-0 truncate rounded-tag border px-3 py-1.5 text-[10px] font-semibold tracking-[0.04em] ${getStatusBadgeClass(String(order.status))}`}
+                    className={`status-badge ml-auto max-w-[150px] shrink-0 px-3 py-1.5 ${getStatusBadgeClass(String(order.status))}`}
                   >
                     {STATUS_LABELS[String(order.status)] || String(order.status)}
                   </span>
@@ -287,15 +287,15 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Users */}
-        <div className="card-brand overflow-hidden">
-          <div className="flex items-center justify-between gap-4 border-b border-border-faint p-5 md:p-6">
+        <div className="surface-panel">
+          <div className="flex items-center justify-between gap-4 border-b border-border-faint bg-gradient-to-r from-white to-blush/45 p-5 md:p-6">
             <div>
               <p className="text-[10px] uppercase tracking-[0.1em] text-text-subtle">Хэрэглэгчид</p>
               <h3 className="mt-1 text-lg font-semibold text-charcoal">Сүүлд бүртгүүлсэн</h3>
             </div>
             <Link
               href="/admin/users"
-              className="inline-flex h-11 items-center justify-center border border-border-light bg-white px-6 text-xs font-semibold text-charcoal transition-colors hover:bg-blush"
+              className="btn-secondary h-11 px-6 text-xs"
             >
               Бүгдийг үзэх
             </Link>
@@ -305,8 +305,8 @@ export default function AdminDashboardPage() {
             {latestUsers.length === 0 ? (
               <p className="p-8 text-center text-sm text-text-subtle">Хэрэглэгч олдсонгүй</p>
             ) : latestUsers.map(u => (
-              <div key={u.id as string} className="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-sand">
-                <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-border-faint bg-blush text-sm font-semibold text-charcoal">
+              <div key={u.id as string} className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-sand/80">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full border border-border-faint bg-blush text-sm font-semibold text-charcoal">
                   {(String(u.displayName || u.email || 'U')).charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0">

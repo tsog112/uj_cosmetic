@@ -85,20 +85,20 @@ export default function AdminReviewsPage() {
   return (
     <div className="space-y-6">
       {toast && (
-        <div className="fixed left-4 right-4 top-20 z-50 border border-[#F2A8C8]/60 bg-white px-4 py-3 text-sm text-[#1A1A1A] shadow-lg md:left-auto md:right-8 md:w-80">
+        <div className="fixed left-4 right-4 top-20 z-50 border border-border-light/60 bg-white px-4 py-3 text-sm text-charcoal shadow-lg md:left-auto md:right-8 md:w-80">
           {toast}
         </div>
       )}
 
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-[11px] tracking-[0.2em] uppercase text-[#8B6B78]">Review management</p>
-          <h1 className="mt-2 font-serif text-3xl text-[#1A1A1A] md:text-4xl">Сэтгэгдэл</h1>
+          <p className="text-[11px] tracking-[0.2em] uppercase text-text-subtle">Review management</p>
+          <h1 className="mt-2 font-serif text-3xl text-charcoal md:text-4xl">Сэтгэгдэл</h1>
         </div>
         <Link
           href="/"
           target="_blank"
-          className="inline-flex min-h-11 items-center justify-center border border-[#FFB7D5] px-5 text-xs tracking-[0.16em] uppercase text-[#1A1A1A] hover:bg-[#FFF0F6]"
+          className="inline-flex min-h-11 items-center justify-center border border-dusty-rose px-5 text-xs tracking-[0.16em] uppercase text-charcoal hover:bg-blush"
         >
           Нүүр харах
         </Link>
@@ -111,16 +111,16 @@ export default function AdminReviewsPage() {
           ['Нуусан', summary.hidden],
           ['Зурагтай', summary.withImages],
         ].map(([label, value]) => (
-          <div key={label} className="border border-[#F2A8C8]/45 bg-white p-4">
-            <p className="text-xs text-[#8B6B78]">{label}</p>
-            <p className="mt-2 text-2xl font-semibold text-[#1A1A1A]">{value}</p>
+          <div key={label} className="border border-border-light/45 bg-white p-4">
+            <p className="text-xs text-text-subtle">{label}</p>
+            <p className="mt-2 text-2xl font-semibold text-charcoal">{value}</p>
           </div>
         ))}
       </div>
 
-      <div className="border border-[#F2A8C8]/45 bg-white">
-        <div className="border-b border-[#F2A8C8]/35 p-4">
-          <div className="grid grid-cols-3 gap-2 rounded-[10px] bg-[#FFF8FB] p-1">
+      <div className="border border-border-light/45 bg-white">
+        <div className="border-b border-border-light/35 p-4">
+          <div className="grid grid-cols-3 gap-2 rounded-[10px] bg-sand p-1">
             {[
               { value: 'all', label: 'Бүгд' },
               { value: 'approved', label: 'Нийтлэгдсэн' },
@@ -130,7 +130,7 @@ export default function AdminReviewsPage() {
                 key={tab.value}
                 onClick={() => setFilter(tab.value as typeof filter)}
                 className={`min-h-10 rounded-[8px] text-xs font-medium transition-colors ${
-                  filter === tab.value ? 'bg-white text-[#1A1A1A] shadow-sm' : 'text-[#8B6B78]'
+                  filter === tab.value ? 'bg-white text-charcoal shadow-sm' : 'text-text-subtle'
                 }`}
               >
                 {tab.label}
@@ -142,9 +142,9 @@ export default function AdminReviewsPage() {
               value={search}
               onChange={event => setSearch(event.target.value)}
               placeholder="Бүтээгдэхүүн, хэрэглэгч, сэтгэгдлээр хайх..."
-              className="w-full min-h-11 rounded-[10px] border border-[#F2A8C8]/60 bg-[#FFF8FB] pl-10 pr-4 text-sm outline-none placeholder:text-[#8B6B78]/70 focus:border-[#FFB7D5] focus:bg-white"
+              className="w-full min-h-11 rounded-[10px] border border-border-light/60 bg-sand pl-10 pr-4 text-sm outline-none placeholder:text-text-subtle/70 focus:border-dusty-rose focus:bg-white"
             />
-            <svg className="absolute left-4 top-3.5 text-[#8B6B78]" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+            <svg className="absolute left-4 top-3.5 text-text-subtle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
               <circle cx="11" cy="11" r="8" />
               <path d="M21 21l-4.35-4.35" />
             </svg>
@@ -153,17 +153,17 @@ export default function AdminReviewsPage() {
 
         {loading ? (
           <div className="grid gap-3 p-4">
-            {[1, 2, 3].map(item => <div key={item} className="h-36 animate-pulse bg-[#FFF8FB]" />)}
+            {[1, 2, 3].map(item => <div key={item} className="h-36 animate-pulse bg-sand" />)}
           </div>
         ) : filteredReviews.length === 0 ? (
-          <div className="p-10 text-center text-sm text-[#8B6B78]">Сэтгэгдэл алга байна.</div>
+          <div className="p-10 text-center text-sm text-text-subtle">Сэтгэгдэл алга байна.</div>
         ) : (
           <div className="divide-y divide-[#F2A8C8]/30">
             {paginatedReviews.map(review => (
               <article key={review.id} className="p-4 md:p-5">
                 <div className="grid gap-4 md:grid-cols-[120px_1fr_auto] md:items-start">
                   <div className="grid grid-cols-4 gap-2 md:block">
-                    <div className="relative col-span-1 aspect-square overflow-hidden rounded-[8px] bg-[#FFF0F6] md:w-[104px]">
+                    <div className="relative col-span-1 aspect-square overflow-hidden rounded-[8px] bg-blush md:w-[104px]">
                       {review.imageUrls[0] ? (
                         <Image src={review.imageUrls[0]} alt={review.productName} fill className="object-cover" sizes="120px" />
                       ) : (
@@ -171,7 +171,7 @@ export default function AdminReviewsPage() {
                       )}
                     </div>
                     {review.imageUrls.slice(1, 4).map(imageUrl => (
-                      <div key={imageUrl} className="relative aspect-square overflow-hidden rounded-[8px] bg-[#FFF0F6] md:hidden">
+                      <div key={imageUrl} className="relative aspect-square overflow-hidden rounded-[8px] bg-blush md:hidden">
                         <Image src={imageUrl} alt={review.productName} fill className="object-cover" sizes="80px" />
                       </div>
                     ))}
@@ -182,7 +182,7 @@ export default function AdminReviewsPage() {
                       <span className={`rounded-[999px] border px-3 py-1.5 text-[10px] font-semibold tracking-[0.08em] uppercase ${
                         review.approved
                           ? 'border-green-200 bg-green-50 text-green-700'
-                          : 'border-[#F2A8C8]/60 bg-[#FFF0F6] text-[#8B6B78]'
+                          : 'border-border-light/60 bg-blush text-text-subtle'
                       }`}>
                         {review.approved ? 'Нийтлэгдсэн' : 'Нуусан'}
                       </span>
@@ -190,20 +190,20 @@ export default function AdminReviewsPage() {
                         {'★'.repeat(review.rating)}
                         <span className="text-[#E9D7DF]">{'★'.repeat(5 - review.rating)}</span>
                       </span>
-                      <span className="text-xs text-[#8B6B78]">{formatDate(review.createdAt)}</span>
+                      <span className="text-xs text-text-subtle">{formatDate(review.createdAt)}</span>
                     </div>
 
-                    <Link href={`/shop/${review.productSlug}`} target="_blank" className="mt-3 block font-medium text-[#1A1A1A] hover:underline">
+                    <Link href={`/shop/${review.productSlug}`} target="_blank" className="mt-3 block font-medium text-charcoal hover:underline">
                       {review.productName}
                     </Link>
-                    <p className="mt-1 text-sm text-[#8B6B78]">{review.userName} · {review.userEmail}</p>
+                    <p className="mt-1 text-sm text-text-subtle">{review.userName} · {review.userEmail}</p>
                     <p className="mt-3 text-sm leading-7 text-[#4A3A40]">{review.content}</p>
                   </div>
 
                   <div className="flex gap-2 md:flex-col">
                     <button
                       onClick={() => handleToggle(review)}
-                      className="min-h-11 flex-1 rounded-[10px] border border-[#F2C7D8] bg-white px-4 text-xs font-semibold text-[#1A1A1A] transition-colors hover:bg-[#FFF0F6] md:flex-none"
+                      className="min-h-11 flex-1 rounded-[10px] border border-border-light bg-white px-4 text-xs font-semibold text-charcoal transition-colors hover:bg-blush md:flex-none"
                     >
                       {review.approved ? 'Нуух' : 'Нийтлэх'}
                     </button>

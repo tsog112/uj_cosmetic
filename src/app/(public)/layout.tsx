@@ -12,7 +12,11 @@ export default function PublicLayout({
     <>
       <AnnouncementBar />
       <Header />
-      <main className="flex-1 min-h-screen pb-20 md:pb-0">{children}</main>
+      {/* No pt here – hero section is full-bleed behind transparent header.
+          Non-hero pages like /shop and /about set their own top padding. */}
+      <main className="flex-1 min-h-screen pb-20 md:pb-0">
+        {children}
+      </main>
       <Footer />
       <ChatAssistant />
     </>

@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 const highlights = [
   'Солонгосоос сонгосон',
   'Гоо сайхан',
-  'Эрүүл мэндийн нэмэлт',
+  'Wellness нэмэлт',
   'Монголд хүргэлттэй',
 ];
 
@@ -31,12 +31,13 @@ const features = [
 
 export default function HeroSection() {
   return (
-    <section className="relative w-full overflow-hidden bg-sand" id="hero">
-      <div className="relative min-h-[92svh]">
+    <section className="relative w-full overflow-hidden bg-charcoal" id="hero">
+      {/* ── Full-bleed hero image ──────────────────────────────────────────── */}
+      <div className="relative min-h-[75svh] md:min-h-[85svh]">
         <motion.div
-          initial={{ scale: 1.06, opacity: 0 }}
+          initial={{ scale: 1.05, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 1.8, ease: 'easeOut' as const }}
+          transition={{ duration: 2, ease: [0.16, 1, 0.3, 1] }}
           className="absolute inset-0"
         >
           <Image
@@ -47,66 +48,88 @@ export default function HeroSection() {
             priority
             sizes="100vw"
           />
-          {/* gradient overlays */}
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(36,24,32,0.76)_0%,rgba(91,46,67,0.54)_45%,rgba(217,148,181,0.20)_100%)]" />
-          <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-sand via-sand/72 to-transparent" />
+          {/* Stronger cinematic overlay for readability */}
+          <div className="absolute inset-0 bg-gradient-to-r from-charcoal/85 via-charcoal/55 to-charcoal/20" />
+          <div className="absolute inset-0 bg-gradient-to-t from-charcoal via-transparent to-charcoal/30" />
         </motion.div>
 
-        <div className="relative z-10 min-h-[92svh] max-content flex items-center pb-24 pt-28">
-          <motion.div
-            initial={{ y: 36, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 1, delay: 0.25, ease: 'easeOut' as const }}
-            className="max-w-[760px] text-white"
-          >
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/76">
-              Korean beauty &amp; wellness for Mongolia
-            </p>
-            <h1 className="mt-6 font-serif text-[3.1rem] leading-[1.02] md:text-7xl lg:text-[7.4rem]">
-              Солонгосын арчилгааг илүү ойр
-            </h1>
-            <p className="mt-7 max-w-2xl text-base leading-8 text-white/88 md:text-xl md:leading-9">
-              Өөртөө өдөр бүр тавих жижигхэн анхааралд тань зориулж Солонгосын
-              гоо сайхан, арьс арчилгаа, эрүүл мэндийн нэмэлт бүтээгдэхүүнийг
-              нэг дороос сонгон хүргэнэ.
-            </p>
+        {/* ── Content ─────────────────────────────────────────────────────── */}
+        <div className="relative z-10 flex min-h-[75svh] md:min-h-[85svh] items-end md:items-center pt-[100px]">
+          <div className="max-content w-full pb-16 pt-8 md:pb-28 md:pt-0">
+            <motion.div
+              initial={{ y: 40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 1.1, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              className="max-w-[680px]"
+            >
+              {/* Accent label */}
+              <div className="flex items-center gap-3">
+                <span className="h-px w-8 bg-dusty-rose" />
+                <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-dusty-rose">
+                  Korean Beauty &amp; Wellness
+                </p>
+              </div>
 
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <Link href="/shop" className="btn-premium min-h-12 min-w-[220px] bg-white text-charcoal border-white">
-                Дэлгүүр үзэх
-              </Link>
-              <Link
-                href="/about"
-                className="inline-flex min-h-12 min-w-[200px] items-center justify-center border border-white/45 px-8 text-sm font-semibold text-white transition-colors hover:bg-white hover:text-charcoal"
-              >
-                Бидний сонголт
-              </Link>
-            </div>
+              {/* Main heading — responsive sizes that never break layout */}
+              <h1 className="mt-5 font-serif text-[2.4rem] leading-[1.12] tracking-tight text-white sm:text-5xl md:text-6xl lg:text-[5.2rem]">
+                Солонгосын<br className="md:hidden" /> арчилгааг<br /> илүү ойр
+              </h1>
 
-            <div className="mt-10 flex flex-wrap gap-2">
-              {highlights.map(item => (
-                <span
-                  key={item}
-                  className="border border-white/24 bg-white/10 px-3 py-2 text-[11px] font-medium tracking-[0.08em] backdrop-blur"
+              <p className="mt-6 max-w-lg text-[15px] leading-7 text-white/70 md:mt-7 md:text-base md:leading-8">
+                Арьс арчилгаа, гоо сайхан, эрүүл мэндийн нэмэлт бүтээгдэхүүнийг
+                нэг дороос сонгон Монголд хүргэнэ.
+              </p>
+
+              {/* CTAs */}
+              <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center md:mt-10">
+                <Link
+                  href="/shop"
+                  className="btn-premium min-h-[52px] border-white !bg-white px-10 !text-charcoal hover:!border-dusty-rose hover:!bg-dusty-rose hover:!text-white"
                 >
-                  {item}
-                </span>
-              ))}
-            </div>
-          </motion.div>
+                  Дэлгүүр үзэх
+                </Link>
+                <Link
+                  href="/about"
+                  className="btn-premium-outline !border-white/40 !text-white hover:!bg-white hover:!text-charcoal min-h-[52px] px-8"
+                >
+                  Бидний сонголт
+                </Link>
+              </div>
+
+              {/* Tags */}
+              <div className="mt-8 flex flex-wrap gap-2 md:mt-10">
+                {highlights.map(item => (
+                  <span
+                    key={item}
+                    className="rounded-full border border-white/15 bg-white/8 px-3.5 py-1.5 text-[10px] font-medium tracking-wider text-white/60 backdrop-blur-sm"
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </motion.div>
+          </div>
         </div>
       </div>
 
       {/* ── Feature cards ──────────────────────────────────────────────────── */}
-      <div className="relative z-20 max-content -mt-14 pb-10">
-        <div className="grid gap-3 bg-white/94 p-3 shadow-brand-lg backdrop-blur md:grid-cols-3 md:p-5">
-          {features.map(({ num, title, text }) => (
-            <div key={num} className="border border-border-light bg-sand p-5">
-              <p className="text-[11px] font-semibold tracking-[0.2em] text-rose-gold">{num}</p>
-              <h3 className="mt-3 font-serif text-2xl text-charcoal">{title}</h3>
-              <p className="mt-2 text-sm leading-6 text-text-muted">{text}</p>
-            </div>
-          ))}
+      <div className="relative z-20 bg-sand">
+        <div className="max-content py-[32px] md:py-[48px]">
+          <div className="grid grid-cols-1 gap-[24px] md:grid-cols-3 md:gap-[32px]">
+            {features.map(({ num, title, text }) => (
+              <div key={num} className="rounded-[12px] border border-border-faint bg-white p-6 shadow-brand-sm md:p-8">
+                <div className="flex items-start gap-4">
+                  <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-blush text-[10px] font-bold tracking-[0.18em] text-dusty-rose">
+                    {num}
+                  </span>
+                  <div>
+                    <h3 className="font-serif text-xl leading-tight text-charcoal md:text-[1.65rem]">{title}</h3>
+                    <p className="mt-3 max-w-sm text-sm leading-7 text-text-muted">{text}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </section>

@@ -158,15 +158,15 @@ function AccountContent() {
   return (
     <div className="mx-auto max-w-[1120px] px-4 pb-14 pt-24 sm:px-6 lg:px-10 md:py-20">
       <div className="mb-8 md:mb-12">
-        <p className="text-[11px] tracking-[0.18em] uppercase text-[#8B6B78]">My account</p>
-        <h1 className="mt-2 font-serif text-4xl text-[#1A1A1A] md:text-5xl">Миний бүртгэл</h1>
+        <p className="text-[11px] tracking-[0.18em] uppercase text-text-subtle">My account</p>
+        <h1 className="mt-2 font-serif text-4xl text-charcoal md:text-5xl">Миний бүртгэл</h1>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr] lg:gap-10">
         <aside>
-          <div className="rounded-[14px] border border-[#F2A8C8]/45 bg-white p-5 shadow-[0_10px_30px_rgba(216,148,172,0.08)] lg:sticky lg:top-[120px]">
+          <div className="rounded-2xl border border-border-light/45 bg-white p-5 shadow-[0_10px_30px_rgba(216,148,172,0.08)] lg:sticky lg:top-[120px]">
             <div className="flex items-center gap-4 lg:block lg:text-center">
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-[18px] border border-[#F2A8C8]/50 bg-[#FFF0F6] text-3xl font-medium text-[#1A1A1A] lg:mx-auto lg:mb-4">
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-[18px] border border-border-light/50 bg-blush text-3xl font-medium text-charcoal lg:mx-auto lg:mb-4">
                 {user.photoURL ? (
                   <img src={user.photoURL} alt={user.displayName || 'Profile'} className="h-full w-full object-cover" />
                 ) : (
@@ -174,8 +174,8 @@ function AccountContent() {
                 )}
               </div>
               <div className="min-w-0">
-                <h2 className="truncate text-lg font-medium text-[#1A1A1A]">{user.displayName || 'UJ хэрэглэгч'}</h2>
-                <p className="mt-1 break-all text-sm text-[#8B6B78]">{user.email}</p>
+                <h2 className="truncate text-lg font-medium text-charcoal">{user.displayName || 'UJ хэрэглэгч'}</h2>
+                <p className="mt-1 break-all text-sm text-text-subtle">{user.email}</p>
               </div>
             </div>
 
@@ -185,9 +185,9 @@ function AccountContent() {
                 ['Дуртай', summary.wishlist],
                 ['Сэтгэгдэл', summary.reviews],
               ].map(([label, value]) => (
-                <div key={label} className="rounded-[10px] bg-[#FFF8FB] p-3 text-center">
-                  <p className="text-xl font-semibold text-[#1A1A1A]">{value}</p>
-                  <p className="mt-1 text-[11px] text-[#8B6B78]">{label}</p>
+                <div key={label} className="rounded-[10px] bg-sand p-3 text-center">
+                  <p className="text-xl font-semibold text-charcoal">{value}</p>
+                  <p className="mt-1 text-[11px] text-text-subtle">{label}</p>
                 </div>
               ))}
             </div>
@@ -195,7 +195,7 @@ function AccountContent() {
             {isAdmin && (
               <Link
                 href="/admin"
-                className="mt-5 flex min-h-12 w-full items-center justify-center rounded-[10px] bg-[#241820] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#D994B5]"
+                className="btn-primary mt-5 min-h-12 w-full px-4 text-sm"
               >
                 Админ самбар руу орох
               </Link>
@@ -203,7 +203,7 @@ function AccountContent() {
 
             <button
               onClick={() => signOut()}
-              className="mt-3 w-full min-h-12 rounded-[10px] border border-[#F2C7D8] bg-[#FFF8FB] text-sm font-semibold text-[#241820] transition-colors hover:bg-[#FFF0F6]"
+              className="btn-secondary mt-3 min-h-12 w-full bg-sand text-sm"
             >
               Гарах
             </button>
@@ -211,7 +211,7 @@ function AccountContent() {
         </aside>
 
         <section className="min-w-0">
-          <div className="mb-5 grid grid-cols-3 gap-2 rounded-[12px] bg-[#FFF0F6] p-1">
+          <div className="mb-5 grid grid-cols-3 gap-2 rounded-full bg-blush p-1">
             {[
               { value: 'orders', label: 'Захиалга' },
               { value: 'wishlist', label: 'Дуртай' },
@@ -221,7 +221,7 @@ function AccountContent() {
                 key={tab.value}
                 onClick={() => setActiveTab(tab.value as AccountTab)}
                 className={`min-h-11 rounded-[10px] text-sm font-medium transition-colors ${
-                  activeTab === tab.value ? 'bg-white text-[#1A1A1A] shadow-sm' : 'text-[#8B6B78]'
+                  activeTab === tab.value ? 'bg-white text-charcoal shadow-sm' : 'text-text-subtle'
                 }`}
               >
                 {tab.label}
@@ -231,7 +231,7 @@ function AccountContent() {
 
           {loading ? (
             <div className="space-y-4">
-              {[1, 2].map(item => <div key={item} className="h-40 animate-pulse bg-[#FFF0F6]" />)}
+              {[1, 2].map(item => <div key={item} className="h-40 animate-pulse bg-blush" />)}
             </div>
           ) : (
             <>
@@ -240,17 +240,17 @@ function AccountContent() {
                   {orders.length === 0 ? (
                     <EmptyState title="Захиалга алга байна" href="/shop" label="Дэлгүүр үзэх" />
                   ) : orders.map(order => (
-                    <article key={order.id} className="rounded-[14px] border border-[#F2A8C8]/45 bg-white p-4 md:p-6">
-                      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#F2A8C8]/30 pb-4">
+                    <article key={order.id} className="rounded-2xl border border-border-light/45 bg-white p-4 md:p-6">
+                      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border-light/30 pb-4">
                         <div>
-                          <p className="text-xs uppercase tracking-[0.14em] text-[#8B6B78]">Захиалгын дугаар</p>
-                          <p className="mt-1 font-medium text-[#1A1A1A]">#{order.id.slice(0, 10)}</p>
+                          <p className="text-xs uppercase tracking-[0.14em] text-text-subtle">Захиалгын дугаар</p>
+                          <p className="mt-1 font-medium text-charcoal">#{order.id.slice(0, 10)}</p>
                         </div>
                         <div>
-                          <p className="text-xs uppercase tracking-[0.14em] text-[#8B6B78]">Огноо</p>
-                          <p className="mt-1 text-sm text-[#1A1A1A]">{formatDate(order.createdAt)}</p>
+                          <p className="text-xs uppercase tracking-[0.14em] text-text-subtle">Огноо</p>
+                          <p className="mt-1 text-sm text-charcoal">{formatDate(order.createdAt)}</p>
                         </div>
-                        <span className="rounded-[999px] border border-[#F2A8C8]/60 bg-[#FFF8FB] px-3 py-1.5 text-xs font-semibold text-[#8B6B78]">
+                        <span className="rounded-[999px] border border-border-light/60 bg-sand px-3 py-1.5 text-xs font-semibold text-text-subtle">
                           {statusLabels[order.status] || order.status}
                         </span>
                         <p className="font-medium text-[#D86FA0]">{formatPrice(order.total || 0)}</p>
@@ -261,15 +261,15 @@ function AccountContent() {
                           const itemImage = item.imageUrl || item.productImage || item.image || '/placeholder-product.svg';
 
                           return (
-                            <div key={`${order.id}-${idx}`} className="grid grid-cols-[54px_1fr_auto] items-center gap-3 rounded-[12px] bg-[#FFF8FB] p-2 text-sm">
-                              <div className="relative aspect-square overflow-hidden rounded-[10px] bg-[#FFF0F6]">
+                            <div key={`${order.id}-${idx}`} className="grid grid-cols-[54px_1fr_auto] items-center gap-3 rounded-full bg-sand p-2 text-sm">
+                              <div className="relative aspect-square overflow-hidden rounded-[10px] bg-blush">
                                 <Image src={itemImage} alt={itemName} fill className="object-cover" sizes="54px" />
                               </div>
                               <div className="min-w-0">
-                                <p className="truncate font-medium text-[#1A1A1A]">{itemName}</p>
-                                <p className="mt-1 text-xs text-[#8B6B78]">× {item.quantity || 1} ширхэг</p>
+                                <p className="truncate font-medium text-charcoal">{itemName}</p>
+                                <p className="mt-1 text-xs text-text-subtle">× {item.quantity || 1} ширхэг</p>
                               </div>
-                              <span className="whitespace-nowrap font-medium text-[#241820]">
+                              <span className="whitespace-nowrap font-medium text-charcoal">
                                 {formatPrice((item.price || 0) * (item.quantity || 1))}
                               </span>
                             </div>
@@ -288,24 +288,24 @@ function AccountContent() {
                       <EmptyState title="Дуртай бүтээгдэхүүн алга байна" href="/shop" label="Бүтээгдэхүүн үзэх" />
                     </div>
                   ) : wishlist.map(item => (
-                    <article key={item.id} className="grid grid-cols-[96px_1fr] gap-4 border border-[#F2A8C8]/45 bg-white p-3">
-                      <Link href={`/shop/${item.productSlug}`} className="relative aspect-square overflow-hidden bg-[#FFF0F6]">
+                    <article key={item.id} className="grid grid-cols-[96px_1fr] gap-4 border border-border-light/45 bg-white p-3">
+                      <Link href={`/shop/${item.productSlug}`} className="relative aspect-square overflow-hidden bg-blush">
                         <Image src={item.productImage} alt={item.productName} fill className="object-cover" sizes="96px" />
                       </Link>
                       <div className="min-w-0">
-                        <Link href={`/shop/${item.productSlug}`} className="line-clamp-2 font-medium text-[#1A1A1A] hover:underline">
+                        <Link href={`/shop/${item.productSlug}`} className="line-clamp-2 font-medium text-charcoal hover:underline">
                           {item.productName}
                         </Link>
                         <p className="mt-2 text-sm font-medium text-[#D86FA0]">
                           {formatPrice(item.salePrice ?? item.price)}
                         </p>
                         <div className="mt-4 flex gap-2">
-                          <Link href={`/shop/${item.productSlug}`} className="flex min-h-10 flex-1 items-center justify-center rounded-[9px] bg-[#241820] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#D994B5]">
+                          <Link href={`/shop/${item.productSlug}`} className="btn-primary min-h-10 flex-1 px-3 text-xs">
                             Шууд авах
                           </Link>
                           <button
                             onClick={() => handleRemoveWishlist(item.productId)}
-                            className="min-h-10 rounded-[9px] border border-[#F2C7D8] px-3 text-xs font-semibold text-[#7E6472] transition-colors hover:bg-[#FFF0F6]"
+                            className="btn-secondary min-h-10 px-3 text-xs text-text-muted"
                           >
                             Хасах
                           </button>
@@ -321,15 +321,15 @@ function AccountContent() {
                   {reviews.length === 0 ? (
                     <EmptyState title="Бичсэн сэтгэгдэл алга байна" href="/shop" label="Бүтээгдэхүүн үзэх" />
                   ) : reviews.map(review => (
-                    <article key={review.id} className="rounded-[14px] border border-[#F2A8C8]/45 bg-white p-4 md:p-5">
+                    <article key={review.id} className="rounded-2xl border border-border-light/45 bg-white p-4 md:p-5">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <Link href={`/shop/${review.productSlug}`} className="font-medium text-[#1A1A1A] hover:underline">
+                          <Link href={`/shop/${review.productSlug}`} className="font-medium text-charcoal hover:underline">
                             {review.productName}
                           </Link>
-                          <p className="mt-1 text-xs text-[#8B6B78]">{formatDate(review.createdAt)}</p>
+                          <p className="mt-1 text-xs text-text-subtle">{formatDate(review.createdAt)}</p>
                         </div>
-                        <span className="rounded-[999px] border border-[#F2A8C8]/50 bg-[#FFF8FB] px-3 py-1.5 text-[11px] font-semibold text-[#8B6B78]">
+                        <span className="rounded-[999px] border border-border-light/50 bg-sand px-3 py-1.5 text-[11px] font-semibold text-text-subtle">
                           {review.approved ? 'Нийтлэгдсэн' : 'Нуусан'}
                         </span>
                       </div>
@@ -352,12 +352,12 @@ function AccountContent() {
                             value={editContent}
                             onChange={(event) => setEditContent(event.target.value)}
                             rows={4}
-                            className="w-full border border-[#F2A8C8]/60 bg-[#FFF8FB] px-4 py-3 text-sm outline-none focus:border-[#FFB7D5]"
+                            className="w-full border border-border-light/60 bg-sand px-4 py-3 text-sm outline-none focus:border-dusty-rose"
                           />
                           {editImageUrls.length > 0 && (
                             <div className="mt-3 grid grid-cols-4 gap-2">
                               {editImageUrls.map(imageUrl => (
-                                <div key={imageUrl} className="relative aspect-square overflow-hidden bg-[#FFF0F6]">
+                                <div key={imageUrl} className="relative aspect-square overflow-hidden bg-blush">
                                   <Image src={imageUrl} alt={review.productName} fill className="object-cover" sizes="100px" />
                                   <button
                                     type="button"
@@ -371,7 +371,7 @@ function AccountContent() {
                               ))}
                             </div>
                           )}
-                          <label className="mt-3 inline-flex min-h-10 cursor-pointer items-center justify-center rounded-[9px] border border-[#F2C7D8] px-4 text-xs font-semibold text-[#7E6472] hover:bg-[#FFF0F6]">
+                          <label className="mt-3 inline-flex min-h-10 cursor-pointer items-center justify-center rounded-[9px] border border-border-light px-4 text-xs font-semibold text-text-muted hover:bg-blush">
                             {editUploading ? 'Зураг оруулж байна...' : 'Зураг нэмэх'}
                             <input
                               type="file"
@@ -386,7 +386,7 @@ function AccountContent() {
                             <button onClick={() => saveReviewEdit(review)} disabled={editUploading} className="min-h-10 rounded-[9px] bg-[#241820] px-4 text-xs font-semibold text-white disabled:opacity-50">
                               Хадгалах
                             </button>
-                            <button onClick={() => setEditingReviewId(null)} className="min-h-10 rounded-[9px] border border-[#F2C7D8] px-4 text-xs font-semibold hover:bg-[#FFF0F6]">
+                            <button onClick={() => setEditingReviewId(null)} className="min-h-10 rounded-[9px] border border-border-light px-4 text-xs font-semibold hover:bg-blush">
                               Болих
                             </button>
                           </div>
@@ -400,14 +400,14 @@ function AccountContent() {
                           {review.imageUrls.length > 0 && (
                             <div className="mt-4 grid grid-cols-4 gap-2">
                               {review.imageUrls.slice(0, 4).map(imageUrl => (
-                                <a key={imageUrl} href={imageUrl} target="_blank" rel="noopener noreferrer" className="relative aspect-square overflow-hidden bg-[#FFF0F6]">
+                                <a key={imageUrl} href={imageUrl} target="_blank" rel="noopener noreferrer" className="relative aspect-square overflow-hidden bg-blush">
                                   <Image src={imageUrl} alt={review.productName} fill className="object-cover" sizes="100px" />
                                 </a>
                               ))}
                             </div>
                           )}
                           <div className="mt-4 flex gap-2">
-                            <button onClick={() => startEditReview(review)} className="min-h-10 rounded-[9px] border border-[#F2C7D8] px-4 text-xs font-semibold hover:bg-[#FFF0F6]">
+                            <button onClick={() => startEditReview(review)} className="min-h-10 rounded-[9px] border border-border-light px-4 text-xs font-semibold hover:bg-blush">
                               Засах
                             </button>
                             <button onClick={() => handleDeleteReview(review.id)} className="min-h-10 rounded-[9px] border border-red-200 bg-red-50 px-4 text-xs font-semibold text-red-700">
@@ -430,9 +430,9 @@ function AccountContent() {
 
 function EmptyState({ title, href, label }: { title: string; href: string; label: string }) {
   return (
-    <div className="rounded-[14px] border border-dashed border-[#F2A8C8]/70 bg-white p-8 text-center">
-      <p className="font-serif text-2xl text-[#1A1A1A]">{title}</p>
-      <Link href={href} className="mt-5 inline-flex min-h-11 items-center justify-center rounded-[10px] border border-[#F2C7D8] px-5 text-sm font-semibold text-[#241820] hover:bg-[#FFF0F6]">
+    <div className="rounded-2xl border border-dashed border-border-light/70 bg-white p-8 text-center">
+      <p className="font-serif text-2xl text-charcoal">{title}</p>
+      <Link href={href} className="mt-5 inline-flex min-h-11 items-center justify-center rounded-[10px] border border-border-light px-5 text-sm font-semibold text-charcoal hover:bg-blush">
         {label}
       </Link>
     </div>

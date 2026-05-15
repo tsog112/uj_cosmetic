@@ -113,7 +113,7 @@ export default function InstagramSection() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6 md:gap-4">
           {slots.map((slot, index) => {
             const hasImage = Boolean(slot?.imageUrl);
-            const baseClass = 'group relative aspect-square overflow-hidden rounded-[12px] border border-white/70 bg-white shadow-brand-md md:rounded-[4px]';
+            const baseClass = 'group relative aspect-square overflow-hidden rounded-[22px] border border-white/70 bg-white shadow-brand-md md:rounded-[18px]';
 
             return slot?.instagramUrl && hasImage ? (
               <a

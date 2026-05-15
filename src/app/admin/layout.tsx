@@ -295,7 +295,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {isDrawerOpen && (
           <div className="fixed inset-0 z-50 lg:hidden">
-            <button className="absolute inset-0 bg-black/20" onClick={() => setIsDrawerOpen(false)} aria-label="Цэс хаах" />
+            <button className="absolute inset-0 bg-black/20 rounded-none cursor-default" onClick={() => setIsDrawerOpen(false)} aria-label="Цэс хаах" />
             <div className="absolute left-0 top-0 h-full w-[min(320px,86vw)] bg-white shadow-2xl flex flex-col">
               <div className="h-20 px-5 border-b border-[#F2A8C8]/40 flex items-center justify-between shrink-0">
                 <Link href="/admin" className="font-serif text-3xl tracking-[0.18em]">UJ</Link>
@@ -369,7 +369,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       <button
                         key={notif.id}
                         onClick={() => handleNotificationClick(notif)}
-                        className={`block w-full text-left px-5 py-4 border-b border-[#F2A8C8]/25 hover:bg-warm-cream ${!notif.isRead ? 'bg-rose-100' : ''}`}
+                        className={`block w-full text-left px-5 py-4 border-b border-[#F2A8C8]/25 hover:bg-warm-cream rounded-none ${!notif.isRead ? 'bg-rose-100' : ''}`}
                       >
                         <p className="text-sm text-[#1A1A1A]">Шинэ захиалга: {notif.customerName || 'Харилцагч'}</p>
                         <p className="text-xs text-[#8B6B78] mt-1">{formatPrice(notif.total || 0)}</p>
