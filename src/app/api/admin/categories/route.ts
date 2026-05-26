@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { listAdminCategories, createAdminCategory } from '@/lib/services/firestoreAdminService';
 
+export const runtime = 'nodejs';
+
 export async function GET() {
   try {
     const categories = await listAdminCategories();

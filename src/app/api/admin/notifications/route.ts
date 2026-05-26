@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebaseAdmin';
 
+export const runtime = 'nodejs';
+
 function parseDate(val: any): Date {
   if (!val) return new Date();
   if (typeof val.toDate === 'function') return val.toDate();
@@ -27,10 +29,9 @@ export async function GET() {
       .limit(10)
       .get();
       
-    // 3. Get low stock products
-    const productsSnap = await db.collection('products')
-      .where('stockQuantity', '<=', 5)
-      .get();
+    // 3. Get products and filter low stock in memory to support older docs that
+    // may use either stockQuantity or stock.
+    const productsSnap = await db.collection('products').get();
 
     const notifications: any[] = [];
 
@@ -66,16 +67,17 @@ export async function GET() {
 
     productsSnap.forEach(doc => {
       const data = doc.data();
-      if (data.stockQuantity > 0 || data.stock === 0) { // include 0 or low stock
+      const stock = Number(data.stockQuantity ?? data.stock ?? 0);
+      if (stock >= 0 && stock <= 5) {
         const date = parseDate(data.updatedAt);
         notifications.push({
           id: `stock-${doc.id}`,
           type: 'stock',
-          title: data.stockQuantity === 0 ? 'Нөөц дууссан' : 'Нөөц дуусаж байна',
-          body: `${data.name_mn || data.name} (${data.stockQuantity}ш үлдсэн)`,
+          title: stock === 0 ? 'Нөөц дууссан' : 'Нөөц дуусаж байна',
+          body: `${data.name_mn || data.name} (${stock}ш үлдсэн)`,
           date: date.toISOString(),
           href: `/admin/products/${doc.id}/edit`,
-          isCritical: data.stockQuantity === 0,
+          isCritical: stock === 0,
         });
       }
     });
@@ -86,7 +88,7 @@ export async function GET() {
     return NextResponse.json({
       notifications: notifications.slice(0, 30), // Return top 30
       pendingCount: pendingSnap.size,
-      lowStockCount: productsSnap.size,
+      lowStockCount: notifications.filter((item) => item.type === 'stock').length,
     });
   } catch (error) {
     console.error('Error fetching notifications:', error);

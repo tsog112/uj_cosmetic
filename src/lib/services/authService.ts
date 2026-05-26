@@ -9,6 +9,23 @@ import {
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, googleProvider, facebookProvider } from '../firebase';
 
+function toAuthError(error: any, fallback: string): Error {
+  const code = error?.code || '';
+  const messages: Record<string, string> = {
+    'auth/operation-not-allowed': 'Email/Password бүртгэл Firebase дээр идэвхгүй байна. Firebase Console > Authentication > Sign-in method хэсгээс Email/Password provider-ийг идэвхжүүлнэ үү.',
+    'auth/email-already-in-use': 'Энэ имэйл хаягаар бүртгэл үүссэн байна. Нэвтрэх хэсгээр орно уу.',
+    'auth/invalid-email': 'Имэйл хаяг буруу байна.',
+    'auth/weak-password': 'Нууц үг дор хаяж 6 тэмдэгттэй байх шаардлагатай.',
+    'auth/user-not-found': 'Энэ имэйлээр бүртгэл олдсонгүй.',
+    'auth/wrong-password': 'Нууц үг буруу байна.',
+    'auth/invalid-credential': 'Имэйл эсвэл нууц үг буруу байна.',
+    'auth/popup-closed-by-user': 'Нэвтрэх цонх хаагдсан байна. Дахин оролдоно уу.',
+  };
+
+  const message = messages[code] || error?.message || fallback;
+  return Object.assign(new Error(message), { code });
+}
+
 export const authService = {
   /**
    * Login with Email and Password
@@ -24,7 +41,7 @@ export const authService = {
       return result.user;
     } catch (error) {
       console.error("Email login failed:", error);
-      throw error;
+      throw toAuthError(error, 'Нэвтрэхэд алдаа гарлаа.');
     }
   },
 
@@ -45,7 +62,7 @@ export const authService = {
       return result.user;
     } catch (error) {
       console.error("Email registration failed:", error);
-      throw error;
+      throw toAuthError(error, 'Бүртгэл үүсгэхэд алдаа гарлаа.');
     }
   },
 
@@ -64,7 +81,7 @@ export const authService = {
       return result.user;
     } catch (error) {
       console.error("Google login failed:", error);
-      throw error;
+      throw toAuthError(error, 'Google-ээр нэвтрэхэд алдаа гарлаа.');
     }
   },
 
@@ -83,7 +100,7 @@ export const authService = {
       return result.user;
     } catch (error) {
       console.error("Facebook login failed:", error);
-      throw error;
+      throw toAuthError(error, 'Facebook-ээр нэвтрэхэд алдаа гарлаа.');
     }
   },
 
