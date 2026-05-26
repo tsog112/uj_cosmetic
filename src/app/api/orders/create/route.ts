@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getAdminDb } from '@/lib/firebaseAdmin';
+import { sendNewOrderNotificationToAdmin } from '@/lib/emailService';
 import type { Order, OrderStatus } from '@/types';
 
 type IncomingOrder = Omit<Order, 'id' | 'createdAt' | 'updatedAt'>;
+
+export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,6 +17,8 @@ export async function POST(req: NextRequest) {
 
     const db = getAdminDb();
     const orderRef = db.collection('orders').doc();
+
+    let savedOrder: any = null;
 
     await db.runTransaction(async (transaction) => {
       let calculatedSubtotal = 0;
@@ -57,9 +62,19 @@ export async function POST(req: NextRequest) {
       const total = Math.round(calculatedSubtotal) + shippingCost;
       const now = Timestamp.now();
 
+      const persistedOrder = {
+        ...orderData,
+        id: orderRef.id,
+        subtotal: Math.round(calculatedSubtotal),
+        shippingCost,
+        total,
+        items: verifiedItems,
+        status: 'pending' as OrderStatus,
+      };
+
       transaction.set(orderRef, {
         ...orderData,
-        subtotal: Math.round(calculatedSubtotal),
+        subtotal: persistedOrder.subtotal,
         shippingCost,
         total,
         items: verifiedItems,
@@ -67,7 +82,27 @@ export async function POST(req: NextRequest) {
         createdAt: now,
         updatedAt: now,
       });
+
+      savedOrder = persistedOrder;
     });
+
+    if (savedOrder) {
+      try {
+        const settingsDoc = await db.collection('settings').doc('main').get();
+        const settings = settingsDoc.data() || {};
+        await sendNewOrderNotificationToAdmin({
+          id: orderRef.id,
+          customerName: savedOrder.customerName,
+          phone: savedOrder.phone,
+          address: savedOrder.address,
+          items: savedOrder.items,
+          total: savedOrder.total,
+          bankAccount: `${settings.bankName || 'Банк'}: ${settings.bankAccount || '-'}`,
+        });
+      } catch (emailError: any) {
+        console.error('Admin new order email failed:', emailError?.message || emailError);
+      }
+    }
 
     return NextResponse.json({ id: orderRef.id });
   } catch (error: any) {

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sendOrderStatusNotification } from '@/lib/emailService'
 
-const EMAIL_STATUSES = ['confirmed', 'shipped', 'delivered', 'cancelled'] as const
+export const runtime = 'nodejs'
+
+const EMAIL_STATUSES = ['confirmed', 'processing', 'shipped', 'delivered', 'cancelled'] as const
 type EmailStatus = typeof EMAIL_STATUSES[number]
 
 export async function POST(

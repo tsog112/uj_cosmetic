@@ -313,7 +313,7 @@ export async function sendOrderStatusNotification(
     total?: number
     shippingCost?: number
     address?: string
-    status: 'confirmed' | 'shipped' | 'delivered' | 'cancelled'
+    status: 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
   }
 ) {
   const code = orderCode(order.id)
@@ -323,6 +323,12 @@ export async function sendOrderStatusNotification(
       eyebrow: 'Захиалга баталгаажлаа',
       title: `Баярлалаа, ${order.customerName}`,
       subtitle: `Таны #${code} дугаартай захиалга баталгаажлаа. Бид захиалгыг бэлтгээд хүргэлтийн явцыг дахин мэдэгдэнэ.`,
+    },
+    processing: {
+      subject: `Захиалгыг бэлтгэж байна #${code}`,
+      eyebrow: 'Бүтээгдэхүүн бэлтгэж байна',
+      title: 'Таны захиалга бэлтгэгдэж эхэллээ',
+      subtitle: `${order.customerName}, таны #${code} дугаартай захиалгын төлбөр баталгаажиж, бүтээгдэхүүнийг хүргэлтэд өгөхөөр бэлтгэж байна.`,
     },
     shipped: {
       subject: `Захиалга хүргэлтэнд гарлаа #${code}`,

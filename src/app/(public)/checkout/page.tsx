@@ -122,12 +122,6 @@ function CheckoutContent() {
         bankTransferRef: '',
       });
 
-      void fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: orderId, customerName: form.customerName, customerEmail: form.email, phone: form.phone, address: form.address, total: cartTotal, paymentMethod }),
-      }).catch(() => {});
-
       if (paymentMethod === 'qpay') {
         const response = await fetch('/api/qpay/invoice', {
           method: 'POST',

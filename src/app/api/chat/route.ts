@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getSiteSettings } from '@/lib/services/firestoreService';
 import { getAdminDb } from '@/lib/firebaseAdmin';
 import { toPublicProduct } from '@/lib/publicDto';
-import { DEFAULT_SETTINGS, formatPrice } from '@/types';
+import { DEFAULT_SETTINGS, formatPrice, type SiteSettings } from '@/types';
 
 type ChatMessage = {
   role: 'assistant' | 'user';
@@ -10,6 +9,8 @@ type ChatMessage = {
 };
 
 const DEFAULT_GEMINI_MODEL = 'gemini-flash-latest';
+
+export const runtime = 'nodejs';
 
 const brandInstructions = `
 Чи бол UJ Cosmetic-ийн арьс арчилгаа, гоо сайхан, эрүүл мэндийн нэмэлт бүтээгдэхүүний борлуулалтын зөвлөх.
@@ -34,14 +35,20 @@ function hasAny(text: string, words: string[]) {
   return words.some(word => text.includes(word));
 }
 
+async function getAdminSiteSettings(): Promise<SiteSettings> {
+  const doc = await getAdminDb().collection('settings').doc('main').get();
+  if (!doc.exists) return DEFAULT_SETTINGS;
+  return { ...DEFAULT_SETTINGS, ...doc.data() } as SiteSettings;
+}
+
 function productLine(product: any) {
   const name = cleanText(product.name_mn || product.name_en || product.slug);
   const price = formatPrice(Number(product.salePrice ?? product.price ?? 0));
   const stock = product.inStock === false ? 'дууссан' : 'бэлэн';
   const category = cleanText(product.category);
-  const description = cleanText(product.description_mn).slice(0, 260);
-  const ingredients = cleanText(product.ingredients).slice(0, 180);
-  const howToUse = cleanText(product.howToUse).slice(0, 220);
+  const description = cleanText(product.description_mn).slice(0, 140);
+  const ingredients = cleanText(product.ingredients).slice(0, 100);
+  const howToUse = cleanText(product.howToUse).slice(0, 120);
 
   return [
     `- ${name}`,
@@ -55,13 +62,14 @@ function productLine(product: any) {
 }
 
 async function getChatData() {
+  const db = getAdminDb();
   const publicProducts = async () => {
-    const snap = await getAdminDb().collection('products').where('published', '==', true).get();
+    const snap = await db.collection('products').where('published', '==', true).get();
     return snap.docs.map((doc) => toPublicProduct(doc.id, doc.data()));
   };
 
   const [settingsResult, productsResult] = await Promise.allSettled([
-    getSiteSettings(),
+    getAdminSiteSettings(),
     publicProducts(),
   ]);
 
@@ -73,11 +81,68 @@ async function getChatData() {
   return { settings, products };
 }
 
+function hasSkinRecommendationIntent(question: string) {
+  const text = question.toLowerCase();
+  return hasAny(text, [
+    'арьс', 'ars', 'arisan', 'skin',
+    'батга', 'батгатай', 'acne',
+    'хуурай', 'тослог', 'эмзэг', 'улай',
+    'сэвх', 'нөсөө', 'толбо', 'хар батга',
+    'бүтээгдэхүүн санал', 'тохирох бүтээгдэхүүн', 'санал болго',
+  ]);
+}
+
+function productScoreForSkinQuestion(product: any, question: string) {
+  const text = `${product.name_mn || ''} ${product.name_en || ''} ${product.category || ''} ${product.description_mn || ''} ${product.ingredients || ''}`.toLowerCase();
+  const q = question.toLowerCase();
+  let score = product.featured ? 3 : 0;
+
+  if (product.inStock !== false) score += 2;
+  if (hasAny(text, ['serum', 'toner', 'cream', 'cleanser', 'sunscreen', 'mask', 'peel'])) score += 1;
+
+  const pairs: Array<[string[], string[]]> = [
+    [['батга', 'acne', 'тослог'], ['acne', 'tea tree', 'centella', 'cica', 'salicylic', 'bha', 'carbon', 'cleanser']],
+    [['хуурай', 'чийг', 'dry'], ['hyaluronic', 'moisture', 'cream', 'toner', 'snail', 'ceramide', 'hydrating']],
+    [['нөсөө', 'толбо', 'сэвх', 'bright'], ['vitamin', 'niacinamide', 'bright', 'glow', 'peel', 'serum']],
+    [['эмзэг', 'улай', 'sensitive'], ['cica', 'centella', 'calming', 'soothing', 'cream', 'toner']],
+    [['нар', 'sunscreen', 'spf'], ['sunscreen', 'sun', 'spf']],
+  ];
+
+  for (const [triggers, matches] of pairs) {
+    if (hasAny(q, triggers) && hasAny(text, matches)) score += 4;
+  }
+
+  return score;
+}
+
+function buildSkinRecommendationFallback(question: string, products: any[]) {
+  const available = products
+    .filter((product) => product.inStock !== false)
+    .map((product) => ({ product, score: productScoreForSkinQuestion(product, question) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 4)
+    .map((item) => item.product);
+
+  if (!available.length) {
+    return 'Арьсанд тохирох бүтээгдэхүүн санал болгохын тулд таны арьсны төрөл болон гол асуудал хэрэгтэй байна. Жишээ нь: хуурай, тослог, эмзэг, батгатай, нөсөө толботой гэх мэтээр бичвэл илүү оновчтой зөвлөе.';
+  }
+
+  const productList = available
+    .map((product) => {
+      const name = product.name_mn || product.name_en || product.slug;
+      const price = formatPrice(Number(product.salePrice ?? product.price ?? 0));
+      return `- ${name} (${price})`;
+    })
+    .join('\n');
+
+  return `Таны асуултад үндэслээд эхлээд дараах бүтээгдэхүүнүүдийг харж болно:\n\n${productList}\n\nИлүү яг таг санал болгохын тулд арьсны төрөл (хуурай/тослог/холимог/эмзэг) болон гол асуудлаа (батга, нөсөө толбо, хуурайшилт, улайлт гэх мэт) бичээрэй.`;
+}
+
 function buildContext(settings: typeof DEFAULT_SETTINGS, products: any[]) {
   const featuredProducts = products
     .filter(product => product.inStock !== false)
     .sort((a, b) => Number(b.featured) - Number(a.featured))
-    .slice(0, 20);
+    .slice(0, 12);
 
   const productContext = featuredProducts.length
     ? featuredProducts.map(productLine).join('\n')
@@ -199,7 +264,7 @@ export async function POST(request: Request) {
         generationConfig: {
           temperature: 0.28,
           topP: 0.85,
-          maxOutputTokens: 1024,
+          maxOutputTokens: 2048,
         },
       }),
     });
@@ -222,6 +287,12 @@ export async function POST(request: Request) {
 
     if (!text || finishReason === 'MAX_TOKENS' || isIncompleteText(text)) {
       console.error('Gemini returned incomplete response:', { finishReason, text });
+      if (hasSkinRecommendationIntent(latestQuestion)) {
+        return NextResponse.json({
+          text: buildSkinRecommendationFallback(latestQuestion, products),
+          source: 'firebase-skin-fallback',
+        });
+      }
       return NextResponse.json({
         text: 'AI зөвлөхөөс бүрэн хариу ирсэнгүй. Гэхдээ би танд тусалж чадна: захиалга, хүргэлт, төлбөр, админтай холбогдох эсвэл бүтээгдэхүүний нэрээ бичээрэй. Арьс арчилгааны зөвлөгөө авах бол арьсны төрөл, гол асуудлаа хамт бичвэл илүү оновчтой санал болгоно.',
         source: 'fallback',

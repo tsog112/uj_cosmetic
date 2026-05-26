@@ -1,15 +1,20 @@
 import { NextResponse } from 'next/server'
 import { sendNewOrderNotificationToAdmin } from '@/lib/emailService'
-import { getSiteSettings } from '@/lib/services/firestoreService'
+import { getAdminDb } from '@/lib/firebaseAdmin'
+
+export const runtime = 'nodejs'
 
 export async function POST(request: Request) {
   try {
-    const orderData = await request.json()
+    const body = await request.json()
+    const db = getAdminDb()
+    const orderSnap = body.id ? await db.collection('orders').doc(body.id).get() : null
+    const orderData = orderSnap?.exists ? { id: orderSnap.id, ...orderSnap.data() } : body
     console.log('Order API called with:', orderData.id)
 
     let settings: { bankName?: string; bankAccount?: string } | null = null
     try {
-      settings = await getSiteSettings()
+      settings = (await db.collection('settings').doc('main').get()).data() || {}
     } catch (e) {
       console.error('getSiteSettings failed:', e)
       settings = { bankName: '', bankAccount: '' }

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Edit3, LogOut, MessageCircle, Package, Shield, Star, Trash2 } from 'lucide-react';
+import { CheckCircle2, CircleDollarSign, ClipboardCheck, Edit3, Home, LogOut, MessageCircle, Package, PackageCheck, PackageOpen, Shield, Star, Trash2, Truck } from 'lucide-react';
 import AuthGuard from '@/components/ui/AuthGuard';
 import ReviewForm from '@/components/ui/ReviewForm';
 import { useAuth } from '@/context/AuthContext';
@@ -28,6 +28,124 @@ const statusLabels: Record<string, string> = {
   DELIVERED: 'Хүргэгдсэн',
   CANCELLED: 'Цуцлагдсан',
 };
+
+const trackingSteps = [
+  {
+    status: 'pending',
+    title: 'Төлбөр шалгаж байна',
+    description: 'Админ төлбөр болон захиалгын мэдээллийг баталгаажуулна.',
+    Icon: CircleDollarSign,
+  },
+  {
+    status: 'confirmed',
+    title: 'Төлбөр баталгаажсан',
+    description: 'Захиалга баталгаажиж, бүтээгдэхүүн бэлтгэх дараалалд орлоо.',
+    Icon: ClipboardCheck,
+  },
+  {
+    status: 'processing',
+    title: 'Бүтээгдэхүүн бэлдэж байна',
+    description: 'Агуулах дээр бүтээгдэхүүнийг шалгаж, савлаж байна.',
+    Icon: PackageOpen,
+  },
+  {
+    status: 'shipped',
+    title: 'Хүргэлтэд гарсан',
+    description: 'Захиалга хүргэлтийн компанид шилжиж, замдаа явж байна.',
+    Icon: Truck,
+  },
+  {
+    status: 'delivered',
+    title: 'Хүргэгдсэн',
+    description: 'Захиалга амжилттай хүргэгдлээ. Баярлалаа.',
+    Icon: Home,
+  },
+];
+
+const statusOrder = trackingSteps.map((step) => step.status);
+
+function normalizeStatus(status: string) {
+  return String(status || 'pending').toLowerCase();
+}
+
+function OrderTracking({ status }: { status: string }) {
+  const normalized = normalizeStatus(status);
+  const isCancelled = normalized === 'cancelled';
+  const activeIndex = isCancelled ? 0 : Math.max(0, statusOrder.indexOf(normalized));
+  const progress = isCancelled ? 100 : (activeIndex / (trackingSteps.length - 1)) * 100;
+  const currentStep = isCancelled
+    ? {
+        title: 'Захиалга цуцлагдсан',
+        description: 'Энэ захиалгын үйл явц зогссон байна. Дэлгэрэнгүй мэдээллийг админаас лавлаарай.',
+      }
+    : trackingSteps[activeIndex];
+
+  return (
+    <div className="mt-4 overflow-hidden rounded-[20px] bg-[var(--color-brand-bg)]">
+      <div className="relative h-28 overflow-hidden bg-[#fdf3f7]">
+        <div className="absolute inset-x-4 bottom-4 h-1.5 rounded-full bg-white" />
+        <motion.div
+          className="absolute bottom-4 left-4 h-1.5 rounded-full bg-[var(--color-brand-accent)]"
+          initial={false}
+          animate={{ width: `calc((100% - 2rem) * ${progress / 100})` }}
+          transition={{ type: 'spring', stiffness: 90, damping: 18 }}
+        />
+        <motion.div
+          className="absolute left-5 top-7 flex items-end gap-2"
+          animate={{ y: [0, -3, 0] }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <div className="relative h-12 w-8">
+            <div className="absolute left-2 top-0 h-5 w-5 rounded-full bg-[#f2b7ca]" />
+            <div className="absolute bottom-0 left-1 h-8 w-6 rounded-t-full bg-[var(--color-brand-accent)]" />
+          </div>
+          <div className="grid gap-1">
+            <motion.div className="h-5 w-7 rounded-[6px] bg-white shadow-sm" animate={{ x: activeIndex >= 2 ? [0, 6, 0] : 0 }} transition={{ duration: 1.4, repeat: Infinity }} />
+            <div className="h-4 w-9 rounded-[5px] bg-[#f5c8d8]" />
+          </div>
+        </motion.div>
+        <motion.div
+          className="absolute bottom-7 flex items-end"
+          initial={false}
+          animate={{ left: `calc(1.25rem + (100% - 7.5rem) * ${progress / 100})` }}
+          transition={{ type: 'spring', stiffness: 80, damping: 18 }}
+        >
+          <div className="relative h-11 w-20">
+            <div className="absolute bottom-3 left-2 h-4 w-12 rounded-full bg-[var(--color-brand-text)]" />
+            <div className="absolute bottom-5 left-9 h-5 w-7 rounded-t-full bg-[var(--color-brand-accent)]" />
+            <div className="absolute bottom-0 left-3 h-4 w-4 rounded-full border-4 border-[var(--color-brand-text)] bg-white" />
+            <div className="absolute bottom-0 left-14 h-4 w-4 rounded-full border-4 border-[var(--color-brand-text)] bg-white" />
+            <motion.div className="absolute bottom-8 left-2 h-4 w-5 rounded-[5px] bg-white shadow-sm" animate={{ rotate: activeIndex >= 3 ? [0, -6, 0] : 0 }} transition={{ duration: 1, repeat: Infinity }} />
+          </div>
+        </motion.div>
+        <div className="absolute right-5 top-5 flex h-12 w-12 items-center justify-center rounded-full bg-white text-[var(--color-brand-accent)] shadow-sm">
+          {isCancelled ? <Trash2 size={22} /> : <PackageCheck size={23} />}
+        </div>
+      </div>
+      <div className="p-4">
+        <p className="text-[13px] font-extrabold text-[var(--color-text-dark)]">{currentStep.title}</p>
+        <p className="mt-1 text-[11px] font-bold leading-5 text-[var(--color-text-medium)]">{currentStep.description}</p>
+        {!isCancelled && (
+          <div className="mt-4 grid grid-cols-5 gap-1">
+            {trackingSteps.map((step, index) => {
+              const Icon = step.Icon;
+              const done = index <= activeIndex;
+              const current = index === activeIndex;
+              return (
+                <div key={step.status} className="min-w-0 text-center">
+                  <div className={`mx-auto flex h-9 w-9 items-center justify-center rounded-full ${done ? 'bg-[var(--color-brand-accent)] text-white' : 'bg-white text-[var(--color-text-medium)]'}`}>
+                    {done && !current ? <CheckCircle2 size={17} /> : <Icon size={17} />}
+                  </div>
+                  <p className={`mt-1 line-clamp-2 text-[9px] font-extrabold leading-3 ${done ? 'text-[var(--color-text-dark)]' : 'text-[var(--color-text-medium)]'}`}>{step.title}</p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function toDate(value: any) {
   if (!value) return null;
@@ -177,6 +295,7 @@ function AccountContent() {
                       );
                     })}
                   </div>
+                  <OrderTracking status={order.status} />
                 </article>
               )) : <EmptyState title="Захиалга алга байна" href="/shop" label="Дэлгүүр үзэх" />}
             </section>
