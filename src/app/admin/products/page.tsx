@@ -1,173 +1,77 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { db } from '@/lib/firebase';
-import { collection, query, getDocs, doc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { formatPrice } from '@/types';
-import ProductForm from '@/components/admin/ProductForm';
-import Pagination, { paginate } from '@/components/admin/Pagination';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { AlertTriangle, Check, Edit2, Loader2, PackageOpen, Plus, Search, Sparkles, X, SlidersHorizontal, ChevronDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import AdminPageHeader from '@/components/admin/AdminPageHeader';
+import AdminEmptyState from '@/components/admin/AdminEmptyState';
+import Pagination from '@/components/admin/Pagination';
+import { useToast } from '@/components/admin/Toast';
+import { ADMIN_ALL_FILTER_VALUE, LOW_STOCK_THRESHOLD } from '@/lib/constants/admin';
+import { useAdminCategories, useAdminProducts } from '@/lib/hooks/useAdmin';
+import { formatMNT } from '@/lib/utils/format';
+
+function parseImages(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter(Boolean) as string[];
+  if (typeof value !== 'string') return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+}
 
 export default function AdminProductsPage() {
-  const [products, setProducts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<any | null>(null);
-
-  // Bulk Actions
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>(ADMIN_ALL_FILTER_VALUE);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  
-  // Quick Edit
-  const [quickEditId, setQuickEditId] = useState<string | null>(null);
-  const [quickEditData, setQuickEditData] = useState<any>({});
-  
-  const [now, setNow] = useState(new Date().getTime());
+  const [editingStockId, setEditingStockId] = useState('');
+  const [stockDraft, setStockDraft] = useState('');
+  const [savingStockId, setSavingStockId] = useState('');
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkStocks, setBulkStocks] = useState<Record<string, string>>({});
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const longPressRef = useRef<number | null>(null);
+  const [searchTimeoutRef] = useState(() => ({ current: null as NodeJS.Timeout | null }));
+  const [page, setPage] = useState(1);
+  const { showToast } = useToast();
+  const { data: categories } = useAdminCategories();
+  const { data: productsData, isLoading, mutate } = useAdminProducts({
+    search: debouncedSearch,
+    category: selectedCategory !== ADMIN_ALL_FILTER_VALUE ? selectedCategory : undefined,
+    page,
+    limit: 20,
+  });
 
+  // Reset page when search or category changes
   useEffect(() => {
-    fetchProducts();
-    const interval = setInterval(() => setNow(new Date().getTime()), 60000);
-    return () => clearInterval(interval);
-  }, []);
+    setPage(1);
+  }, [debouncedSearch, selectedCategory]);
 
-  const fetchProducts = async () => {
-    setLoading(true);
-    try {
-      if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-        const q = query(collection(db, "products"));
-        const snap = await getDocs(q);
-        const fetched: any[] = [];
-        snap.forEach(doc => {
-          fetched.push({ _id: doc.id, ...doc.data() });
-        });
-        fetched.sort((a, b) => {
-           const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
-           const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
-           return timeB - timeA;
-        });
-        setProducts(fetched);
-      } else {
-        const mockProds = JSON.parse(localStorage.getItem('mock_products') || '[]');
-        setProducts(mockProds.reverse());
-      }
-    } catch (error) {
-      console.error("Error fetching products:", error);
-    } finally {
-      setLoading(false);
-    }
+  const products = productsData?.products || [];
+  const allSelected = products.length > 0 && products.every((product: any) => selectedIds.has(product.id));
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setSearch(value);
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = setTimeout(() => setDebouncedSearch(value), 300);
   };
 
-  const handleOpenForm = (product: any = null) => {
-    setEditingProduct(product);
-    setIsModalOpen(true);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Энэ барааг бүр мөсөн устгах уу?')) return;
-    try {
-      if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-        await deleteDoc(doc(db, "products", id));
-      } else {
-        const mockProds = JSON.parse(localStorage.getItem('mock_products') || '[]');
-        localStorage.setItem('mock_products', JSON.stringify(mockProds.filter((p:any) => p.id !== id && p._id !== id)));
-      }
-      setProducts(prev => prev.filter(p => p.id !== id && p._id !== id));
-      setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n; });
-    } catch (error) {
-      console.error(error);
-      alert('Устгаж чадсангүй');
-    }
-  };
-
-  const updateProductField = async (id: string, updates: any) => {
-    try {
-      if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-        await updateDoc(doc(db, "products", id), updates);
-      } else {
-        const mockProds = JSON.parse(localStorage.getItem('mock_products') || '[]');
-        const updated = mockProds.map((p:any) => (p.id === id || p._id === id) ? {...p, ...updates} : p);
-        localStorage.setItem('mock_products', JSON.stringify(updated));
-      }
-      setProducts(prev => prev.map(p => (p.id === id || p._id === id) ? {...p, ...updates} : p));
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const handleBulkAction = async (action: 'outOfStock' | 'publish' | 'hide' | 'delete') => {
-    if (selectedIds.size === 0) return;
-    
-    if (action === 'delete') {
-      if (!confirm(`${selectedIds.size} барааг бүр мөсөн устгах уу?`)) return;
-    }
-
-    try {
-      for (const id of selectedIds) {
-        if (action === 'delete') {
-          if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-            await deleteDoc(doc(db, "products", id));
-          }
-        } else {
-          let updates: any = {};
-          if (action === 'outOfStock') {
-            updates.inStock = false;
-            updates.stockQuantity = 0;
-          }
-          if (action === 'publish') updates.published = true;
-          if (action === 'hide') updates.published = false;
-          
-          if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-            await updateDoc(doc(db, "products", id), updates);
-          }
-        }
-      }
-
-      if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-        let mockProds = JSON.parse(localStorage.getItem('mock_products') || '[]');
-        if (action === 'delete') {
-          mockProds = mockProds.filter((p:any) => !selectedIds.has(p.id) && !selectedIds.has(p._id));
-        } else {
-          mockProds = mockProds.map((p:any) => {
-            if (selectedIds.has(p.id) || selectedIds.has(p._id)) {
-              if (action === 'outOfStock') {
-                p.inStock = false;
-                p.stockQuantity = 0;
-              }
-              if (action === 'publish') p.published = true;
-              if (action === 'hide') p.published = false;
-            }
-            return p;
-          });
-        }
-        localStorage.setItem('mock_products', JSON.stringify(mockProds));
-      }
-      
+  const toggleSelectAll = () => {
+    if (allSelected) {
       setSelectedIds(new Set());
-      fetchProducts();
-    } catch (e) {
-      console.error(e);
-      alert('Үйлдэл амжилтгүй');
+      return;
     }
-  };
-
-  const handleFormSuccess = () => {
-    setIsModalOpen(false);
-    fetchProducts();
-  };
-
-  const getSaleCountdown = (endDateStr: string) => {
-    const end = new Date(endDateStr).getTime();
-    if (end < now) return "Хугацаа дууссан";
-    const diff = end - now;
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-    if (days > 0) return `${days}х ${hours}ц үлдлээ`;
-    return `${hours}ц үлдлээ`;
+    setSelectedIds(new Set(products.map((product: any) => product.id)));
   };
 
   const toggleSelect = (id: string) => {
-    setSelectedIds(prev => {
+    setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -175,300 +79,326 @@ export default function AdminProductsPage() {
     });
   };
 
-  const openQuickEdit = (p: any, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setQuickEditId(p._id || p.id);
-    setQuickEditData({
-      price: p.price,
-      inStock: p.inStock !== false,
-      featured: p.featured || false,
-      published: p.published !== false
-    });
-  };
-
-  const saveQuickEdit = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const p = products.find(prod => (prod._id === id || prod.id === id));
-    if (!p) return;
-    
-    const updates: any = {};
-    if (quickEditData.price !== p.price) updates.price = Number(quickEditData.price);
-    if (quickEditData.inStock !== (p.inStock !== false)) updates.inStock = quickEditData.inStock;
-    if (quickEditData.featured !== (p.featured || false)) updates.featured = quickEditData.featured;
-    if (quickEditData.published !== (p.published !== false)) updates.published = quickEditData.published;
-    
-    if (Object.keys(updates).length > 0) {
-      await updateProductField(id, updates);
-    }
-    setQuickEditId(null);
-  };
-
-  const productSummary = useMemo(() => {
-    const outOfStock = products.filter(product => Number(product.stockQuantity ?? product.stock ?? (product.inStock === false ? 0 : 999)) <= 0 || product.inStock === false).length;
-    const hidden = products.filter(product => product.published === false).length;
-    const lowStock = products.filter(product => {
-      const stockQuantity = Number(product.stockQuantity ?? product.stock ?? (product.inStock === false ? 0 : 999));
-      return stockQuantity > 0 && stockQuantity <= 5;
-    }).length;
-
-    return { total: products.length, outOfStock, hidden, lowStock };
-  }, [products]);
-
-  const filteredProducts = useMemo(() => {
-    const term = search.toLowerCase().trim();
-    if (!term) return products;
-    return products.filter(product =>
-      (product.name_mn || '').toLowerCase().includes(term) ||
-      (product.name_en || '').toLowerCase().includes(term) ||
-      (product.category || '').toLowerCase().includes(term) ||
-      (product.slug || '').toLowerCase().includes(term)
+  const handleToggleVisibility = async (id: string, currentVisible: boolean) => {
+    const nextVisible = !currentVisible;
+    mutate(
+      (prev: any) =>
+        prev
+          ? { ...prev, products: prev.products.map((product: any) => (product.id === id ? { ...product, isVisible: nextVisible } : product)) }
+          : prev,
+      false,
     );
-  }, [products, search]);
+    try {
+      await fetch(`/api/admin/products/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isVisible: nextVisible }),
+      });
+      mutate();
+    } catch {
+      mutate();
+    }
+  };
 
-  useEffect(() => {
-    setPage(1);
-  }, [search]);
+  const startStockEdit = (id: string, stock: number) => {
+    setEditingStockId(id);
+    setStockDraft(String(stock));
+  };
 
-  const pageSize = 12;
-  const paginatedProducts = useMemo(() => paginate(filteredProducts, page, pageSize), [filteredProducts, page]);
+  const updateStock = async (id: string, stock: number) => {
+    const previous = products.find((product: any) => product.id === id)?.stock || 0;
+    setSavingStockId(id);
+    mutate(
+      (prev: any) =>
+        prev
+          ? { ...prev, products: prev.products.map((product: any) => (product.id === id ? { ...product, stock } : product)) }
+          : prev,
+      false,
+    );
+    try {
+      const response = await fetch(`/api/admin/products/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stock }),
+      });
+      if (!response.ok) throw new Error();
+      mutate();
+      navigator.vibrate?.(8);
+      showToast('Нөөц шинэчлэгдлээ ✓');
+    } catch {
+      mutate(
+        (prev: any) =>
+          prev
+            ? { ...prev, products: prev.products.map((product: any) => (product.id === id ? { ...product, stock: previous } : product)) }
+            : prev,
+        false,
+      );
+      showToast('Нөөц шинэчлэхэд алдаа гарлаа', 'error');
+    } finally {
+      setSavingStockId('');
+      setEditingStockId('');
+    }
+  };
+
+  const enterBulkMode = () => {
+    setBulkStocks(Object.fromEntries(products.map((product: any) => [product.id, String(product.stock || 0)])));
+    setBulkMode(true);
+    navigator.vibrate?.(12);
+  };
+
+  const saveBulkStock = async () => {
+    const changed = products.filter((product: any) => String(product.stock || 0) !== String(bulkStocks[product.id] ?? product.stock));
+    setSavingStockId('bulk');
+    try {
+      await Promise.all(
+        changed.map((product: any) =>
+          fetch(`/api/admin/products/${product.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ stock: Math.max(0, Number(bulkStocks[product.id] || 0)) }),
+          }),
+        ),
+      );
+      mutate();
+      setBulkMode(false);
+      showToast('Нөөцүүд хадгалагдлаа ✓');
+    } catch {
+      mutate();
+      showToast('Bulk нөөц хадгалахад алдаа гарлаа', 'error');
+    } finally {
+      setSavingStockId('');
+    }
+  };
+
+  const categoryLabel = useMemo(() => {
+    if (selectedCategory === ADMIN_ALL_FILTER_VALUE) return 'Бүгд';
+    return categories?.find((category: any) => category.id === selectedCategory)?.name || '';
+  }, [categories, selectedCategory]);
 
   return (
-    <div className="space-y-4 md:space-y-8 pb-24">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-[10px] tracking-[0.1em] uppercase text-text-subtle">Барааны удирдлага</p>
-          <h2 className="truncate text-[22px] md:text-3xl font-semibold mt-1 text-charcoal">Бүтээгдэхүүн</h2>
-        </div>
-        <button 
-          onClick={() => handleOpenForm()}
-          className="btn-primary min-h-11 shrink-0 px-4 text-sm shadow-brand-sm md:px-5"
-        >
-          <span className="hidden sm:inline">Бараа нэмэх</span>
-          <span className="sm:hidden text-lg leading-none">+</span>
-        </button>
-      </div>
+    <div className="space-y-4 p-4 pb-[104px]">
+      <AdminPageHeader
+        eyebrow="Барааны удирдлага"
+        title="Бүтээгдэхүүн"
+        action={
+          <div className="flex shrink-0 gap-2">
+            <Link
+              href="/admin/products/promote"
+              className="flex h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-accent)] px-4 text-[12px] font-extrabold text-white"
+            >
+              <Sparkles size={15} /> Promote
+            </Link>
+            <Link
+              href="/admin/products/new"
+              className="hidden h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-text)] px-4 text-[12px] font-extrabold text-white sm:flex"
+            >
+              <Plus size={15} /> Бараа нэмэх
+            </Link>
+          </div>
+        }
+      />
 
-      <div className="md:hidden grid grid-cols-4 gap-2">
-        <div className="metric-card px-3 py-3">
-          <p className="text-[10px] text-text-subtle">Нийт</p>
-          <p className="mt-1 text-xl font-semibold">{productSummary.total}</p>
-        </div>
-        <div className="metric-card border-status-pending-border bg-status-pending-bg px-3 py-3">
-          <p className="text-[10px] text-status-pending-text">Бага</p>
-          <p className="mt-1 text-xl font-semibold">{productSummary.lowStock}</p>
-        </div>
-        <div className="metric-card border-status-cancelled-border bg-status-cancelled-bg px-3 py-3">
-          <p className="text-[10px] text-status-cancelled-text">Дууссан</p>
-          <p className="mt-1 text-xl font-semibold">{productSummary.outOfStock}</p>
-        </div>
-        <div className="metric-card bg-blush px-3 py-3">
-          <p className="text-[10px] text-text-subtle">Нуусан</p>
-          <p className="mt-1 text-xl font-semibold">{productSummary.hidden}</p>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center py-32">
-          <div className="w-8 h-8 border border-charcoal border-t-transparent rounded-full animate-spin"/>
-        </div>
-      ) : products.length === 0 ? (
-        <div className="bg-white border border-border-light/40 p-12 md:p-20 text-center shadow-[0_10px_30px_rgba(26,26,26,0.03)]">
-          <p className="font-serif text-xl text-text-subtle mb-6">Бүтээгдэхүүн олдсонгүй.</p>
-          <button onClick={() => handleOpenForm()} className="text-xs tracking-[0.14em] uppercase border-b border-dusty-rose pb-1">Эхний барааг нэмэх</button>
-        </div>
-      ) : (
-        <>
-        <div className="surface-card p-4">
-          <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
-          <div className="relative">
+      <section className="rounded-[24px] bg-white p-3 shadow-[var(--shadow-mobile-card)]">
+        <div className="flex items-center gap-2">
+          <div className="relative min-w-0 flex-1">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-brand-muted)]" />
             <input
+              type="text"
+              placeholder="Бүтээгдэхүүн хайх..."
               value={search}
-              onChange={event => setSearch(event.target.value)}
-              placeholder="Бүтээгдэхүүний нэр, ангилал, slug-аар хайх..."
-              className="field-control min-h-11 pl-10 pr-4 text-sm placeholder:text-text-subtle/70"
+              onChange={handleSearchChange}
+              className="h-11 w-full rounded-full bg-[var(--color-brand-bg)] pl-10 pr-4 text-[13px] font-semibold outline-none focus:ring-2 focus:ring-[#f3b8cf]"
             />
-            <svg className="absolute left-4 top-3.5 text-text-subtle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-              <circle cx="11" cy="11" r="8" />
-              <path d="M21 21l-4.35-4.35" />
-            </svg>
           </div>
-          <label className="btn-secondary min-h-11 cursor-pointer gap-3 px-4 text-sm">
-            <input
-              type="checkbox"
-              className="h-4 w-4 accent-[#D994B5]"
-              checked={filteredProducts.length > 0 && selectedIds.size === filteredProducts.length}
-              onChange={(e) => {
-                if (e.target.checked) setSelectedIds(new Set(filteredProducts.map(p => p._id || p.id)));
-                else setSelectedIds(new Set());
-              }}
-            />
-            Бүгдийг сонгох
-          </label>
-          </div>
+          <button
+            onClick={() => setIsFilterOpen((prev) => !prev)}
+            className="flex h-11 shrink-0 items-center justify-center gap-2 rounded-full px-4 transition-all"
+            style={{
+              background: isFilterOpen ? 'var(--color-brand-accent)' : 'var(--color-brand-bg)',
+              border: isFilterOpen ? '1px solid var(--color-brand-accent)' : '1px solid #f8dbe8',
+              color: isFilterOpen ? '#FFFFFF' : 'var(--color-brand-text)',
+            }}
+          >
+            <SlidersHorizontal size={16} strokeWidth={2.5} />
+          </button>
         </div>
-        <div className="grid grid-cols-1 justify-center gap-4 sm:grid-cols-2 xl:grid-cols-4 md:justify-start md:gap-6">
-          {paginatedProducts.map(p => {
-            const docId = p._id || p.id;
-            const stockQuantity = Number(p.stockQuantity ?? p.stock ?? (p.inStock === false ? 0 : 999));
-            const inStock = stockQuantity > 0 && p.inStock !== false;
-            
-            let isSaleActive = !!p.salePrice;
-            if (isSaleActive && p.saleEndDate) {
-              const end = new Date(p.saleEndDate).getTime();
-              if (end < now) isSaleActive = false;
-            }
 
-            return (
-            <div key={docId} className={`surface-card relative flex min-h-full flex-col overflow-hidden transition-all duration-300 ${selectedIds.has(docId) ? 'border-dusty-rose' : ''}`}>
-              
-              {/* Checkbox */}
-              <div className="absolute top-3 right-3 z-10">
-                <input 
-                  type="checkbox" 
-                  checked={selectedIds.has(docId)}
-                  onChange={() => toggleSelect(docId)}
-                  className="w-5 h-5 rounded-[6px] accent-[#FFB7D5] cursor-pointer"
-                />
-              </div>
-
-              {/* Hover Quick Edit Overlay */}
-              <div className={`absolute inset-0 z-20 bg-white/95 backdrop-blur-sm p-5 flex flex-col transition-opacity duration-300 ${quickEditId === docId ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-                <h4 className="text-lg font-semibold text-charcoal mb-5 border-b border-border-light/40 pb-3">Хурдан засах</h4>
-                <div className="space-y-6 flex-1">
-                  <div>
-                    <label className="editorial-label block mb-2">Үнэ (₮)</label>
-                    <input 
-                      type="number"
-                      value={quickEditData.price}
-                      onChange={e => setQuickEditData({...quickEditData, price: e.target.value})}
-                      className="w-full p-3 bg-sand border border-border-light/60 text-sm focus:outline-none focus:border-dusty-rose"
-                    />
-                  </div>
-                  <label className="flex items-center justify-between cursor-pointer">
-                    <span className="font-sans text-sm text-charcoal">Нөөцтэй</span>
-                    <input type="checkbox" checked={quickEditData.inStock} onChange={e => setQuickEditData({...quickEditData, inStock: e.target.checked})} className="w-4 h-4 text-charcoal border-border rounded-none" />
-                  </label>
-                  <label className="flex items-center justify-between cursor-pointer">
-                    <span className="font-sans text-sm text-charcoal">Онцлох</span>
-                    <input type="checkbox" checked={quickEditData.featured} onChange={e => setQuickEditData({...quickEditData, featured: e.target.checked})} className="w-4 h-4 text-charcoal border-border rounded-none" />
-                  </label>
-                  <label className="flex items-center justify-between cursor-pointer">
-                    <span className="font-sans text-sm text-charcoal">Нийтлэгдсэн</span>
-                    <input type="checkbox" checked={quickEditData.published} onChange={e => setQuickEditData({...quickEditData, published: e.target.checked})} className="w-4 h-4 text-charcoal border-border rounded-none" />
-                  </label>
-                </div>
-                <div className="flex gap-3 mt-6">
-                  <button onClick={(e) => {e.stopPropagation(); setQuickEditId(null);}} className="btn-secondary min-h-11 flex-1 text-sm">Цуцлах</button>
-                  <button onClick={(e) => saveQuickEdit(docId, e)} className="btn-primary min-h-11 flex-1 text-sm">Хадгалах</button>
-                </div>
-              </div>
-
-              <div className="relative aspect-square overflow-hidden border-b border-border-light/40 bg-white cursor-pointer" onClick={() => handleOpenForm(p)}>
-                {p.images?.[0] ? (
-                  <img src={p.images[0]} alt={p.name_mn} className="h-full w-full object-cover transition-transform duration-700 ease-out-expo group-hover:scale-105" />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center editorial-label text-neutral-400">
-                    Зураггүй
-                  </div>
-                )}
-                
-                {/* Status Badges Overlay */}
-                <div className="absolute top-3 left-3 flex flex-col gap-2 items-start pointer-events-none">
-                  {isSaleActive && (
-                    <span className="rounded-[7px] bg-[#1A1A1A] text-white text-[9px] tracking-[0.12em] uppercase px-2 py-1">
-                      ХЯМДРАЛ
-                    </span>
-                  )}
-                  {!p.published && (
-                    <span className="rounded-[7px] bg-[#1A1A1A]/80 backdrop-blur-md text-white text-[9px] tracking-[0.12em] uppercase px-2 py-1">
-                      Нууцлагдсан
-                    </span>
-                  )}
-                  <span className={`status-badge bg-white/90 px-2 py-1 text-[9px] uppercase tracking-[0.08em] ${stockQuantity === 0 ? 'border-status-cancelled-border text-status-cancelled-text' : stockQuantity <= 5 ? 'border-status-pending-border text-status-pending-text' : 'border-border-light/50 text-charcoal'}`}>
-                    Нөөц: {stockQuantity}
-                  </span>
-                </div>
-
-                {isSaleActive && p.saleEndDate && (
-                  <div className="absolute bottom-0 left-0 right-0 bg-[#E8D5D0]/90 backdrop-blur-md text-charcoal editorial-label text-center py-2 pointer-events-none">
-                    {getSaleCountdown(p.saleEndDate)}
-                  </div>
-                )}
-              </div>
-              
-              <div className="p-4 md:p-5 flex-1 flex flex-col group cursor-pointer" onClick={() => handleOpenForm(p)}>
-                <div className="flex justify-between items-start mb-2">
-                  <p className="text-[10px] tracking-[0.1em] uppercase text-text-subtle">{p.category || 'Ангилалгүй'}</p>
-                  <button onClick={(e) => openQuickEdit(p, e)} className="text-neutral-400 hover:text-charcoal transition-colors">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                  </button>
-                </div>
-                
-                <h3 className="text-[15px] font-semibold text-charcoal leading-snug mb-4 flex-1">{p.name_mn}</h3>
-                
-                <div className="flex items-center gap-3 mb-6">
-                  <p className="font-sans text-sm font-medium tracking-wide text-charcoal">
-                    {formatPrice(isSaleActive ? p.salePrice : p.price)}
+        <AnimatePresence>
+          {isFilterOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              className="overflow-hidden"
+            >
+              <div className="mt-3 rounded-[20px] p-4 bg-[var(--color-brand-bg)] border border-[#f8dbe8]">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-brand-muted)]">
+                    Ангиллаар шүүх
                   </p>
-                  {isSaleActive && (
-                    <p className="font-sans text-xs text-neutral-400 line-through">{formatPrice(p.price)}</p>
-                  )}
+                  <label className="flex items-center gap-2 text-[11px] font-extrabold text-[var(--color-brand-text)]">
+                    <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} className="h-4 w-4 rounded accent-[var(--color-brand-accent)]" />
+                    Бүгдийг сонгох
+                  </label>
                 </div>
-                
-                <div className="mt-auto border-t border-border-light/35 pt-4 flex items-center justify-between" onClick={e => e.stopPropagation()}>
-                  <span className={`text-[10px] tracking-[0.1em] uppercase ${inStock ? 'text-charcoal' : 'text-status-cancelled-text'}`}>
-                    {inStock ? 'Боломжтой' : 'Дууссан'}
-                  </span>
-                  <label className="relative inline-flex items-center cursor-pointer">
+                <div className="mobile-chip-grid">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCategory(ADMIN_ALL_FILTER_VALUE)}
+                    className={`mobile-chip ${selectedCategory === ADMIN_ALL_FILTER_VALUE ? 'bg-[var(--color-brand-accent)] text-white' : 'bg-white border border-[#f8dbe8] text-[var(--color-brand-text)] hover:bg-[#f8dbe8]/30'}`}
+                  >
+                    Бүгд
+                  </button>
+                  {categories?.map((category: any) => (
+                    <button
+                      key={category.id}
+                      type="button"
+                      onClick={() => setSelectedCategory(category.id)}
+                      className={`mobile-chip ${selectedCategory === category.id ? 'bg-[var(--color-brand-accent)] text-white' : 'bg-white border border-[#f8dbe8] text-[var(--color-brand-text)] hover:bg-[#f8dbe8]/30'}`}
+                    >
+                      {category.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </section>
+
+      {!isLoading && products.some((product: any) => product.stock > 0 && product.stock < LOW_STOCK_THRESHOLD) && (
+        <div className="flex gap-3 rounded-[22px] bg-[var(--status-warning-bg)] p-4 text-[var(--status-warning)]">
+          <AlertTriangle size={20} className="mt-0.5 shrink-0" />
+          <p className="text-[13px] font-bold leading-6">5-аас бага нөөцтэй бараа байна. Дуусахаас өмнө татан авалтаа шалгаарай.</p>
+        </div>
+      )}
+
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        {isLoading ? (
+          Array.from({ length: 8 }).map((_, index) => <div key={index} className="h-72 rounded-[22px] animate-shimmer" />)
+        ) : products.length ? (
+          products.map((product: any) => {
+            const image = parseImages(product.images)[0] || '/placeholder-product.svg';
+            const isLowStock = product.stock <= LOW_STOCK_THRESHOLD && product.stock > 0;
+            const isOutOfStock = product.stock === 0;
+            return (
+              <article key={product.id} className="overflow-hidden rounded-[22px] bg-white shadow-[var(--shadow-mobile-card)]">
+                <div
+                  className="relative aspect-[4/5] bg-[var(--color-brand-secondary)]"
+                  onPointerDown={() => {
+                    longPressRef.current = window.setTimeout(enterBulkMode, 500);
+                  }}
+                  onPointerUp={() => {
+                    if (longPressRef.current) window.clearTimeout(longPressRef.current);
+                  }}
+                  onPointerLeave={() => {
+                    if (longPressRef.current) window.clearTimeout(longPressRef.current);
+                  }}
+                >
+                  <Image src={image} alt={product.name} fill className="object-cover" sizes="(max-width: 768px) 50vw, 25vw" />
+                  {bulkMode ? (
+                    <input
+                      value={bulkStocks[product.id] ?? product.stock}
+                      onChange={(event) => setBulkStocks((prev) => ({ ...prev, [product.id]: event.target.value }))}
+                      className="absolute left-2 top-2 h-9 w-20 rounded-md bg-white/95 px-2 text-center text-[12px] font-extrabold text-[var(--color-brand-text)] outline-none ring-2 ring-[var(--color-brand-accent)]"
+                      inputMode="numeric"
+                    />
+                  ) : editingStockId === product.id ? (
+                    <div className="absolute left-2 top-2 flex items-center gap-1 rounded-md bg-white/95 p-1">
+                      <input
+                        autoFocus
+                        value={stockDraft}
+                        onChange={(event) => setStockDraft(event.target.value)}
+                        className="h-8 w-14 rounded bg-[var(--color-brand-bg)] px-1 text-center text-[12px] font-extrabold outline-none"
+                        inputMode="numeric"
+                        disabled={savingStockId === product.id}
+                      />
+                      <button type="button" onClick={() => updateStock(product.id, Math.max(0, Number(stockDraft || 0)))} className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--status-success-bg)] text-[var(--status-success)]" aria-label="Нөөц хадгалах">
+                        {savingStockId === product.id ? <Loader2 size={13} className="animate-spin" /> : <Check size={14} />}
+                      </button>
+                      <button type="button" onClick={() => setEditingStockId('')} className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-brand-bg)] text-[var(--color-brand-muted)]" aria-label="Болих">
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button type="button" role="button" aria-label="Нөөц засах" onClick={() => startStockEdit(product.id, product.stock)} className="absolute left-2 top-2 rounded-md bg-white/95 px-2 py-1 text-[9px] font-extrabold text-[var(--color-brand-text)]">
+                      НӨӨЦ: {product.stock}
+                    </button>
+                  )}
+                  <label className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-md bg-white/95">
                     <input
                       type="checkbox"
-                      checked={inStock}
-                      onChange={() => updateProductField(docId, {
-                        inStock: !inStock,
-                        stockQuantity: !inStock ? Math.max(stockQuantity, 1) : 0
-                      })}
-                      className="sr-only peer"
+                      checked={selectedIds.has(product.id)}
+                      onChange={() => toggleSelect(product.id)}
+                      className="h-4 w-4 rounded accent-[var(--color-brand-accent)]"
                     />
-                    <div className="w-9 h-5 bg-[#E9DDE2] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border-light/60 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#1A1A1A]"></div>
                   </label>
                 </div>
-              </div>
-            </div>
-          )})}
-        </div>
-        <Pagination page={page} totalItems={filteredProducts.length} pageSize={pageSize} onPageChange={setPage} />
-        </>
+                <div className="p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="truncate text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--color-brand-muted)]">
+                      {product.category?.name || 'Ангилалгүй'}
+                    </p>
+                    <Link href={`/admin/products/${product.id}/edit`} className="shrink-0 text-[var(--color-brand-muted)]" aria-label="Засах">
+                      <Edit2 size={14} />
+                    </Link>
+                  </div>
+                  <h2 className="mt-1 min-h-[34px] text-[13px] font-extrabold leading-tight text-[var(--color-brand-text)] line-clamp-2">{product.name}</h2>
+                  <p className="mt-2 text-[14px] font-extrabold text-[var(--color-brand-text)]">{formatMNT(product.salePrice || product.price)}</p>
+                  <p
+                    className={`mt-1 text-[10px] font-extrabold ${isOutOfStock ? 'text-[var(--status-error)]' : isLowStock ? 'text-[var(--status-warning)]' : 'text-[var(--status-success)]'}`}
+                  >
+                    {isOutOfStock ? 'Дууссан' : isLowStock ? 'Нөөц багатай' : 'Боломжтой'}
+                  </p>
+                  <div className="mt-3 flex items-center justify-between gap-2 border-t border-[#f8dbe8] pt-3">
+                    <span className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-[var(--color-brand-muted)]">Боломжтой</span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={product.isVisible}
+                      onClick={() => handleToggleVisibility(product.id, product.isVisible)}
+                      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${product.isVisible ? 'bg-[var(--color-brand-text)]' : 'bg-[#e8d2dc]'}`}
+                      style={{ minHeight: 'unset' }}
+                    >
+                      <span
+                        className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${product.isVisible ? 'left-[22px]' : 'left-0.5'}`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              </article>
+            );
+          })
+        ) : (
+          <div className="col-span-full">
+            <AdminEmptyState icon={PackageOpen} title="Бараа олдсонгүй" body="Хайлт эсвэл ангиллын шүүлтүүрээ өөрчлөөд дахин үзээрэй." />
+          </div>
+        )}
+      </section>
+
+      {!isLoading && productsData?.totalCount > 20 && (
+        <Pagination page={page} totalItems={productsData.totalCount} pageSize={20} onPageChange={setPage} />
       )}
 
-      {/* Bulk Action Bar */}
-      {selectedIds.size > 0 && (
-        <div className="fixed bottom-[62px] md:bottom-0 left-0 md:left-64 right-0 bg-white/95 backdrop-blur-md border-t border-border-light/40 p-4 md:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 md:gap-6 z-40 shadow-[0_-12px_28px_rgba(26,26,26,0.06)]">
-          <div className="flex items-center gap-4">
-            <span className="font-serif italic text-xl text-charcoal">{selectedIds.size}</span>
-            <span className="editorial-label text-charcoal mt-1">Бараа сонгогдсон</span>
-          </div>
-          <div className="flex flex-wrap gap-4">
-            <button onClick={() => handleBulkAction('outOfStock')} className="editorial-label border-b border-transparent hover:border-charcoal pb-1 transition-all text-charcoal">Нөөц дуусгах</button>
-            <button onClick={() => handleBulkAction('publish')} className="editorial-label border-b border-transparent hover:border-charcoal pb-1 transition-all text-charcoal">Нийтлэх</button>
-            <button onClick={() => handleBulkAction('hide')} className="editorial-label border-b border-transparent hover:border-charcoal pb-1 transition-all text-charcoal">Нуух</button>
-            <button onClick={() => handleBulkAction('delete')} className="editorial-label border-b border-transparent hover:border-red-500 pb-1 transition-all text-red-500">Устгах</button>
-          </div>
+      {bulkMode && (
+        <div className="fixed inset-x-4 bottom-[88px] z-50 mx-auto flex max-w-[398px] gap-2 rounded-[22px] bg-white p-3 shadow-[0_18px_40px_rgba(37,21,28,0.18)]">
+          <button onClick={() => { setBulkMode(false); setBulkStocks({}); }} className="h-12 flex-1 rounded-full bg-[var(--color-brand-secondary)] text-sm font-extrabold text-[var(--color-brand-text)]">
+            Болих
+          </button>
+          <button onClick={saveBulkStock} disabled={savingStockId === 'bulk'} className="h-12 flex-1 rounded-full bg-[var(--color-brand-accent)] text-sm font-extrabold text-white disabled:opacity-60">
+            {savingStockId === 'bulk' ? 'Хадгалж...' : 'Хадгалах'}
+          </button>
         </div>
       )}
 
-      {/* Form Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
-          <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]" onClick={() => setIsModalOpen(false)} />
-          <div className="relative z-10 w-full max-w-4xl flex justify-center max-h-full">
-            <ProductForm 
-              initialData={editingProduct} 
-              onCancel={() => setIsModalOpen(false)} 
-              onSuccess={handleFormSuccess} 
-            />
-          </div>
-        </div>
-      )}
+      <Link
+        href="/admin/products/new"
+        className="fixed bottom-[92px] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-brand-accent)] text-white shadow-[0_14px_34px_rgba(228,95,154,0.34)] ring-4 ring-white active:scale-95 sm:hidden"
+        aria-label="Бараа нэмэх"
+      >
+        <Plus size={26} />
+      </Link>
     </div>
   );
 }

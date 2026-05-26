@@ -12,9 +12,9 @@ const pillars = [
 
 export default function AboutSection() {
   return (
-    <section className="overflow-hidden bg-blush py-16 md:py-28 lg:py-32" id="about-section">
+    <section className="overflow-hidden bg-sand py-16 md:py-24 lg:py-28" id="about-section">
       <div className="max-content">
-        <div className="grid grid-cols-1 items-center gap-9 lg:grid-cols-12 lg:gap-16 xl:gap-24">
+        <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-16 xl:gap-24">
 
           {/* ── Text side ─────────────────────────────────────────────────── */}
           <motion.div
@@ -25,7 +25,7 @@ export default function AboutSection() {
             className="lg:col-span-5"
           >
             <span className="editorial-label mb-4 block text-dusty-rose">UJ-ийн тухай</span>
-            <h2 className="font-serif text-4xl leading-tight text-charcoal md:text-6xl">
+            <h2 className="font-serif text-4xl leading-tight text-charcoal md:text-[3.45rem]">
               Гоё харагдахаас гадна өөртөө зөөлөн хандах тухай
             </h2>
 
@@ -67,7 +67,7 @@ export default function AboutSection() {
             transition={{ duration: 1, delay: 0.15, ease: 'easeOut' as const }}
             className="relative lg:col-span-7"
           >
-            <div className="relative aspect-[4/5] overflow-hidden bg-sand md:aspect-[6/5]">
+            <div className="relative aspect-[4/5] overflow-hidden rounded-[14px] bg-sand md:aspect-[6/5]">
               <Image
                 src="/images/brand/about.jpg"
                 alt="UJ Cosmetic-ийн сонгосон Солонгос бүтээгдэхүүн"
@@ -79,7 +79,7 @@ export default function AboutSection() {
             </div>
 
             {/* Floating quote card */}
-            <div className="absolute bottom-5 left-5 right-5 bg-white/94 p-5 text-charcoal shadow-brand-xl backdrop-blur md:bottom-8 md:left-8 md:right-auto md:max-w-sm">
+            <div className="absolute bottom-5 left-5 right-5 rounded-[12px] bg-white/94 p-5 text-charcoal shadow-brand-xl backdrop-blur md:bottom-8 md:left-8 md:right-auto md:max-w-sm">
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-dusty-rose">UJ mood</p>
               <p className="mt-3 font-serif text-2xl leading-snug">
                 Өөртөө анхаарах жижигхэн мөч бүр гоё байг.

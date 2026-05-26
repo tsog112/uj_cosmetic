@@ -10,8 +10,10 @@
     "seed": "npx ts-node --project tsconfig.seed.json src/scripts/seedFirestore.ts"
   },
   "dependencies": {
+    "@prisma/client": "5.22.0",
     "browser-image-compression": "^2.0.2",
     "cloudinary": "^2.10.0",
+    "date-fns": "^4.2.1",
     "firebase": "^12.12.1",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.14.0",
@@ -22,6 +24,7 @@
     "react-firebase-hooks": "^5.1.1",
     "recharts": "^3.8.1",
     "resend": "^6.12.3",
+    "swr": "^2.4.1",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
@@ -32,6 +35,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "firebase-admin": "^13.8.0",
+    "prisma": "5.22.0",
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
     "typescript": "^5"

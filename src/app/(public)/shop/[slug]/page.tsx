@@ -1,54 +1,56 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
+import { Heart, Minus, Plus, ShoppingBag, Sparkles, Star, Truck, Zap } from 'lucide-react';
 import {
-  addToWishlist, getProductBySlug, getProductReviews,
-  getProductsByCategory, getWishlistStatus, incrementProductViews,
+  addToWishlist,
+  getProductBySlug,
+  getProductReviews,
+  getProductsByCategory,
+  getWishlistStatus,
+  incrementProductViews,
   removeFromWishlist,
 } from '@/lib/services/firestoreService';
 import { formatMongolianDate } from '@/lib/format';
 import { formatPrice, getCategoryName, Product, Review } from '@/types';
-import { useCart }    from '@/context/CartContext';
-import { useAuth }    from '@/context/AuthContext';
-import Accordion      from '@/components/ui/Accordion';
-import ProductCard    from '@/components/ui/ProductCard';
-import ReviewForm     from '@/components/ui/ReviewForm';
+import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
+import ReviewForm from '@/components/ui/ReviewForm';
+import ProductCard from '@/components/ui/ProductCard';
 
-const RELATED_LIMIT      = 4;
-const AUTO_SLIDE_MS      = 4200;
-const ADDED_FEEDBACK_MS  = 2000;
+const RELATED_LIMIT = 4;
 
-function StarRating({ rating, total = 5 }: { rating: number; total?: number }) {
+function Stars({ rating }: { rating: number }) {
   return (
-    <p className="whitespace-nowrap text-sm">
-      <span className="text-rose-gold">{'★'.repeat(rating)}</span>
-      <span className="text-border-light">{'★'.repeat(total - rating)}</span>
-    </p>
+    <div className="flex gap-0.5 text-[#E6A0BE]">
+      {Array.from({ length: 5 }).map((_, index) => <Star key={index} size={15} fill={index < rating ? 'currentColor' : 'none'} />)}
+    </div>
   );
 }
 
 export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const slug   = params.slug as string;
+  const slug = params.slug as string;
   const { addToCart, buyNow } = useCart();
-  const { user }              = useAuth();
+  const { user } = useAuth();
 
-  const [product,        setProduct]        = useState<Product | null>(null);
-  const [related,        setRelated]        = useState<Product[]>([]);
-  const [loading,        setLoading]        = useState(true);
-  const [error,          setError]          = useState(false);
-  const [selectedImage,  setSelectedImage]  = useState(0);
-  const [isAdded,        setIsAdded]        = useState(false);
-  const [reviews,        setReviews]        = useState<Review[]>([]);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [related, setRelated] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(0);
+  const [quantity, setQuantity] = useState(1);
+  const [isAdded, setIsAdded] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
-  const [isWishlisted,   setIsWishlisted]   = useState(false);
-  const [wishlistLoading,setWishlistLoading]= useState(false);
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
 
-  /* ── Load product ────────────────────────────────────────────────────── */
   const loadReviews = async (productId: string) => {
     setReviewsLoading(true);
     try {
@@ -62,14 +64,15 @@ export default function ProductDetailPage() {
     setLoading(true);
     setError(false);
     getProductBySlug(slug)
-      .then(async p => {
-        setProduct(p);
+      .then(async (nextProduct) => {
+        setProduct(nextProduct);
         setSelectedImage(0);
-        if (p) {
-          incrementProductViews(p.id).catch(() => {});
-          const related = await getProductsByCategory(p.category);
-          setRelated(related.filter(r => r.id !== p.id).slice(0, RELATED_LIMIT));
-          await loadReviews(p.id);
+        setQuantity(1);
+        if (nextProduct) {
+          incrementProductViews(nextProduct.id).catch(() => {});
+          const relatedProducts = await getProductsByCategory(nextProduct.category);
+          setRelated(relatedProducts.filter((item) => item.id !== nextProduct.id).slice(0, RELATED_LIMIT));
+          await loadReviews(nextProduct.id);
         }
       })
       .catch(() => setError(true))
@@ -77,82 +80,63 @@ export default function ProductDetailPage() {
   }, [slug]);
 
   useEffect(() => {
-    if (!user || !product) { setIsWishlisted(false); return; }
+    if (!user || !product) {
+      setIsWishlisted(false);
+      return;
+    }
     getWishlistStatus(user.uid, product.id).then(setIsWishlisted).catch(() => {});
   }, [user, product]);
 
-  /* ── Auto-slideshow ──────────────────────────────────────────────────── */
-  useEffect(() => {
-    const count = product?.images?.length ?? 0;
-    if (count < 2) return;
-    const timer = window.setInterval(
-      () => setSelectedImage(prev => (prev + 1) % count),
-      AUTO_SLIDE_MS,
-    );
-    return () => window.clearInterval(timer);
-  }, [product?.id, product?.images?.length]);
+  const averageRating = useMemo(() => {
+    if (!reviews.length) return 0;
+    return reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length;
+  }, [reviews]);
 
-  /* ── Loading skeleton ────────────────────────────────────────────────── */
   if (loading) {
     return (
-      <div className="mx-auto max-w-[1400px] px-6 py-12 lg:px-10 md:py-20">
-        <div className="grid animate-pulse grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-16">
-          <div className="aspect-[4/5] bg-blush" />
-          <div>
-            <div className="mb-5 h-4 w-24 bg-blush" />
-            <div className="mb-4 h-8 w-full bg-blush" />
-            <div className="mb-8 h-6 w-32 bg-blush" />
-            <div className="mb-8 h-20 w-full bg-blush" />
-            <div className="h-12 w-full bg-blush" />
-          </div>
-        </div>
-      </div>
+      <main className="space-y-4 px-4 pb-[104px]">
+        <div className="aspect-[4/5] rounded-[28px] animate-shimmer" />
+        <div className="h-44 rounded-[28px] animate-shimmer" />
+      </main>
     );
   }
 
   if (error || !product) {
     return (
-      <div className="mx-auto max-w-[1400px] px-6 py-20 text-center lg:px-10">
-        <h1 className="font-serif text-3xl text-charcoal mb-4">Бүтээгдэхүүн олдсонгүй</h1>
-        <p className="text-text-muted text-sm mb-8">Уучлаарай, энэ бүтээгдэхүүн олдсонгүй.</p>
-        <Link
-          href="/shop"
-          className="inline-flex min-h-11 items-center justify-center border border-border-light bg-white px-5 text-sm font-semibold text-charcoal transition-colors hover:bg-blush"
-        >
-          Дэлгүүр рүү буцах
-        </Link>
-      </div>
+      <main className="px-4 pb-[104px]">
+        <section className="rounded-[30px] bg-white px-6 py-14 text-center shadow-[var(--shadow-mobile-card)]">
+          <h1 className="text-2xl font-extrabold text-[var(--color-brand-text)]">Бүтээгдэхүүн олдсонгүй</h1>
+          <p className="mt-2 text-[13px] text-[var(--color-brand-muted)]">Энэ бүтээгдэхүүн устсан эсвэл түр хаагдсан байна.</p>
+          <Link href="/shop" className="mt-6 inline-flex h-12 items-center rounded-full bg-[var(--color-brand-accent)] px-6 text-sm font-extrabold text-white">Дэлгүүр рүү буцах</Link>
+        </section>
+      </main>
     );
   }
 
-  /* ── Derived values ──────────────────────────────────────────────────── */
-  const name            = product.name_mn ?? 'Нэргүй бараа';
-  const price           = product.price ?? 0;
-  const salePrice       = product.salePrice;
-  const displayPrice    = salePrice ?? price;
-  const rawImages       = product.images ?? [];
-  const images          = rawImages.length > 0 ? rawImages : ['/placeholder-product.svg'];
-  const stockQuantity   = Number(product.stockQuantity ?? (product.inStock === false ? 0 : 999));
-  const inStock         = product.inStock !== false && stockQuantity > 0;
-  const averageRating   = reviews.length
-    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
-    : 0;
+  const images = product.images?.length ? product.images : ['/placeholder-product.svg'];
+  const price = product.price ?? 0;
+  const salePrice = product.salePrice;
+  const displayPrice = salePrice ?? price;
+  const inStock = product.inStock !== false;
+  const purchaseLimit = inStock ? 99 : 0;
 
-  /* ── Handlers ────────────────────────────────────────────────────────── */
   const handleAddToCart = () => {
     if (!inStock) return;
-    addToCart(product);
+    addToCart(product, quantity);
     setIsAdded(true);
-    setTimeout(() => setIsAdded(false), ADDED_FEEDBACK_MS);
+    window.setTimeout(() => setIsAdded(false), 1800);
   };
 
   const handleBuyNow = () => {
     if (!inStock) return;
-    buyNow({ product, quantity: 1 });
+    buyNow({ product, quantity });
   };
 
   const handleWishlist = async () => {
-    if (!user) { router.push('/auth'); return; }
+    if (!user) {
+      router.push('/auth');
+      return;
+    }
     setWishlistLoading(true);
     try {
       if (isWishlisted) {
@@ -168,242 +152,177 @@ export default function ProductDetailPage() {
   };
 
   return (
-    <div>
-      {/* ── Breadcrumb ─────────────────────────────────────────────────── */}
-      <div className="mx-auto max-w-[1400px] px-6 pb-4 pt-8 lg:px-10">
-        <nav className="flex items-center gap-2 text-xs text-text-muted">
-          <Link href="/"     className="transition-colors hover:text-charcoal">Нүүр</Link>
-          <span>/</span>
-          <Link href="/shop" className="transition-colors hover:text-charcoal">Дэлгүүр</Link>
-          <span>/</span>
-          <Link href={`/shop?category=${product.category}`} className="transition-colors hover:text-charcoal">
-            {getCategoryName(product.category)}
-          </Link>
-          <span>/</span>
-          <span className="text-charcoal">{name}</span>
-        </nav>
-      </div>
-
-      {/* ── Product Detail ─────────────────────────────────────────────── */}
-      <div className="mx-auto max-w-[1400px] px-6 py-8 md:py-12 lg:px-10">
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-16">
-
-          {/* Left: gallery */}
-          <div>
-            <div className="relative mb-4 aspect-[4/5] overflow-hidden bg-blush">
-              {images[selectedImage] && (
-                <Image
-                  src={images[selectedImage]}
-                  alt={name}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 1024px) 100vw, 50vw"
-                  priority
-                />
-              )}
-              {!inStock && (
-                <div className="absolute inset-0 flex items-center justify-center bg-charcoal/40">
-                  <span className="bg-charcoal text-white text-sm font-bold px-4 py-2 uppercase tracking-wider">
-                    Дуусжээ
-                  </span>
-                </div>
-              )}
+    <main className="pb-[122px]">
+      <section className="px-4">
+        <div className="relative overflow-hidden rounded-b-[30px] bg-[var(--color-brand-secondary)]">
+          <div className="relative aspect-[4/5]">
+            <Image src={images[selectedImage]} alt={product.name_mn} fill className="object-cover" sizes="100vw" priority />
+            <div
+              className="absolute left-3 top-3 rounded-full px-3 py-1.5 text-[11px] font-bold backdrop-blur"
+              style={{ background: 'rgba(255,255,255,0.92)', color: 'var(--color-primary)' }}
+            >
+              {getCategoryName(product.category)}
             </div>
-
-            {images.length > 1 && (
-              <div className="grid grid-cols-4 gap-3">
-                {images.slice(0, 4).map((img, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setSelectedImage(i)}
-                    className={`relative aspect-square overflow-hidden bg-blush transition-all ${
-                      selectedImage === i
-                        ? 'ring-1 ring-dusty-rose ring-offset-2 ring-offset-sand'
-                        : 'opacity-60 hover:opacity-100'
-                    }`}
-                  >
-                    <Image src={img} alt={`${name} ${i + 1}`} fill className="object-cover" sizes="120px" />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Right: info */}
-          <div className="lg:pt-4">
-            <p className="mb-5 inline-block border border-border px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-text-muted">
-              UJ Cosmetic
-            </p>
-            <h1 className="mb-4 font-serif text-3xl leading-tight text-charcoal md:text-4xl">{name}</h1>
-
-            {/* Price */}
-            <div className="mb-8 flex items-center gap-3">
-              {salePrice ? (
-                <>
-                  <span className="text-2xl font-medium text-dusty-rose">{formatPrice(displayPrice)}</span>
-                  <span className="text-lg text-text-muted line-through">{formatPrice(price)}</span>
-                </>
-              ) : (
-                <span className="text-2xl font-medium text-charcoal">{formatPrice(price)}</span>
-              )}
-            </div>
-
-            <p className="mb-8 max-w-[500px] text-sm leading-relaxed text-text-muted">
-              {product.description_mn}
-            </p>
-
-            {inStock && stockQuantity <= 5 && (
-              <p className="mb-6 text-sm font-medium text-dusty-rose">
-                Нөөц: {stockQuantity} ширхэг үлдлээ
-              </p>
-            )}
-
-            {/* Key ingredients */}
-            <div className="mb-8 border-thin-b pb-8">
-              <p className="mb-2 text-xs uppercase tracking-[0.1em] text-text-muted">Гол найрлага</p>
-              <p className="text-sm text-charcoal">
-                {product.ingredients?.split(',').slice(0, 3).join(', ')}
-              </p>
-            </div>
-
-            {/* CTAs */}
-            <div className="space-y-3">
-              <button
-                onClick={handleAddToCart}
-                disabled={!inStock}
-                id="add-to-cart-button"
-                className={`w-full py-4 text-sm font-semibold transition-all duration-300 ${
-                  !inStock
-                    ? 'cursor-not-allowed bg-blush text-text-muted'
-                    : isAdded
-                      ? 'bg-charcoal text-white'
-                      : 'bg-dusty-rose text-white hover:bg-charcoal'
-                }`}
-              >
-                {!inStock ? 'Дууссан' : isAdded ? 'Сагсанд нэмэгдлээ ✓' : 'Сагсанд хийх'}
-              </button>
-
-              <button
-                onClick={handleBuyNow}
-                disabled={!inStock}
-                className="w-full border border-charcoal bg-charcoal py-4 text-sm font-semibold text-white transition-colors duration-200 hover:border-dusty-rose hover:bg-dusty-rose disabled:cursor-not-allowed disabled:border-blush disabled:bg-blush disabled:text-text-muted"
-              >
-                Шууд авах
-              </button>
-
-              <button
-                onClick={handleWishlist}
-                disabled={wishlistLoading}
-                className={`w-full border border-border-light py-4 text-sm font-semibold transition-colors duration-200 ${
-                  isWishlisted
-                    ? 'bg-blush text-dusty-rose'
-                    : 'bg-white text-charcoal hover:bg-blush'
-                }`}
-              >
-                {isWishlisted ? '♥ Дуртайд хадгалсан' : '♡ Дуртайд хадгалах'}
-              </button>
-            </div>
-
-            <div className="mt-10 border-thin-t">
-              <Accordion title="Хэрхэн хэрэглэх">
-                <p>{product.howToUse}</p>
-              </Accordion>
-              <Accordion title="Найрлага">
-                <p>{product.ingredients}</p>
-              </Accordion>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Reviews ────────────────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1400px] border-thin-t px-6 py-14 md:py-18 lg:px-10">
-        <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="section-label">Review</p>
-            <h2 className="mt-1 font-serif text-3xl text-charcoal md:text-4xl">Хэрэглэгчийн сэтгэгдэл</h2>
-          </div>
-          <div className="text-left md:text-right">
-            <StarRating rating={Math.round(averageRating)} />
-            <p className="mt-1 text-sm text-text-subtle">
-              {reviews.length > 0
-                ? `${averageRating.toFixed(1)} / 5 · ${reviews.length} сэтгэгдэл`
-                : 'Одоогоор сэтгэгдэл байхгүй'}
-            </p>
+            <button
+              onClick={handleWishlist}
+              disabled={wishlistLoading}
+              aria-label={isWishlisted ? 'Хадгалснаас хасах' : 'Хадгалах'}
+              aria-pressed={isWishlisted}
+              className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full backdrop-blur transition-all duration-200"
+              style={{
+                background: isWishlisted ? 'rgba(217,63,85,0.16)' : 'rgba(255,255,255,0.92)',
+                boxShadow: '0 2px 12px rgba(0,0,0,0.10)',
+                color: isWishlisted ? '#D93F55' : 'var(--color-text-dark)',
+                border: isWishlisted ? '1.5px solid rgba(217,63,85,0.30)' : '1.5px solid transparent',
+                animation: isWishlisted ? 'heartPulse 0.4s cubic-bezier(0.34,1.56,0.64,1)' : undefined,
+              }}
+            >
+              <Heart
+                size={20}
+                fill={isWishlisted ? 'currentColor' : 'none'}
+                strokeWidth={isWishlisted ? 0 : 1.8}
+                style={{ transition: 'all 0.2s ease', opacity: wishlistLoading ? 0.5 : 1 }}
+              />
+            </button>
+            {!inStock && <div className="absolute inset-0 flex items-center justify-center bg-black/35 text-sm font-extrabold text-white">Дууссан</div>}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[360px_1fr]">
-          <ReviewForm product={product} onSubmitted={() => loadReviews(product.id)} />
-
-          <div>
-            {reviewsLoading ? (
-              <div className="grid gap-4">
-                {[1, 2].map(i => <div key={i} className="h-40 animate-pulse bg-blush" />)}
-              </div>
-            ) : reviews.length > 0 ? (
-              <div className="grid gap-4">
-                {reviews.map(review => (
-                  <article key={review.id} className="surface-card p-5 md:p-6">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="font-medium text-charcoal">{review.userName || 'UJ хэрэглэгч'}</p>
-                        <p className="mt-1 text-xs text-text-subtle">{formatMongolianDate(review.createdAt)}</p>
-                      </div>
-                      <StarRating rating={review.rating} />
-                    </div>
-                    <p className="mt-4 text-sm leading-7 text-text-muted">{review.content}</p>
-
-                    {review.imageUrls.length > 0 && (
-                      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                        {review.imageUrls.slice(0, 4).map((url, i) => (
-                          <a
-                            key={`${review.id}-${url}`}
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="relative aspect-square overflow-hidden bg-blush"
-                          >
-                            <Image
-                              src={url}
-                              alt={`${review.productName} review ${i + 1}`}
-                              fill
-                              className="object-cover transition-transform duration-500 hover:scale-105"
-                              sizes="(max-width: 640px) 50vw, 140px"
-                            />
-                          </a>
-                        ))}
-                      </div>
-                    )}
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <div className="flex min-h-64 items-center justify-center border border-dashed border-dusty-rose/50 bg-sand p-8 text-center">
-                <div>
-                  <p className="font-serif text-2xl text-charcoal">Анхны сэтгэгдлийг үлдээгээрэй</p>
-                  <p className="mt-2 text-sm text-text-muted">
-                    Бүтээгдэхүүн хэрэглэсэн зураг, мэдрэмжээ бусадтай хуваалцаарай.
-                  </p>
-                </div>
-              </div>
-            )}
+        {images.length > 1 && (
+          <div className="mt-3 flex gap-2 overflow-x-auto hide-scrollbar">
+            {images.map((image, index) => (
+              <button key={`${image}-${index}`} onClick={() => setSelectedImage(index)} className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-[16px] bg-[var(--color-brand-secondary)] ${selectedImage === index ? 'ring-2 ring-[var(--color-brand-accent)] ring-offset-2 ring-offset-[var(--color-brand-bg)]' : 'opacity-70'}`}>
+                <Image src={image} alt={`${product.name_mn} ${index + 1}`} fill className="object-cover" sizes="64px" />
+              </button>
+            ))}
           </div>
+        )}
+      </section>
+
+      <section className="space-y-4 px-4 pt-4">
+        <div className="rounded-[28px] bg-white p-5 shadow-[var(--shadow-mobile-card)]">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--color-brand-accent)]">UJ Cosmetic</p>
+              <h1 className="mt-2 text-[24px] font-extrabold leading-tight text-[var(--color-brand-text)]">{product.name_mn}</h1>
+            </div>
+            <div className="shrink-0 text-right">
+              {salePrice && <p className="text-[12px] font-bold text-[var(--color-brand-muted)] line-through">{formatPrice(price)}</p>}
+              <p className="text-[20px] font-extrabold text-[var(--color-brand-accent)]">{formatPrice(displayPrice)}</p>
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-center justify-between rounded-[18px] bg-[var(--color-brand-bg)] p-3">
+            <div className="flex items-center gap-2">
+              <Stars rating={Math.round(averageRating)} />
+              <span className="text-[12px] font-bold text-[var(--color-brand-muted)]">{reviews.length ? `${averageRating.toFixed(1)} (${reviews.length})` : 'Шинэ'}</span>
+            </div>
+            <span className={`rounded-full px-3 py-1 text-[11px] font-extrabold ${inStock ? 'bg-[var(--status-success-bg)] text-[var(--status-success)]' : 'bg-[var(--status-error-bg)] text-[var(--status-error)]'}`}>
+              {inStock ? 'Бэлэн' : 'Дууссан'}
+            </span>
+          </div>
+
+          {product.description_mn && <p className="mt-4 text-[13px] leading-7 text-[var(--color-brand-muted)]">{product.description_mn}</p>}
+
+          <div className="mt-5 grid grid-cols-3 gap-2">
+            <InfoPill icon={<Truck size={16} />} label="Хүргэлт" value="Админ баталгаажуулна" />
+            <InfoPill icon={<Sparkles size={16} />} label="Арчилгаа" value="Өдөр тутам" />
+            <InfoPill icon={<Zap size={16} />} label="Захиалга" value="Шууд авах" />
+          </div>
+        </div>
+
+        <div className="rounded-[24px] bg-white p-5 shadow-[var(--shadow-mobile-card)]">
+          <h2 className="text-[15px] font-extrabold text-[var(--color-brand-text)]">Дэлгэрэнгүй</h2>
+          <DetailRow title="Хэрэглэх заавар" value={product.howToUse || 'Мэдээлэл оруулаагүй'} />
+          <DetailRow title="Найрлага" value={product.ingredients || 'Мэдээлэл оруулаагүй'} />
         </div>
       </section>
 
-      {/* ── Related Products ──────────────────────────────────────────────── */}
-      {related.length > 0 && (
-        <div className="mx-auto max-w-[1400px] border-thin-t px-6 py-16 md:py-24 lg:px-10">
-          <div className="mb-12 text-center">
-            <p className="section-label">Төстэй бүтээгдэхүүн</p>
-            <h2 className="mt-3 font-serif text-3xl text-charcoal md:text-4xl">Танд таалагдаж магадгүй</h2>
+      <section className="mt-5 space-y-4 px-4">
+        <div className="flex items-end justify-between">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--color-brand-accent)]">Reviews</p>
+            <h2 className="mt-1 text-xl font-extrabold text-[var(--color-brand-text)]">Сэтгэгдэл</h2>
           </div>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-4">
-            {related.map(p => <ProductCard key={p.id} product={p} />)}
-          </div>
+          <span className="text-[12px] font-bold text-[var(--color-brand-muted)]">{reviews.length} нийт</span>
         </div>
+        <ReviewForm product={product} onSubmitted={() => loadReviews(product.id)} />
+        {reviewsLoading ? (
+          <div className="h-28 rounded-[24px] animate-shimmer" />
+        ) : reviews.length ? (
+          <div className="space-y-3">
+            {reviews.map((review) => (
+              <article key={review.id} className="rounded-[24px] bg-white p-4 shadow-[var(--shadow-mobile-card)]">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[14px] font-extrabold text-[var(--color-brand-text)]">{review.userName || 'UJ хэрэглэгч'}</p>
+                    <p className="mt-1 text-[11px] text-[var(--color-brand-muted)]">{formatMongolianDate(review.createdAt)}</p>
+                  </div>
+                  <Stars rating={review.rating} />
+                </div>
+                <p className="mt-3 text-[13px] leading-6 text-[var(--color-brand-muted)]">{review.content}</p>
+                {review.imageUrls.length > 0 && (
+                  <div className="mt-3 flex gap-2 overflow-x-auto hide-scrollbar">
+                    {review.imageUrls.map((url) => (
+                      <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="relative h-18 w-18 shrink-0 overflow-hidden rounded-[16px] bg-[var(--color-brand-secondary)]">
+                        <Image src={url} alt={review.productName} fill className="object-cover" sizes="72px" />
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-[24px] bg-white p-8 text-center shadow-[var(--shadow-mobile-card)]">
+            <p className="text-sm font-bold text-[var(--color-brand-muted)]">Одоогоор сэтгэгдэл алга</p>
+          </div>
+        )}
+      </section>
+
+      {related.length > 0 && (
+        <section className="mt-6 px-4">
+          <h2 className="mb-3 text-xl font-extrabold text-[var(--color-brand-text)]">Танд таалагдаж магадгүй</h2>
+          <div className="grid grid-cols-2 gap-3">
+            {related.map((item) => <ProductCard key={item.id} product={item} />)}
+          </div>
+        </section>
       )}
+
+      <div className="fixed bottom-[72px] left-1/2 z-40 w-full max-w-[430px] -translate-x-1/2 bg-white/90 px-4 py-3 backdrop-blur-xl">
+        <div className="grid grid-cols-[104px_1fr_1fr] gap-2">
+          <div className="flex items-center justify-between rounded-full bg-[var(--color-brand-bg)] p-1">
+            <button onClick={() => setQuantity((prev) => Math.max(1, prev - 1))} className="flex h-10 w-10 items-center justify-center rounded-full bg-white" aria-label="Тоо хасах"><Minus size={15} /></button>
+            <span className="text-sm font-extrabold">{quantity}</span>
+            <button onClick={() => setQuantity((prev) => Math.min(purchaseLimit, prev + 1))} className="flex h-10 w-10 items-center justify-center rounded-full bg-white" aria-label="Тоо нэмэх"><Plus size={15} /></button>
+          </div>
+          <button onClick={handleAddToCart} disabled={!inStock} className="flex h-12 items-center justify-center gap-1 rounded-full bg-[var(--color-brand-secondary)] text-[12px] font-extrabold text-[var(--color-brand-text)] disabled:opacity-50">
+            <ShoppingBag size={16} /> {isAdded ? 'Нэмэгдлээ' : 'Сагс'}
+          </button>
+          <button onClick={handleBuyNow} disabled={!inStock} className="h-12 rounded-full bg-[var(--color-brand-accent)] text-[12px] font-extrabold text-white disabled:opacity-50">
+            Авах
+          </button>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function InfoPill({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return (
+    <div className="rounded-[18px] bg-[var(--color-brand-bg)] p-3">
+      <div className="text-[var(--color-brand-accent)]">{icon}</div>
+      <p className="mt-2 text-[10px] font-bold text-[var(--color-brand-muted)]">{label}</p>
+      <p className="mt-1 text-[11px] font-extrabold leading-tight text-[var(--color-brand-text)]">{value}</p>
+    </div>
+  );
+}
+
+function DetailRow({ title, value }: { title: string; value: string }) {
+  return (
+    <div className="mt-4 border-t border-[#f8dbe8] pt-4">
+      <p className="text-[12px] font-extrabold text-[var(--color-brand-text)]">{title}</p>
+      <p className="mt-2 whitespace-pre-line text-[13px] leading-6 text-[var(--color-brand-muted)]">{value}</p>
     </div>
   );
 }

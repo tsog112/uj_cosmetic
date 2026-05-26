@@ -24,18 +24,18 @@ export default function FeaturedProducts() {
   if (error) return null;
 
   return (
-    <section className="bg-sand py-14 md:py-20" id="featured-products">
+    <section className="bg-white py-16 md:py-24" id="featured-products">
       <div className="max-content">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.9, ease: 'easeOut' as const }}
-          className="mb-8 grid gap-5 md:mb-10 md:grid-cols-[minmax(0,1fr)_minmax(320px,430px)] md:items-end md:gap-10"
+          className="mb-10 grid gap-6 md:mb-12 md:grid-cols-[minmax(0,1fr)_minmax(320px,430px)] md:items-end md:gap-12"
         >
           <div>
             <span className="editorial-label mb-4 block text-dusty-rose">Санал болгох бүтээгдэхүүн</span>
-            <h2 className="max-w-[760px] font-serif text-4xl leading-[1.08] text-charcoal md:text-[3.35rem]">
+            <h2 className="max-w-[760px] font-serif text-4xl leading-[1.08] text-charcoal md:text-[3.1rem]">
               Өдөр тутамдаа хайртай болох жижиг арчилгаанууд
             </h2>
           </div>
@@ -64,7 +64,7 @@ export default function FeaturedProducts() {
               hidden: { opacity: 0 },
               show:   { opacity: 1, transition: { staggerChildren: 0.12 } },
             }}
-            className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-4 md:gap-x-6 md:gap-y-10"
+            className="grid grid-cols-2 gap-x-4 gap-y-9 md:grid-cols-4 md:gap-x-7 md:gap-y-12"
           >
             {products.map(product => (
               <motion.div

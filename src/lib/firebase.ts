@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, initializeFirestore, Firestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, Firestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { getAuth, GoogleAuthProvider, FacebookAuthProvider } from 'firebase/auth';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 
@@ -19,7 +19,12 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 // Use long polling instead of gRPC to prevent Vercel SSG build 'offline' errors
 let db: Firestore;
 try {
-  db = initializeFirestore(app, { experimentalForceLongPolling: true });
+  db = initializeFirestore(app, {
+    experimentalForceLongPolling: true,
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager()
+    })
+  });
 } catch (e) {
   db = getFirestore(app);
 }

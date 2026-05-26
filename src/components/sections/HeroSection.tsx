@@ -33,7 +33,7 @@ export default function HeroSection() {
   return (
     <section className="relative w-full overflow-hidden bg-charcoal" id="hero">
       {/* ── Full-bleed hero image ──────────────────────────────────────────── */}
-      <div className="relative min-h-[75svh] md:min-h-[85svh]">
+      <div className="relative min-h-[78svh] md:min-h-[88svh]">
         <motion.div
           initial={{ scale: 1.05, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -49,18 +49,18 @@ export default function HeroSection() {
             sizes="100vw"
           />
           {/* Stronger cinematic overlay for readability */}
-          <div className="absolute inset-0 bg-gradient-to-r from-charcoal/85 via-charcoal/55 to-charcoal/20" />
-          <div className="absolute inset-0 bg-gradient-to-t from-charcoal via-transparent to-charcoal/30" />
+          <div className="absolute inset-0 bg-gradient-to-r from-charcoal/92 via-charcoal/68 to-charcoal/32" />
+          <div className="absolute inset-0 bg-gradient-to-t from-charcoal via-charcoal/10 to-charcoal/30" />
         </motion.div>
 
         {/* ── Content ─────────────────────────────────────────────────────── */}
-        <div className="relative z-10 flex min-h-[75svh] md:min-h-[85svh] items-end md:items-center pt-[100px]">
-          <div className="max-content w-full pb-16 pt-8 md:pb-28 md:pt-0">
+        <div className="relative z-10 flex min-h-[78svh] items-end pt-[112px] md:min-h-[88svh] md:items-center">
+          <div className="max-content w-full pb-14 pt-8 md:pb-24 md:pt-0">
             <motion.div
               initial={{ y: 40, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 1.1, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              className="max-w-[680px]"
+              className="max-w-[620px]"
             >
               {/* Accent label */}
               <div className="flex items-center gap-3">
@@ -71,7 +71,7 @@ export default function HeroSection() {
               </div>
 
               {/* Main heading — responsive sizes that never break layout */}
-              <h1 className="mt-5 font-serif text-[2.4rem] leading-[1.12] tracking-tight text-white sm:text-5xl md:text-6xl lg:text-[5.2rem]">
+              <h1 className="mt-6 font-serif text-[2.55rem] leading-[1.08] text-white sm:text-5xl md:text-6xl lg:text-[4.9rem]">
                 Солонгосын<br className="md:hidden" /> арчилгааг<br /> илүү ойр
               </h1>
 
@@ -101,7 +101,7 @@ export default function HeroSection() {
                 {highlights.map(item => (
                   <span
                     key={item}
-                    className="rounded-full border border-white/15 bg-white/8 px-3.5 py-1.5 text-[10px] font-medium tracking-wider text-white/60 backdrop-blur-sm"
+                    className="rounded-[10px] border border-white/15 bg-white/8 px-3.5 py-1.5 text-[10px] font-medium tracking-wider text-white/60 backdrop-blur-sm"
                   >
                     {item}
                   </span>
@@ -114,16 +114,16 @@ export default function HeroSection() {
 
       {/* ── Feature cards ──────────────────────────────────────────────────── */}
       <div className="relative z-20 bg-sand">
-        <div className="max-content py-[32px] md:py-[48px]">
-          <div className="grid grid-cols-1 gap-[24px] md:grid-cols-3 md:gap-[32px]">
+        <div className="max-content py-10 md:py-14">
+          <div className="grid grid-cols-1 overflow-hidden rounded-[18px] border border-border-faint bg-white shadow-brand-sm md:grid-cols-3">
             {features.map(({ num, title, text }) => (
-              <div key={num} className="rounded-[12px] border border-border-faint bg-white p-6 shadow-brand-sm md:p-8">
+              <div key={num} className="border-b border-border-faint p-6 last:border-b-0 md:border-b-0 md:border-r md:p-8 md:last:border-r-0">
                 <div className="flex items-start gap-4">
                   <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-blush text-[10px] font-bold tracking-[0.18em] text-dusty-rose">
                     {num}
                   </span>
                   <div>
-                    <h3 className="font-serif text-xl leading-tight text-charcoal md:text-[1.65rem]">{title}</h3>
+                    <h3 className="font-serif text-xl leading-tight text-charcoal md:text-[1.55rem]">{title}</h3>
                     <p className="mt-3 max-w-sm text-sm leading-7 text-text-muted">{text}</p>
                   </div>
                 </div>

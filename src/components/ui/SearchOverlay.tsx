@@ -1,14 +1,17 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { Search, X, Sparkles, TrendingUp } from 'lucide-react';
 import { searchProducts as firestoreSearch } from '@/lib/services/firestoreService';
 import { formatPrice, Product } from '@/types';
 
 interface SearchOverlayProps {
   onClose: () => void;
 }
+
+const RECOMMENDATIONS = ['Серум', 'Тонер', 'Крем', 'Нарны тос', 'Маск'];
 
 export default function SearchOverlay({ onClose }: SearchOverlayProps) {
   const [query, setQuery] = useState('');
@@ -22,119 +25,130 @@ export default function SearchOverlay({ onClose }: SearchOverlayProps) {
   }, []);
 
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
     };
     document.addEventListener('keydown', handleEsc);
-    return () => document.removeEventListener('keydown', handleEsc);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', handleEsc);
+      document.body.style.overflow = '';
+    };
   }, [onClose]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-
-    if (query.trim().length > 0) {
-      setLoading(true);
-      debounceRef.current = setTimeout(() => {
-        firestoreSearch(query)
-          .then(data => setResults(data))
-          .catch(() => setResults([]))
-          .finally(() => setLoading(false));
-      }, 300);
-    } else {
+    const normalized = query.trim();
+    if (!normalized) {
       setResults([]);
       setLoading(false);
+      return;
     }
+
+    setLoading(true);
+    debounceRef.current = setTimeout(() => {
+      firestoreSearch(normalized)
+        .then(setResults)
+        .catch(() => setResults([]))
+        .finally(() => setLoading(false));
+    }, 260);
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [query]);
 
-  // Prevent body scroll
-  useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = ''; };
-  }, []);
-
   return (
-    <div className="fixed inset-0 z-[70] bg-cream/98 backdrop-blur-sm animate-fade-in">
-      <div className="max-w-[800px] mx-auto px-6 pt-[120px]">
-        {/* Close button */}
-        <button
-          onClick={onClose}
-          className="absolute top-8 right-8 text-text-primary hover:text-accent transition-colors"
-          aria-label="Хаах"
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M6 6L18 18M18 6L6 18" />
-          </svg>
-        </button>
-
-        {/* Search Input */}
-        <div className="border-b-2 border-text-primary pb-3">
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Бараа хайх..."
-            className="w-full bg-transparent text-2xl md:text-3xl font-serif text-text-primary placeholder:text-text-muted/50 outline-none"
-            id="search-input"
-          />
+    <div className="fixed inset-0 left-1/2 z-[70] flex h-[100dvh] w-full max-w-[430px] -translate-x-1/2 flex-col bg-[var(--color-brand-bg)]/96 p-4 pb-[calc(env(safe-area-inset-bottom)+16px)] backdrop-blur-xl">
+      <div className="pt-2">
+        <div className="flex items-center gap-2">
+          <div className="flex h-12 flex-1 items-center gap-2 rounded-full bg-white px-4 shadow-[var(--shadow-mobile-card)]">
+            <Search size={18} className="shrink-0 text-[var(--color-brand-accent)]" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Бүтээгдэхүүн хайх..."
+              className="min-w-0 flex-1 bg-transparent text-[14px] font-bold text-[var(--color-brand-text)] outline-none placeholder:text-[var(--color-brand-muted)]"
+              id="search-input"
+            />
+            {query && (
+              <button onClick={() => setQuery('')} className="text-[var(--color-brand-muted)]" aria-label="Цэвэрлэх">
+                <X size={16} />
+              </button>
+            )}
+          </div>
+          <button onClick={onClose} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-[var(--color-brand-text)] shadow-[var(--shadow-mobile-card)]" aria-label="Хаах">
+            <X size={18} />
+          </button>
         </div>
+      </div>
 
-        {/* Results */}
-        <div className="mt-8 max-h-[60vh] overflow-y-auto">
-          {loading && (
-            <div className="space-y-4">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="flex items-center gap-5 py-4 animate-pulse">
-                  <div className="w-16 h-16 bg-cream-dark flex-shrink-0" />
-                  <div className="flex-1">
-                    <div className="h-4 bg-cream-dark w-48 mb-2" />
-                    <div className="h-3 bg-cream-dark w-20" />
-                  </div>
-                </div>
-              ))}
+      <div className="mt-5 flex-1 overflow-y-auto hide-scrollbar">
+        {!query.trim() && (
+          <div>
+            <div className="rounded-[26px] bg-white p-5 shadow-[var(--shadow-mobile-card)]">
+              <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--color-brand-accent)]">
+                <TrendingUp size={14} />
+                Санал болгох хайлт
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {RECOMMENDATIONS.map((keyword) => (
+                  <button key={keyword} onClick={() => setQuery(keyword)} className="min-h-10 rounded-full bg-[var(--color-brand-secondary)] px-4 py-2 text-[12px] font-extrabold leading-tight text-[var(--color-brand-text)] active:scale-95">
+                    {keyword}
+                  </button>
+                ))}
+              </div>
             </div>
-          )}
+            <div className="mt-4 flex items-start gap-3 rounded-[22px] bg-white p-4 text-[13px] leading-relaxed text-[var(--color-brand-muted)] shadow-[var(--shadow-mobile-card)]">
+              <Sparkles size={18} className="mt-0.5 shrink-0 text-[var(--color-brand-accent)]" />
+              Нэр, брэнд, ангиллаар хайж болно. Үр дүн дээр дарвал бүтээгдэхүүний дэлгэрэнгүй рүү орно.
+            </div>
+          </div>
+        )}
 
-          {!loading && query.trim().length > 0 && results.length === 0 && (
-            <p className="text-text-muted text-sm">
-              &ldquo;{query}&rdquo; хайлтаар илэрц олдсонгүй
-            </p>
-          )}
+        {loading && (
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="flex items-center gap-3 rounded-[24px] bg-white p-3 shadow-[var(--shadow-mobile-card)]">
+                <div className="h-16 w-14 rounded-[16px] animate-shimmer" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3 w-2/3 rounded-full animate-shimmer" />
+                  <div className="h-3 w-1/3 rounded-full animate-shimmer" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
-          {!loading && results.map((product, index) => (
-            <Link
-              key={product.id}
-              href={`/shop/${product.slug}`}
-              onClick={onClose}
-              className="flex items-center gap-5 py-4 border-thin-b hover:bg-cream-dark/50 transition-colors px-2 -mx-2"
-              style={{ animationDelay: `${index * 50}ms` }}
-            >
-              <div className="w-16 h-16 relative flex-shrink-0 bg-cream-dark">
-                {product.images?.[0] && (
-                  <Image
-                    src={product.images[0]}
-                    alt={product.name_mn}
-                    fill
-                    className="object-cover"
-                    sizes="64px"
-                  />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-text-primary truncate">
-                  {product.name_mn}
-                </p>
-                <p className="text-sm text-text-muted mt-0.5">
-                  {formatPrice(product.salePrice ?? product.price)}
-                </p>
-              </div>
-            </Link>
-          ))}
-        </div>
+        {!loading && query.trim() && results.length === 0 && (
+          <div className="rounded-[28px] bg-white px-6 py-12 text-center shadow-[var(--shadow-mobile-card)]">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-brand-secondary)] text-[var(--color-brand-accent)]">
+              <Search size={24} />
+            </div>
+            <p className="mt-4 text-[15px] font-extrabold text-[var(--color-brand-text)]">Илэрц олдсонгүй</p>
+            <p className="mt-1 text-[12px] text-[var(--color-brand-muted)]">Өөр түлхүүр үгээр дахин хайгаарай.</p>
+          </div>
+        )}
+
+        {!loading && results.length > 0 && (
+          <div className="space-y-3">
+            <p className="px-1 text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--color-brand-muted)]">Илэрц ({results.length})</p>
+            {results.map((product) => (
+              <Link key={product.id} href={`/shop/${product.slug}`} onClick={onClose} className="flex min-h-[88px] items-center gap-3 rounded-[22px] bg-white p-3 shadow-[var(--shadow-mobile-card)] active:scale-[0.99]">
+                <div className="relative h-18 w-16 shrink-0 overflow-hidden rounded-[18px] bg-[var(--color-brand-secondary)]">
+                  <Image src={product.images?.[0] || '/placeholder-product.svg'} alt={product.name_mn} fill className="object-cover" sizes="64px" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-brand-accent)]">UJ Cosmetic</p>
+                  <p className="mt-1 truncate text-[14px] font-extrabold text-[var(--color-brand-text)]">{product.name_mn}</p>
+                  <p className="mt-1 text-[13px] font-bold text-[var(--color-brand-text)]">{formatPrice(product.salePrice ?? product.price)}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

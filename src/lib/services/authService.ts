@@ -2,8 +2,6 @@ import {
   signInWithPopup, 
   signOut as firebaseSignOut,
   User,
-  GoogleAuthProvider,
-  FacebookAuthProvider,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   updateProfile

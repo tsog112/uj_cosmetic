@@ -53,7 +53,7 @@ export default function CategorySection() {
   const displayed = (loading ? fallbackCategories : categories).slice(0, 6);
 
   return (
-    <section className="bg-blush py-16 md:py-28" id="categories">
+    <section className="bg-sand py-16 md:py-24" id="categories">
       <div className="max-content">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -70,7 +70,7 @@ export default function CategorySection() {
           </div>
           <Link
             href="/shop"
-            className="btn-ghost rounded-full border border-border-light text-charcoal"
+            className="btn-ghost border border-border-light text-charcoal"
           >
             Бүгдийг үзэх
           </Link>
@@ -87,7 +87,7 @@ export default function CategorySection() {
             >
               <Link
                 href={`/shop?category=${encodeURIComponent(category.slug)}`}
-                className="group relative block aspect-[5/4] overflow-hidden bg-sand shadow-brand-md"
+                className="group relative block aspect-[5/4] overflow-hidden rounded-[14px] bg-sand shadow-brand-md"
               >
                 {category.imageUrl && (
                   <img

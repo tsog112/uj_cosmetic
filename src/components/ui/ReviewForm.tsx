@@ -3,56 +3,55 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { createProductReview } from '@/lib/services/firestoreService';
+import { Camera, Loader2, Star, X } from 'lucide-react';
+import { createProductReview, updateUserReview } from '@/lib/services/firestoreService';
 import { uploadProductImage } from '@/lib/uploadImage';
 import { useAuth } from '@/context/AuthContext';
-import type { Product } from '@/types';
+import type { Product, Review } from '@/types';
 
 interface ReviewFormProps {
   product: Product;
+  review?: Review;
   onSubmitted?: () => void;
+  onCancel?: () => void;
 }
 
 const MAX_IMAGES = 4;
 
-export default function ReviewForm({ product, onSubmitted }: ReviewFormProps) {
+export default function ReviewForm({ product, review, onSubmitted, onCancel }: ReviewFormProps) {
   const { user, loading } = useAuth();
-  const [rating, setRating] = useState(5);
-  const [content, setContent] = useState('');
+  const [rating, setRating] = useState(review?.rating ?? 5);
+  const [content, setContent] = useState(review?.content ?? '');
+  const [existingImages, setExistingImages] = useState<string[]>(review?.imageUrls ?? []);
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-
-  const previews = useMemo(
-    () => files.map(file => ({ file, url: URL.createObjectURL(file) })),
-    [files]
-  );
+  const isEditing = Boolean(review);
 
   useEffect(() => {
-    return () => previews.forEach(preview => URL.revokeObjectURL(preview.url));
+    setRating(review?.rating ?? 5);
+    setContent(review?.content ?? '');
+    setExistingImages(review?.imageUrls ?? []);
+    setFiles([]);
+  }, [review?.id, review?.rating, review?.content, review?.imageUrls]);
+
+  const previews = useMemo(() => files.map((file) => ({ file, url: URL.createObjectURL(file) })), [files]);
+
+  useEffect(() => {
+    return () => previews.forEach((preview) => URL.revokeObjectURL(preview.url));
   }, [previews]);
 
   const handleFiles = (event: ChangeEvent<HTMLInputElement>) => {
-    const selected = Array.from(event.target.files ?? [])
-      .filter(file => file.type.startsWith('image/'))
-      .slice(0, MAX_IMAGES - files.length);
-    setFiles(prev => [...prev, ...selected].slice(0, MAX_IMAGES));
+    const remaining = MAX_IMAGES - existingImages.length - files.length;
+    const selected = Array.from(event.target.files ?? []).filter((file) => file.type.startsWith('image/')).slice(0, remaining);
+    setFiles((prev) => [...prev, ...selected].slice(0, MAX_IMAGES - existingImages.length));
     event.target.value = '';
-  };
-
-  const removeFile = (index: number) => {
-    setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const uploadImages = async () => {
     if (!user) return [];
-
-    const uploads = files.map(async (file) => {
-      return uploadProductImage(file, `reviews-${product.slug}`);
-    });
-
-    return Promise.all(uploads);
+    return Promise.all(files.map((file) => uploadProductImage(file, `reviews-${product.slug}`)));
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -64,7 +63,6 @@ export default function ReviewForm({ product, onSubmitted }: ReviewFormProps) {
       setError('Сэтгэгдэл бичихийн тулд эхлээд нэвтэрнэ үү.');
       return;
     }
-
     if (content.trim().length < 5) {
       setError('Сэтгэгдлээ арай дэлгэрэнгүй бичнэ үү.');
       return;
@@ -72,23 +70,30 @@ export default function ReviewForm({ product, onSubmitted }: ReviewFormProps) {
 
     setSubmitting(true);
     try {
-      const imageUrls = await uploadImages();
-      await createProductReview({
-        productId: product.id,
-        productSlug: product.slug,
-        productName: product.name_mn,
-        userId: user.uid,
-        userName: user.displayName || 'UJ хэрэглэгч',
-        userEmail: user.email || '',
-        rating,
-        content: content.trim(),
-        imageUrls,
-      });
+      const uploadedImages = await uploadImages();
+      const imageUrls = [...existingImages, ...uploadedImages].slice(0, MAX_IMAGES);
 
-      setContent('');
-      setFiles([]);
-      setRating(5);
-      setMessage('Сэтгэгдэл амжилттай нэмэгдлээ. Баярлалаа!');
+      if (review) {
+        await updateUserReview(review.id, { rating, content: content.trim(), imageUrls });
+        setMessage('Сэтгэгдэл шинэчлэгдлээ.');
+      } else {
+        await createProductReview({
+          productId: product.id,
+          productSlug: product.slug,
+          productName: product.name_mn,
+          userId: user.uid,
+          userName: user.displayName || 'UJ хэрэглэгч',
+          userEmail: user.email || '',
+          rating,
+          content: content.trim(),
+          imageUrls,
+        });
+        setContent('');
+        setFiles([]);
+        setExistingImages([]);
+        setRating(5);
+        setMessage('Сэтгэгдэл амжилттай нэмэгдлээ. Баярлалаа!');
+      }
       onSubmitted?.();
     } catch (e: any) {
       setError(e?.message || 'Сэтгэгдэл хадгалахад алдаа гарлаа.');
@@ -97,109 +102,80 @@ export default function ReviewForm({ product, onSubmitted }: ReviewFormProps) {
     }
   };
 
-  if (loading) {
-    return <div className="h-32 bg-blush animate-pulse" />;
-  }
+  if (loading) return <div className="h-32 rounded-[24px] animate-shimmer" />;
 
   if (!user) {
     return (
-      <div className="surface-card bg-sand p-6 text-center md:p-8">
-        <p className="font-serif text-2xl text-charcoal mb-2">Сэтгэгдэл бичих</p>
-        <p className="text-sm text-text-subtle mb-5">Зурагтай сэтгэгдэл үлдээхийн тулд бүртгэлээрээ нэвтэрнэ үү.</p>
-        <Link
-          href="/auth"
-          className="inline-flex min-h-11 items-center justify-center border border-dusty-rose px-6 text-xs tracking-[0.16em] uppercase text-charcoal transition-colors hover:bg-blush"
-        >
+      <div className="rounded-[26px] bg-white p-6 text-center shadow-[var(--shadow-mobile-card)]">
+        <h3 className="text-xl font-extrabold text-[var(--color-brand-text)]">Сэтгэгдэл бичих</h3>
+        <p className="mt-2 text-[13px] leading-relaxed text-[var(--color-brand-muted)]">Зурагтай бодит сэтгэгдэл үлдээхийн тулд бүртгэлээрээ нэвтэрнэ үү.</p>
+        <Link href="/auth" className="mt-5 inline-flex h-12 items-center justify-center rounded-full bg-[var(--color-brand-accent)] px-6 text-sm font-extrabold text-white">
           Нэвтрэх
         </Link>
       </div>
     );
   }
 
+  const canAddImage = existingImages.length + files.length < MAX_IMAGES;
+
   return (
-    <form onSubmit={handleSubmit} className="surface-card p-5 md:p-6">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    <form onSubmit={handleSubmit} className="rounded-[26px] bg-white p-5 shadow-[var(--shadow-mobile-card)]">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] tracking-[0.18em] uppercase text-text-subtle">Review</p>
-          <h3 className="font-serif text-2xl text-charcoal">Сэтгэгдэл бичих</h3>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--color-brand-accent)]">Review</p>
+          <h3 className="mt-1 text-xl font-extrabold text-[var(--color-brand-text)]">{isEditing ? 'Сэтгэгдэл засах' : 'Сэтгэгдэл бичих'}</h3>
         </div>
-        <div className="flex gap-1" aria-label="Үнэлгээ">
-          {[1, 2, 3, 4, 5].map(star => (
-            <button
-              key={star}
-              type="button"
-              onClick={() => setRating(star)}
-              className={`text-2xl leading-none transition-colors ${star <= rating ? 'text-[#D894AC]' : 'text-[#E9D7DF]'}`}
-              aria-label={`${star} од`}
-            >
-              ★
-            </button>
-          ))}
-        </div>
+        {onCancel && (
+          <button type="button" onClick={onCancel} className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-brand-bg)] text-[var(--color-brand-text)]" aria-label="Хаах">
+            <X size={16} />
+          </button>
+        )}
       </div>
 
-      <textarea
-        value={content}
-        onChange={(event) => setContent(event.target.value)}
-        rows={4}
-        className="mt-4 min-h-32 w-full resize-none rounded-[14px] border border-border-light bg-white px-4 py-3 text-sm leading-6 text-charcoal outline-none transition-all placeholder:text-text-faint focus:border-dusty-rose focus:ring-1 focus:ring-dusty-rose shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]"
-        placeholder="Бүтээгдэхүүний мэдрэмж, үр дүнгээ бичээрэй..."
-      />
+      <div className="mt-4 flex gap-1" aria-label="Үнэлгээ">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button key={star} type="button" onClick={() => setRating(star)} className={star <= rating ? 'text-[#E6A0BE]' : 'text-[#E9D7DF]'} aria-label={`${star} од`}>
+            <Star size={25} fill={star <= rating ? 'currentColor' : 'none'} />
+          </button>
+        ))}
+      </div>
 
-      {previews.length > 0 && (
-        <div className="mt-4 grid grid-cols-4 gap-3">
+      <textarea value={content} onChange={(event) => setContent(event.target.value)} rows={4} className="mt-4 min-h-32 w-full resize-none rounded-[18px] bg-[var(--color-brand-bg)] px-4 py-3 text-sm leading-6 text-[var(--color-brand-text)] outline-none focus:ring-2 focus:ring-[#f3b8cf]" placeholder="Бүтээгдэхүүний мэдрэмж, үр дүн, арьсанд тохирсон эсэхээ бичээрэй..." />
+
+      {(existingImages.length > 0 || previews.length > 0) && (
+        <div className="mt-4 grid grid-cols-4 gap-2">
+          {existingImages.map((url) => (
+            <div key={url} className="relative aspect-square overflow-hidden rounded-[16px] bg-[var(--color-brand-secondary)]">
+              <Image src={url} alt="Review image" fill className="object-cover" sizes="80px" />
+              <button type="button" onClick={() => setExistingImages((prev) => prev.filter((image) => image !== url))} className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-[var(--color-brand-text)]" aria-label="Зураг устгах">
+                <X size={14} />
+              </button>
+            </div>
+          ))}
           {previews.map(({ url, file }, index) => (
-            <div key={`${file.name}-${index}`} className="relative aspect-square overflow-hidden rounded-[16px] bg-blush">
-              <Image src={url} alt="Review preview" fill className="object-cover" sizes="120px" />
-              <button
-                type="button"
-                onClick={() => removeFile(index)}
-                className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-sm text-charcoal"
-                aria-label="Зураг устгах"
-              >
-                ×
+            <div key={`${file.name}-${index}`} className="relative aspect-square overflow-hidden rounded-[16px] bg-[var(--color-brand-secondary)]">
+              <Image src={url} alt="Review preview" fill className="object-cover" sizes="80px" />
+              <button type="button" onClick={() => setFiles((prev) => prev.filter((_, current) => current !== index))} className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-[var(--color-brand-text)]" aria-label="Зураг устгах">
+                <X size={14} />
               </button>
             </div>
           ))}
         </div>
       )}
 
-      <div className="mt-5 flex flex-col gap-3">
-        <div className="flex flex-col gap-3">
-          <label className="btn-ghost flex flex-1 min-h-[48px] cursor-pointer items-center justify-center rounded-full border border-border-light px-4 text-[11px] font-semibold tracking-widest uppercase text-charcoal transition-colors hover:border-dusty-rose hover:bg-rose-quartz whitespace-nowrap shadow-sm">
-            <span className="flex items-center gap-2">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                <circle cx="8.5" cy="8.5" r="1.5"/>
-                <polyline points="21 15 16 10 5 21"/>
-              </svg>
-              Зураг нэмэх
-            </span>
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleFiles}
-              className="sr-only"
-              disabled={files.length >= MAX_IMAGES || submitting}
-            />
-          </label>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="btn-premium flex-1 min-h-[48px] px-6 text-[11px] font-semibold tracking-widest uppercase whitespace-nowrap shadow-brand-sm"
-          >
-            {submitting ? 'Илгээж байна...' : 'Сэтгэгдэл илгээх'}
-          </button>
-        </div>
-        <div className="flex items-center justify-between px-1">
-          <p className="text-[11px] text-text-faint">
-            {files.length} / {MAX_IMAGES} зураг оруулсан
-          </p>
-        </div>
+      <div className="mt-5 grid grid-cols-[1fr_auto] gap-2">
+        <label className={`flex h-12 cursor-pointer items-center justify-center gap-2 rounded-full bg-[var(--color-brand-secondary)] px-4 text-[12px] font-extrabold text-[var(--color-brand-text)] ${!canAddImage ? 'pointer-events-none opacity-50' : ''}`}>
+          <Camera size={16} /> Зураг нэмэх
+          <input type="file" accept="image/*" multiple onChange={handleFiles} className="sr-only" disabled={!canAddImage || submitting} />
+        </label>
+        <button type="submit" disabled={submitting} className="flex h-12 min-w-32 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-accent)] px-5 text-[12px] font-extrabold text-white disabled:opacity-60">
+          {submitting && <Loader2 size={15} className="animate-spin" />}
+          {isEditing ? 'Хадгалах' : 'Илгээх'}
+        </button>
       </div>
-      {message && <p className="mt-3 text-sm text-green-700">{message}</p>}
-      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+      <p className="mt-3 text-[11px] text-[var(--color-brand-muted)]">{existingImages.length + files.length} / {MAX_IMAGES} зураг</p>
+      {message && <p className="mt-3 rounded-[14px] bg-[var(--status-success-bg)] p-3 text-[12px] font-bold text-[var(--status-success)]">{message}</p>}
+      {error && <p className="mt-3 rounded-[14px] bg-[var(--status-error-bg)] p-3 text-[12px] font-bold text-[var(--status-error)]">{error}</p>}
     </form>
   );
 }

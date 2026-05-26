@@ -1,24 +1,83 @@
-import {
+﻿import {
   collection, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc,
-  doc, query, where, orderBy, limit, increment, serverTimestamp,
-  runTransaction, Timestamp
+  doc, query, where, orderBy, serverTimestamp,
+  Timestamp
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Product, Order, OrderStatus, Review, SiteSettings, WishlistItem } from '@/types';
+import { maskDisplayName } from '@/lib/publicDto';
 
-// ─── Error Handler ───────────────────────────────────────────────
+// ??? Error Handler ???????????????????????????????????????????????
 function handleError(error: any, context: string): never {
-  console.error(`[Firestore Error — ${context}]:`, error);
+  console.error(`[Firestore Error ??${context}]:`, error);
   if (error.code === 'permission-denied') {
-    console.error('🚨 PERMISSION: Check firestore.rules.');
+    console.error('?슚 PERMISSION: Check firestore.rules.');
   } else if (error.code === 'unavailable' || error.message?.includes('offline')) {
-    console.error('🚨 CONNECTION: Database unreachable.');
+    console.error('?슚 CONNECTION: Database unreachable.');
   }
   throw error;
 }
 
-// ─── PRODUCTS ────────────────────────────────────────────────────
+// ??? CATEGORIES ??????????????????????????????????????????????????
+export async function getCategories(): Promise<any[]> {
+  try {
+    const snap = await getDocs(collection(db, 'categories'));
+    return snap.docs.map(d => ({ 
+      id: d.id, 
+      slug: d.id, 
+      name_mn: d.data().name_mn || d.data().name || d.id,
+      image: d.data().image || '/placeholder-product.svg',
+      icon: d.data().icon || 'Tags',
+      color: d.data().color || '#E91E8C',
+      showOnHome: d.data().showOnHome === true,
+    }));
+  } catch (e) {
+    handleError(e, 'getCategories');
+    return [];
+  }
+}
+
+// ??? PRODUCTS ????????????????????????????????????????????????????
 const PRODUCTS = 'products';
+
+function reviveProduct(product: any): Product {
+  return {
+    ...product,
+    createdAt: product?.createdAt ? new Date(product.createdAt) : new Date(),
+    updatedAt: product?.updatedAt ? new Date(product.updatedAt) : new Date(),
+    saleEndDate: product?.saleEndDate ? new Date(product.saleEndDate) : null,
+  } as Product;
+}
+
+function reviveReview(review: any): Review {
+  return {
+    ...review,
+    createdAt: review?.createdAt ? new Date(review.createdAt) : new Date(),
+    updatedAt: review?.updatedAt ? new Date(review.updatedAt) : new Date(),
+  } as Review;
+}
+
+async function fetchPublicProducts(params: Record<string, string | undefined> = {}): Promise<Product[]> {
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) searchParams.set(key, value);
+  });
+  const response = await fetch(`/api/products${searchParams.size ? `?${searchParams}` : ''}`);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data?.error || 'Failed to fetch products');
+  return (data.products || []).map(reviveProduct);
+}
+
+async function fetchPublicReviews(params: Record<string, string | undefined> = {}): Promise<Review[]> {
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) searchParams.set(key, value);
+  });
+  const response = await fetch(`/api/reviews${searchParams.size ? `?${searchParams}` : ''}`);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data?.error || 'Failed to fetch reviews');
+  return (data.reviews || []).map(reviveReview);
+}
 
 export async function getAllProducts(filters?: {
   category?: string;
@@ -26,43 +85,31 @@ export async function getAllProducts(filters?: {
   published?: boolean;
 }): Promise<Product[]> {
   try {
-    const constraints: any[] = [];
-    if (filters?.category) constraints.push(where('category', '==', filters.category));
-    if (filters?.inStock !== undefined) constraints.push(where('inStock', '==', filters.inStock));
-    if (filters?.published !== undefined) constraints.push(where('published', '==', filters.published));
-
-    const q = query(collection(db, PRODUCTS), ...constraints);
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Product));
+    const products = await fetchPublicProducts({ category: filters?.category });
+    return filters?.inStock === undefined
+      ? products
+      : products.filter((product) => product.inStock === filters.inStock);
   } catch (e) { handleError(e, 'getAllProducts'); }
 }
 
 export async function getFeaturedProducts(): Promise<Product[]> {
   try {
-    const q = query(
-      collection(db, PRODUCTS),
-      where('featured', '==', true),
-      where('published', '==', true)
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Product));
+    return fetchPublicProducts({ featured: 'true' });
   } catch (e) { handleError(e, 'getFeaturedProducts'); }
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   try {
-    const q = query(collection(db, PRODUCTS), where('slug', '==', slug), limit(1));
-    const snap = await getDocs(q);
-    if (snap.empty) return null;
-    return { id: snap.docs[0].id, ...snap.docs[0].data() } as Product;
+    const response = await fetch(`/api/products?slug=${encodeURIComponent(slug)}`);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data?.error || 'Failed to fetch product');
+    return data.product ? reviveProduct(data.product) : null;
   } catch (e) { handleError(e, `getProductBySlug(${slug})`); }
 }
 
 export async function getProductsByCategory(category: string): Promise<Product[]> {
   try {
-    const q = query(collection(db, PRODUCTS), where('category', '==', category), where('published', '==', true));
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Product));
+    return fetchPublicProducts({ category });
   } catch (e) { handleError(e, `getProductsByCategory(${category})`); }
 }
 
@@ -80,7 +127,7 @@ export async function searchProducts(searchQuery: string): Promise<Product[]> {
 
 export async function incrementProductViews(productId: string): Promise<void> {
   try {
-    await updateDoc(doc(db, PRODUCTS, productId), { views: increment(1) });
+    await fetch(`/api/products/${encodeURIComponent(productId)}/view`, { method: 'POST' });
   } catch (e) { handleError(e, 'incrementProductViews'); }
 }
 
@@ -122,9 +169,9 @@ function normalizeReview(docId: string, data: any): Review {
     productId: data.productId ?? '',
     productSlug: data.productSlug ?? '',
     productName: data.productName ?? '',
-    userId: data.userId ?? '',
-    userName: data.userName ?? '',
-    userEmail: data.userEmail ?? '',
+    userId: '',
+    userName: maskDisplayName(data.userName),
+    userEmail: '',
     rating: Number(data.rating ?? 5),
     content: data.content ?? '',
     imageUrls: Array.isArray(data.imageUrls) ? data.imageUrls : [],
@@ -137,15 +184,7 @@ function normalizeReview(docId: string, data: any): Review {
 
 export async function getProductReviews(productId: string): Promise<Review[]> {
   try {
-    const q = query(
-      collection(db, REVIEWS),
-      where('productId', '==', productId),
-      where('approved', '==', true)
-    );
-    const snap = await getDocs(q);
-    return snap.docs
-      .map(d => normalizeReview(d.id, d.data()))
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return fetchPublicReviews({ productId });
   } catch (e) { handleError(e, `getProductReviews(${productId})`); }
 }
 
@@ -161,21 +200,13 @@ export async function getUserReviews(userId: string): Promise<Review[]> {
 
 export async function getLatestReviews(count = 6): Promise<Review[]> {
   try {
-    const q = query(collection(db, REVIEWS), where('approved', '==', true));
-    const snap = await getDocs(q);
-    return snap.docs
-      .map(d => normalizeReview(d.id, d.data()))
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-      .slice(0, count);
+    return fetchPublicReviews({ limit: String(count) });
   } catch (e) { handleError(e, 'getLatestReviews'); }
 }
 
 export async function getAllReviews(): Promise<Review[]> {
   try {
-    const snap = await getDocs(collection(db, REVIEWS));
-    return snap.docs
-      .map(d => normalizeReview(d.id, d.data()))
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return fetchPublicReviews();
   } catch (e) { handleError(e, 'getAllReviews'); }
 }
 
@@ -185,6 +216,7 @@ export async function createProductReview(
   try {
     const ref = await addDoc(collection(db, REVIEWS), {
       ...data,
+      userEmail: '',
       rating: Math.max(1, Math.min(5, Math.round(data.rating))),
       imageUrls: data.imageUrls ?? [],
       approved: true,
@@ -276,69 +308,22 @@ export async function removeFromWishlist(userId: string, productId: string): Pro
   } catch (e) { handleError(e, 'removeFromWishlist'); }
 }
 
-// ─── ORDERS ──────────────────────────────────────────────────────
+// ??? ORDERS ??????????????????????????????????????????????????????
 const ORDERS = 'orders';
 export const PAID_ORDER_STATUSES: OrderStatus[] = ['confirmed', 'shipped', 'delivered'];
 
 export async function createOrder(orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
   try {
-    const orderId = doc(collection(db, ORDERS)).id;
-    const orderRef = doc(db, ORDERS, orderId);
-
-    await runTransaction(db, async (transaction) => {
-      let calculatedSubtotal = 0;
-      const verifiedItems: any[] = [];
-
-      // Read phase — fetch live product prices and stock
-      const productDocs = await Promise.all(
-        orderData.items.map(async (item) => {
-          const productRef = doc(db, PRODUCTS, item.productId);
-          const productSnap = await transaction.get(productRef);
-          if (!productSnap.exists()) {
-            throw new Error(`Бүтээгдэхүүн олдсонгүй: ${item.productId}`);
-          }
-          return { ref: productRef, data: productSnap.data(), item };
-        })
-      );
-
-      // Validate and calculate
-      for (const pd of productDocs) {
-        const stockQuantity = Number(pd.data.stockQuantity ?? pd.data.stock ?? (pd.data.inStock ? 999 : 0));
-        if (stockQuantity < pd.item.quantity) {
-          throw new Error(`"${pd.data.name_mn}" бүтээгдэхүүний нөөц хүрэлцэхгүй байна.`);
-        }
-        const actualPrice = pd.data.salePrice ?? pd.data.price;
-        calculatedSubtotal += actualPrice * pd.item.quantity;
-
-        verifiedItems.push({ ...pd.item, price: Math.round(actualPrice) });
-
-        const nextStockQuantity = Math.max(0, stockQuantity - pd.item.quantity);
-        transaction.update(pd.ref, {
-          stockQuantity: nextStockQuantity,
-          inStock: nextStockQuantity > 0,
-          orderCount: increment(pd.item.quantity),
-        });
-      }
-
-      const shippingCost = Math.round(orderData.shippingCost);
-      const total = Math.round(calculatedSubtotal) + shippingCost;
-
-      transaction.set(orderRef, {
-        ...orderData,
-        subtotal: Math.round(calculatedSubtotal),
-        shippingCost,
-        total,
-        items: verifiedItems,
-        status: 'pending' as OrderStatus,
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
-      });
+    const response = await fetch('/api/orders/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(orderData),
     });
-
-    return orderId;
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.id) throw new Error(data?.error || 'Failed to create order');
+    return data.id;
   } catch (e) { handleError(e, 'createOrder'); }
 }
-
 function getPeriodStart(period: 'today' | '7days' | '30days' | 'month'): Date {
   const now = new Date();
   if (period === 'today') return new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -427,7 +412,7 @@ export async function getUserById(userId: string): Promise<{ email: string | nul
   } catch (e) { handleError(e, `getUserById(${userId})`); }
 }
 
-// ─── SETTINGS (singleton: settings/main) ─────────────────────────
+// ??? SETTINGS (singleton: settings/main) ?????????????????????????
 const SETTINGS_DOC = doc(db, 'settings', 'main');
 
 export async function getSiteSettings(): Promise<SiteSettings | null> {
@@ -436,19 +421,19 @@ export async function getSiteSettings(): Promise<SiteSettings | null> {
     if (!snap.exists()) return null;
     return snap.data() as SiteSettings;
   } catch (e) {
-    console.error('[Firestore Error — getSiteSettings]:', e);
+    console.error('[Firestore Error ??getSiteSettings]:', e);
     // Return safe fallback data during Next.js builds if the DB is unreachable
     return {
-      announcementText: 'Монгол даяар хүргэлт хийдэг · 50,000₮-с дээш захиалгад үнэгүй хүргэлт',
-      announcementActive: true,
+      announcementText: '',
+      announcementActive: false,
       freeShippingThreshold: 50000,
       shippingCost: 5000,
-      bankName: 'Хаан Банк',
-      bankAccount: 'ТАНЫ_ДАНСНЫ_ДУГААР',
-      bankAccountName: 'УЖ Косметик',
-      instagramUrl: 'https://instagram.com/uj_cosmetic',
-      phone: 'ТАНЫ_УТАСНЫ_ДУГААР',
-      email: 'ТАНЫ_ИМЭЙЛ',
+      bankName: '',
+      bankAccount: '',
+      bankAccountName: '',
+      instagramUrl: '',
+      phone: '',
+      email: '',
     };
   }
 }

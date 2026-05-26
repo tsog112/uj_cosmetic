@@ -1,440 +1,238 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { collection, getDocs, query, where } from 'firebase/firestore';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Edit3, LogOut, MessageCircle, Package, Shield, Star, Trash2 } from 'lucide-react';
+import AuthGuard from '@/components/ui/AuthGuard';
+import ReviewForm from '@/components/ui/ReviewForm';
 import { useAuth } from '@/context/AuthContext';
 import { db } from '@/lib/firebase';
-import {
-  deleteReview,
-  getUserReviews,
-  getUserWishlist,
-  removeFromWishlist,
-  updateUserReview,
-} from '@/lib/services/firestoreService';
-import { uploadProductImage } from '@/lib/uploadImage';
-import { formatMongolianDateTime } from '@/lib/format';
-import { formatPrice, Review, WishlistItem } from '@/types';
-import AuthGuard from '@/components/ui/AuthGuard';
+import { deleteReview, getAllProducts, getUserReviews } from '@/lib/services/firestoreService';
+import { formatPrice, type Product, type Review } from '@/types';
 
-type AccountTab = 'orders' | 'wishlist' | 'reviews';
+type AccountTab = 'orders' | 'reviews';
 
 const statusLabels: Record<string, string> = {
   pending: 'Хүлээгдэж байна',
   confirmed: 'Баталгаажсан',
-  shipped: 'Хүргэлтэнд гарсан',
+  processing: 'Бэлтгэгдэж байна',
+  shipped: 'Хүргэлтэд гарсан',
   delivered: 'Хүргэгдсэн',
   cancelled: 'Цуцлагдсан',
+  PENDING: 'Хүлээгдэж байна',
+  CONFIRMED: 'Баталгаажсан',
+  PROCESSING: 'Бэлтгэгдэж байна',
+  SHIPPED: 'Хүргэлтэд гарсан',
+  DELIVERED: 'Хүргэгдсэн',
+  CANCELLED: 'Цуцлагдсан',
 };
 
-function formatDate(date: any) {
-  return formatMongolianDateTime(date);
+function toDate(value: any) {
+  if (!value) return null;
+  if (value.toDate) return value.toDate();
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function reviewToProduct(review: Review): Product {
+  return {
+    id: review.productId,
+    slug: review.productSlug,
+    name_mn: review.productName,
+    name_en: review.productName,
+    price: 0,
+    salePrice: null,
+    saleEndDate: null,
+    category: 'other',
+    images: review.imageUrls,
+    videoUrl: null,
+    description_mn: '',
+    ingredients: '',
+    howToUse: '',
+    featured: false,
+    published: true,
+    inStock: true,
+    stockQuantity: 0,
+    views: 0,
+    orderCount: 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
 }
 
 function AccountContent() {
   const { user, isAdmin, signOut } = useAuth();
   const [orders, setOrders] = useState<any[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<AccountTab>('orders');
-  const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
-  const [editContent, setEditContent] = useState('');
-  const [editRating, setEditRating] = useState(5);
-  const [editImageUrls, setEditImageUrls] = useState<string[]>([]);
-  const [editUploading, setEditUploading] = useState(false);
+  const [editingReview, setEditingReview] = useState<Review | null>(null);
+  const [productSlugById, setProductSlugById] = useState<Record<string, string>>({});
+
+  const loadAccountData = async () => {
+    if (!user) return;
+    setLoading(true);
+    const [orderResult, reviewResult, productResult] = await Promise.allSettled([
+      getDocs(query(collection(db, 'orders'), where('userId', '==', user.uid))),
+      getUserReviews(user.uid),
+      getAllProducts({ published: true }),
+    ]);
+
+    if (orderResult.status === 'fulfilled') {
+      setOrders(orderResult.value.docs.map((doc) => ({ id: doc.id, ...doc.data() })).sort((a: any, b: any) => (toDate(b.createdAt)?.getTime() || 0) - (toDate(a.createdAt)?.getTime() || 0)));
+    }
+    if (reviewResult.status === 'fulfilled') setReviews(reviewResult.value);
+    if (productResult.status === 'fulfilled') {
+      setProductSlugById(Object.fromEntries(productResult.value.map((product) => [product.id, product.slug])));
+    }
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const fetchAccountData = async () => {
-      if (!user) return;
-
-      setLoading(true);
-      try {
-        const ordersQuery = query(collection(db, 'orders'), where('userId', '==', user.uid));
-
-        // Fetch each data source independently to avoid one failure breaking everything
-        const fetchOrders = async () => {
-          try {
-            const snap = await getDocs(ordersQuery);
-            setOrders(
-              snap.docs
-                .map(doc => ({ id: doc.id, ...doc.data() }))
-                .sort((a: any, b: any) => {
-                  const aDate = a.createdAt?.toDate ? a.createdAt.toDate() : a.createdAt ? new Date(a.createdAt) : new Date(0);
-                  const bDate = b.createdAt?.toDate ? b.createdAt.toDate() : b.createdAt ? new Date(b.createdAt) : new Date(0);
-                  return bDate.getTime() - aDate.getTime();
-                })
-            );
-          } catch (err) {
-            console.error('Error fetching orders:', err);
-          }
-        };
-
-        const fetchReviews = async () => {
-          try {
-            const data = await getUserReviews(user.uid);
-            setReviews(data);
-          } catch (err) {
-            console.error('Error fetching reviews:', err);
-          }
-        };
-
-        const fetchWishlist = async () => {
-          try {
-            const data = await getUserWishlist(user.uid);
-            setWishlist(data);
-          } catch (err) {
-            console.error('Error fetching wishlist:', err);
-          }
-        };
-
-        await Promise.allSettled([
-          fetchOrders(),
-          fetchReviews(),
-          fetchWishlist()
-        ]);
-
-      } catch (error) {
-        console.error('Error in account data orchestration:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAccountData();
+    void loadAccountData();
   }, [user]);
 
-  const summary = useMemo(() => ({
-    orders: orders.length,
-    wishlist: wishlist.length,
-    reviews: reviews.length,
-  }), [orders.length, wishlist.length, reviews.length]);
+  const summary = useMemo(() => ({ orders: orders.length, reviews: reviews.length }), [orders.length, reviews.length]);
 
   if (!user) return null;
 
-  const startEditReview = (review: Review) => {
-    setEditingReviewId(review.id);
-    setEditContent(review.content);
-    setEditRating(review.rating);
-    setEditImageUrls(review.imageUrls);
-  };
-
-  const saveReviewEdit = async (review: Review) => {
-    await updateUserReview(review.id, {
-      rating: editRating,
-      content: editContent.trim(),
-      imageUrls: editImageUrls,
-    });
-    setReviews(prev => prev.map(item => item.id === review.id ? { ...item, rating: editRating, content: editContent.trim(), imageUrls: editImageUrls } : item));
-    setEditingReviewId(null);
-  };
-
-  const handleEditImageUpload = async (files: FileList | null) => {
-    if (!files || !editingReviewId) return;
-    const selected = Array.from(files).filter(file => file.type.startsWith('image/')).slice(0, 4 - editImageUrls.length);
-    if (selected.length === 0) return;
-
-    setEditUploading(true);
-    try {
-      const urls = await Promise.all(selected.map(file => uploadProductImage(file, `review-edit-${editingReviewId}`)));
-      setEditImageUrls(prev => [...prev, ...urls].slice(0, 4));
-    } finally {
-      setEditUploading(false);
-    }
-  };
-
-  const handleDeleteReview = async (reviewId: string) => {
+  const removeReview = async (reviewId: string) => {
     if (!confirm('Энэ сэтгэгдлийг устгах уу?')) return;
     await deleteReview(reviewId);
-    setReviews(prev => prev.filter(item => item.id !== reviewId));
-  };
-
-  const handleRemoveWishlist = async (productId: string) => {
-    await removeFromWishlist(user.uid, productId);
-    setWishlist(prev => prev.filter(item => item.productId !== productId));
+    setReviews((prev) => prev.filter((item) => item.id !== reviewId));
   };
 
   return (
-    <div className="mx-auto max-w-[1120px] px-4 pb-14 pt-24 sm:px-6 lg:px-10 md:py-20">
-      <div className="mb-8 md:mb-12">
-        <p className="text-[11px] tracking-[0.18em] uppercase text-text-subtle">My account</p>
-        <h1 className="mt-2 font-serif text-4xl text-charcoal md:text-5xl">Миний бүртгэл</h1>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr] lg:gap-10">
-        <aside>
-          <div className="rounded-2xl border border-border-light/45 bg-white p-5 shadow-[0_10px_30px_rgba(216,148,172,0.08)] lg:sticky lg:top-[120px]">
-            <div className="flex items-center gap-4 lg:block lg:text-center">
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-[18px] border border-border-light/50 bg-blush text-3xl font-medium text-charcoal lg:mx-auto lg:mb-4">
-                {user.photoURL ? (
-                  <img src={user.photoURL} alt={user.displayName || 'Profile'} className="h-full w-full object-cover" />
-                ) : (
-                  (user.displayName || user.email || 'U').charAt(0).toUpperCase()
-                )}
-              </div>
-              <div className="min-w-0">
-                <h2 className="truncate text-lg font-medium text-charcoal">{user.displayName || 'UJ хэрэглэгч'}</h2>
-                <p className="mt-1 break-all text-sm text-text-subtle">{user.email}</p>
-              </div>
+    <div className="space-y-5 px-4 pb-[104px]">
+      <section className="rounded-[28px] bg-white p-5 shadow-[var(--shadow-mobile-card)]">
+        <div className="flex items-center gap-4">
+          <div className="flex h-17 w-17 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--color-soft-pink)] text-2xl font-extrabold text-[var(--color-primary)]">
+            {user.photoURL ? <img src={user.photoURL} alt={user.displayName || 'Profile'} className="h-full w-full object-cover" /> : (user.displayName || user.email || 'U').charAt(0).toUpperCase()}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--color-primary)]">My account</p>
+            <h1 className="mt-1 truncate text-[22px] font-extrabold text-[var(--color-text-dark)]">Миний бүртгэл</h1>
+            <p className="mt-1 truncate text-[13px] text-[var(--color-text-medium)]">{user.email}</p>
+          </div>
+        </div>
+        <div className="mt-5 grid grid-cols-2 gap-2">
+          {[['Захиалга', summary.orders], ['Сэтгэгдэл', summary.reviews]].map(([label, value]) => (
+            <div key={label} className="rounded-[18px] bg-[var(--color-brand-bg)] p-3 text-center">
+              <p className="text-xl font-extrabold">{value}</p>
+              <p className="mt-1 text-[10px] font-bold text-[var(--color-text-medium)]">{label}</p>
             </div>
+          ))}
+        </div>
+        <div className={`mt-4 grid gap-2 ${isAdmin ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          {isAdmin && <Link href="/admin" className="flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] text-[12px] font-extrabold text-white"><Shield size={15} /> Админ</Link>}
+          <button onClick={() => signOut()} className="flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--color-soft-pink)] text-[12px] font-extrabold text-[var(--color-text-dark)]"><LogOut size={15} /> Гарах</button>
+        </div>
+      </section>
 
-            <div className="mt-6 grid grid-cols-3 gap-2">
-              {[
-                ['Захиалга', summary.orders],
-                ['Дуртай', summary.wishlist],
-                ['Сэтгэгдэл', summary.reviews],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-[10px] bg-sand p-3 text-center">
-                  <p className="text-xl font-semibold text-charcoal">{value}</p>
-                  <p className="mt-1 text-[11px] text-text-subtle">{label}</p>
-                </div>
-              ))}
-            </div>
-
-            {isAdmin && (
-              <Link
-                href="/admin"
-                className="btn-primary mt-5 min-h-12 w-full px-4 text-sm"
-              >
-                Админ самбар руу орох
-              </Link>
-            )}
-
-            <button
-              onClick={() => signOut()}
-              className="btn-secondary mt-3 min-h-12 w-full bg-sand text-sm"
-            >
-              Гарах
+      <section className="grid grid-cols-2 gap-1 rounded-full bg-white p-1 shadow-[var(--shadow-mobile-card)]">
+        {[{ value: 'orders', label: 'Захиалга', icon: Package }, { value: 'reviews', label: 'Сэтгэгдэл', icon: MessageCircle }].map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button key={tab.value} onClick={() => setActiveTab(tab.value as AccountTab)} className={`flex h-11 items-center justify-center gap-1.5 rounded-full text-[12px] font-extrabold ${activeTab === tab.value ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-text-medium)]'}`}>
+              <Icon size={14} /> {tab.label}
             </button>
-          </div>
-        </aside>
+          );
+        })}
+      </section>
 
-        <section className="min-w-0">
-          <div className="mb-5 grid grid-cols-3 gap-2 rounded-full bg-blush p-1">
-            {[
-              { value: 'orders', label: 'Захиалга' },
-              { value: 'wishlist', label: 'Дуртай' },
-              { value: 'reviews', label: 'Сэтгэгдэл' },
-            ].map(tab => (
-              <button
-                key={tab.value}
-                onClick={() => setActiveTab(tab.value as AccountTab)}
-                className={`min-h-11 rounded-[10px] text-sm font-medium transition-colors ${
-                  activeTab === tab.value ? 'bg-white text-charcoal shadow-sm' : 'text-text-subtle'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {loading ? (
-            <div className="space-y-4">
-              {[1, 2].map(item => <div key={item} className="h-40 animate-pulse bg-blush" />)}
-            </div>
-          ) : (
-            <>
-              {activeTab === 'orders' && (
-                <div className="space-y-4">
-                  {orders.length === 0 ? (
-                    <EmptyState title="Захиалга алга байна" href="/shop" label="Дэлгүүр үзэх" />
-                  ) : orders.map(order => (
-                    <article key={order.id} className="rounded-2xl border border-border-light/45 bg-white p-4 md:p-6">
-                      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border-light/30 pb-4">
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.14em] text-text-subtle">Захиалгын дугаар</p>
-                          <p className="mt-1 font-medium text-charcoal">#{order.id.slice(0, 10)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.14em] text-text-subtle">Огноо</p>
-                          <p className="mt-1 text-sm text-charcoal">{formatDate(order.createdAt)}</p>
-                        </div>
-                        <span className="rounded-[999px] border border-border-light/60 bg-sand px-3 py-1.5 text-xs font-semibold text-text-subtle">
-                          {statusLabels[order.status] || order.status}
-                        </span>
-                        <p className="font-medium text-[#D86FA0]">{formatPrice(order.total || 0)}</p>
-                      </div>
-                      <div className="mt-4 space-y-3">
-                        {order.items?.map((item: any, idx: number) => {
-                          const itemName = item.name_mn || item.name || 'Бүтээгдэхүүн';
-                          const itemImage = item.imageUrl || item.productImage || item.image || '/placeholder-product.svg';
-
-                          return (
-                            <div key={`${order.id}-${idx}`} className="grid grid-cols-[54px_1fr_auto] items-center gap-3 rounded-full bg-sand p-2 text-sm">
-                              <div className="relative aspect-square overflow-hidden rounded-[10px] bg-blush">
-                                <Image src={itemImage} alt={itemName} fill className="object-cover" sizes="54px" />
-                              </div>
-                              <div className="min-w-0">
-                                <p className="truncate font-medium text-charcoal">{itemName}</p>
-                                <p className="mt-1 text-xs text-text-subtle">× {item.quantity || 1} ширхэг</p>
-                              </div>
-                              <span className="whitespace-nowrap font-medium text-charcoal">
-                                {formatPrice((item.price || 0) * (item.quantity || 1))}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              )}
-
-              {activeTab === 'wishlist' && (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  {wishlist.length === 0 ? (
-                    <div className="md:col-span-2">
-                      <EmptyState title="Дуртай бүтээгдэхүүн алга байна" href="/shop" label="Бүтээгдэхүүн үзэх" />
+      {loading ? (
+        <div className="space-y-3">{Array.from({ length: 3 }).map((_, index) => <div key={index} className="h-32 rounded-[24px] animate-shimmer" />)}</div>
+      ) : (
+        <>
+          {activeTab === 'orders' && (
+            <section className="space-y-3">
+              {orders.length ? orders.map((order) => (
+                <article key={order.id} className="rounded-[24px] bg-white p-4 shadow-[var(--shadow-mobile-card)]">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[12px] font-bold text-[var(--color-text-medium)]">#{order.id.slice(-6).toUpperCase()}</p>
+                      <p className="mt-1 text-[16px] font-extrabold text-[var(--color-text-dark)]">{formatPrice(order.total || 0)}</p>
                     </div>
-                  ) : wishlist.map(item => (
-                    <article key={item.id} className="grid grid-cols-[96px_1fr] gap-4 border border-border-light/45 bg-white p-3">
-                      <Link href={`/shop/${item.productSlug}`} className="relative aspect-square overflow-hidden bg-blush">
-                        <Image src={item.productImage} alt={item.productName} fill className="object-cover" sizes="96px" />
-                      </Link>
-                      <div className="min-w-0">
-                        <Link href={`/shop/${item.productSlug}`} className="line-clamp-2 font-medium text-charcoal hover:underline">
-                          {item.productName}
-                        </Link>
-                        <p className="mt-2 text-sm font-medium text-[#D86FA0]">
-                          {formatPrice(item.salePrice ?? item.price)}
-                        </p>
-                        <div className="mt-4 flex gap-2">
-                          <Link href={`/shop/${item.productSlug}`} className="btn-primary min-h-10 flex-1 px-3 text-xs">
-                            Шууд авах
-                          </Link>
-                          <button
-                            onClick={() => handleRemoveWishlist(item.productId)}
-                            className="btn-secondary min-h-10 px-3 text-xs text-text-muted"
-                          >
-                            Хасах
-                          </button>
-                        </div>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              )}
-
-              {activeTab === 'reviews' && (
-                <div className="space-y-4">
-                  {reviews.length === 0 ? (
-                    <EmptyState title="Бичсэн сэтгэгдэл алга байна" href="/shop" label="Бүтээгдэхүүн үзэх" />
-                  ) : reviews.map(review => (
-                    <article key={review.id} className="rounded-2xl border border-border-light/45 bg-white p-4 md:p-5">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <Link href={`/shop/${review.productSlug}`} className="font-medium text-charcoal hover:underline">
-                            {review.productName}
-                          </Link>
-                          <p className="mt-1 text-xs text-text-subtle">{formatDate(review.createdAt)}</p>
-                        </div>
-                        <span className="rounded-[999px] border border-border-light/50 bg-sand px-3 py-1.5 text-[11px] font-semibold text-text-subtle">
-                          {review.approved ? 'Нийтлэгдсэн' : 'Нуусан'}
-                        </span>
-                      </div>
-
-                      {editingReviewId === review.id ? (
-                        <div className="mt-4">
-                          <div className="mb-3 flex gap-1">
-                            {[1, 2, 3, 4, 5].map(star => (
-                              <button
-                                key={star}
-                                type="button"
-                                onClick={() => setEditRating(star)}
-                                className={`text-2xl ${star <= editRating ? 'text-[#D894AC]' : 'text-[#E9D7DF]'}`}
-                              >
-                                ★
-                              </button>
-                            ))}
-                          </div>
-                          <textarea
-                            value={editContent}
-                            onChange={(event) => setEditContent(event.target.value)}
-                            rows={4}
-                            className="w-full border border-border-light/60 bg-sand px-4 py-3 text-sm outline-none focus:border-dusty-rose"
-                          />
-                          {editImageUrls.length > 0 && (
-                            <div className="mt-3 grid grid-cols-4 gap-2">
-                              {editImageUrls.map(imageUrl => (
-                                <div key={imageUrl} className="relative aspect-square overflow-hidden bg-blush">
-                                  <Image src={imageUrl} alt={review.productName} fill className="object-cover" sizes="100px" />
-                                  <button
-                                    type="button"
-                                    onClick={() => setEditImageUrls(prev => prev.filter(url => url !== imageUrl))}
-                                    className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center bg-white/90 text-sm"
-                                    aria-label="Зураг хасах"
-                                  >
-                                    ×
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          <label className="mt-3 inline-flex min-h-10 cursor-pointer items-center justify-center rounded-[9px] border border-border-light px-4 text-xs font-semibold text-text-muted hover:bg-blush">
-                            {editUploading ? 'Зураг оруулж байна...' : 'Зураг нэмэх'}
-                            <input
-                              type="file"
-                              accept="image/*"
-                              multiple
-                              disabled={editUploading || editImageUrls.length >= 4}
-                              onChange={(event) => handleEditImageUpload(event.target.files)}
-                              className="sr-only"
-                            />
-                          </label>
-                          <div className="mt-3 flex gap-2">
-                            <button onClick={() => saveReviewEdit(review)} disabled={editUploading} className="min-h-10 rounded-[9px] bg-[#241820] px-4 text-xs font-semibold text-white disabled:opacity-50">
-                              Хадгалах
-                            </button>
-                            <button onClick={() => setEditingReviewId(null)} className="min-h-10 rounded-[9px] border border-border-light px-4 text-xs font-semibold hover:bg-blush">
-                              Болих
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
+                    <span className="rounded-full bg-[var(--color-soft-pink)] px-3 py-1 text-[10px] font-extrabold text-[var(--color-primary)]">{statusLabels[order.status] || order.status}</span>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    {order.items?.map((item: any, index: number) => {
+                      const slug = item.productSlug || productSlugById[item.productId];
+                      const content = (
                         <>
-                          <p className="mt-3 text-sm text-[#D894AC]">
-                            {'★'.repeat(review.rating)}<span className="text-[#E9D7DF]">{'★'.repeat(5 - review.rating)}</span>
-                          </p>
-                          <p className="mt-3 text-sm leading-7 text-[#4A3A40]">{review.content}</p>
-                          {review.imageUrls.length > 0 && (
-                            <div className="mt-4 grid grid-cols-4 gap-2">
-                              {review.imageUrls.slice(0, 4).map(imageUrl => (
-                                <a key={imageUrl} href={imageUrl} target="_blank" rel="noopener noreferrer" className="relative aspect-square overflow-hidden bg-blush">
-                                  <Image src={imageUrl} alt={review.productName} fill className="object-cover" sizes="100px" />
-                                </a>
-                              ))}
-                            </div>
-                          )}
-                          <div className="mt-4 flex gap-2">
-                            <button onClick={() => startEditReview(review)} className="min-h-10 rounded-[9px] border border-border-light px-4 text-xs font-semibold hover:bg-blush">
-                              Засах
-                            </button>
-                            <button onClick={() => handleDeleteReview(review.id)} className="min-h-10 rounded-[9px] border border-red-200 bg-red-50 px-4 text-xs font-semibold text-red-700">
-                              Устгах
-                            </button>
-                          </div>
+                          <span className="min-w-0 flex-1 font-bold line-clamp-1">{item.name_mn || item.name || 'Бүтээгдэхүүн'} x {item.quantity || 1}</span>
+                          <strong className="shrink-0">{formatPrice((item.price || 0) * (item.quantity || 1))}</strong>
                         </>
-                      )}
-                    </article>
-                  ))}
-                </div>
-              )}
-            </>
+                      );
+                      return slug ? (
+                        <Link key={`${order.id}-${index}`} href={`/shop/${slug}`} className="flex items-center justify-between gap-3 rounded-[16px] bg-[var(--color-brand-bg)] p-3 text-[12px] active:scale-[0.99]">
+                          {content}
+                        </Link>
+                      ) : (
+                        <div key={`${order.id}-${index}`} className="flex items-center justify-between gap-3 rounded-[16px] bg-[var(--color-brand-bg)] p-3 text-[12px]">
+                          {content}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </article>
+              )) : <EmptyState title="Захиалга алга байна" href="/shop" label="Дэлгүүр үзэх" />}
+            </section>
           )}
-        </section>
-      </div>
+
+          {activeTab === 'reviews' && (
+            <section className="space-y-3">
+              {reviews.length ? reviews.map((review) => (
+                <article key={review.id} className="rounded-[24px] bg-white p-4 shadow-[var(--shadow-mobile-card)]">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <Link href={`/shop/${review.productSlug}`} className="block truncate text-[14px] font-extrabold">{review.productName}</Link>
+                      <div className="mt-1 flex gap-0.5 text-[#E6A0BE]">{Array.from({ length: 5 }).map((_, index) => <Star key={index} size={13} fill={index < review.rating ? 'currentColor' : 'none'} />)}</div>
+                    </div>
+                    <span className="rounded-full bg-[var(--color-brand-bg)] px-2 py-1 text-[10px] font-bold text-[var(--color-text-medium)]">{review.approved ? 'Нийтлэгдсэн' : 'Шалгаж байна'}</span>
+                  </div>
+                  <p className="mt-3 text-[13px] leading-relaxed">{review.content}</p>
+                  {review.imageUrls.length > 0 && (
+                    <div className="mt-3 flex gap-2 overflow-x-auto hide-scrollbar">
+                      {review.imageUrls.map((url) => (
+                        <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[14px] bg-[var(--color-soft-pink)]">
+                          <img src={url} alt="Review image" className="h-full w-full object-cover" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                  <div className="mt-3 flex gap-2">
+                    <button onClick={() => setEditingReview(review)} className="flex h-9 items-center gap-1 rounded-full bg-[var(--color-soft-pink)] px-4 text-[11px] font-extrabold text-[var(--color-text-dark)]"><Edit3 size={13} /> Засах</button>
+                    <button onClick={() => removeReview(review.id)} className="flex h-9 items-center gap-1 rounded-full bg-[var(--status-error-bg)] px-4 text-[11px] font-extrabold text-[var(--status-error)]"><Trash2 size={13} /> Устгах</button>
+                  </div>
+                </article>
+              )) : <EmptyState title="Сэтгэгдэл алга байна" href="/shop" label="Бүтээгдэхүүн үзэх" />}
+            </section>
+          )}
+        </>
+      )}
+
+      <AnimatePresence>
+        {editingReview && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/35 backdrop-blur-sm" onClick={() => setEditingReview(null)} />
+            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 28, stiffness: 320 }} className="fixed bottom-0 left-1/2 z-[70] max-h-[88vh] w-full max-w-[430px] -translate-x-1/2 overflow-y-auto rounded-t-[30px] bg-white p-4 pb-[env(safe-area-inset-bottom)]">
+              <ReviewForm product={reviewToProduct(editingReview)} review={editingReview} onCancel={() => setEditingReview(null)} onSubmitted={() => { setEditingReview(null); void loadAccountData(); }} />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
 function EmptyState({ title, href, label }: { title: string; href: string; label: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-border-light/70 bg-white p-8 text-center">
-      <p className="font-serif text-2xl text-charcoal">{title}</p>
-      <Link href={href} className="mt-5 inline-flex min-h-11 items-center justify-center rounded-[10px] border border-border-light px-5 text-sm font-semibold text-charcoal hover:bg-blush">
-        {label}
-      </Link>
+    <div className="rounded-[28px] bg-white px-6 py-12 text-center shadow-[var(--shadow-mobile-card)]">
+      <p className="text-lg font-extrabold text-[var(--color-text-dark)]">{title}</p>
+      <Link href={href} className="mt-5 inline-flex h-11 items-center rounded-full bg-[var(--color-primary)] px-5 text-[13px] font-extrabold text-white">{label}</Link>
     </div>
   );
 }

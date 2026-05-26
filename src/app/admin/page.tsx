@@ -2,320 +2,237 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { collection, getDocs, orderBy, query } from 'firebase/firestore';
-import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { db } from '@/lib/firebase';
-import { formatPrice } from '@/types';
+import { AlertTriangle, BarChart3, ChevronRight, ClipboardList, Download, Megaphone, Package, PackagePlus, ReceiptText, Users, Star } from 'lucide-react';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
+import { DASHBOARD_ACTION_CONFIG, DASHBOARD_METRIC_CONFIG } from '@/lib/constants/admin';
+import { useAdminAnalytics, useAdminOrders, useAdminProducts, useAdminStats, useAdminRevenueChart } from '@/lib/hooks/useAdmin';
+import { formatMNT, formatRelativeMN } from '@/lib/utils/format';
+import SkeletonCard from '@/components/admin/SkeletonCard';
+import StatusBadge from '@/components/admin/StatusBadge';
 
-type Period = 'today' | '7days' | '30days' | 'month';
-
-const PAID_STATUSES = ['confirmed', 'shipped', 'delivered'] as const;
-
-const PERIOD_LABELS: Record<Period, string> = {
-  today:   'Өнөөдөр',
-  '7days': '7 хоног',
-  '30days':'30 хоног',
-  month:   'Энэ сар',
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  pending:   'Хүлээгдэж байна',
-  confirmed: 'Баталгаажсан',
-  shipped:   'Хүргэлтэнд',
-  delivered: 'Хүргэгдсэн',
-  cancelled: 'Цуцлагдсан',
-};
-
-/** Tailwind class sets for each status badge */
-const STATUS_BADGE: Record<string, string> = {
-  pending:   'bg-status-pending-bg   text-status-pending-text   border-status-pending-border',
-  confirmed: 'bg-status-confirmed-bg text-status-confirmed-text border-status-confirmed-border',
-  shipped:   'bg-status-shipped-bg   text-status-shipped-text   border-status-shipped-border',
-  delivered: 'bg-status-delivered-bg text-status-delivered-text border-status-delivered-border',
-  cancelled: 'bg-status-cancelled-bg text-status-cancelled-text border-status-cancelled-border',
-};
-
-function getStatusBadgeClass(status: string) {
-  return STATUS_BADGE[status] ?? 'bg-sand text-text-subtle border-border-faint';
+function getInitials(name?: string) {
+  if (!name) return 'UJ';
+  return name.trim().split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase();
 }
 
-function getOrderTime(order: Record<string, unknown>): number {
-  if (order.createdAt && typeof (order.createdAt as { toMillis?: () => number }).toMillis === 'function') {
-    return (order.createdAt as { toMillis: () => number }).toMillis();
-  }
-  if (order.createdAt) return new Date(order.createdAt as string).getTime();
-  return 0;
-}
+export default function AdminDashboard() {
+  const { data: stats, isLoading: statsLoading } = useAdminStats();
+  const { data: analytics } = useAdminAnalytics();
+  const { data: ordersData, isLoading: ordersLoading } = useAdminOrders({ limit: 5 });
+  const { data: lowStockData } = useAdminProducts({ inStock: 'low' });
+  const [chartRange, setChartRange] = useState<'7d' | '1m' | '3m'>('7d');
+  const { data: chartData, isLoading: chartLoading } = useAdminRevenueChart(chartRange);
+  const [mounted, setMounted] = useState(false);
 
-function getPeriodStart(period: Period): number {
-  const now = new Date();
-  if (period === 'today')   return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  if (period === '7days')   return now.getTime() - 7  * 24 * 60 * 60 * 1000;
-  if (period === '30days')  return now.getTime() - 30 * 24 * 60 * 60 * 1000;
-  return new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-}
+  useEffect(() => setMounted(true), []);
 
-export default function AdminDashboardPage() {
-  const [orders,      setOrders]      = useState<Record<string, unknown>[]>([]);
-  const [recentUsers, setRecentUsers] = useState<Record<string, unknown>[]>([]);
-  const [loading,     setLoading]     = useState(true);
-  const [period,      setPeriod]      = useState<Period>('7days');
+  const todayStr = mounted ? new Date().toLocaleDateString('mn-MN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }) : '';
+  const reportUrl = `/api/admin/reports/monthly?year=${new Date().getFullYear()}&month=${new Date().getMonth() + 1}`;
 
-  useEffect(() => {
-    async function fetchDashboardData() {
-      try {
-        let orderList: Record<string, unknown>[] = [];
+  const metricCards = DASHBOARD_METRIC_CONFIG.map((card) => {
+    const rawValue = stats?.[card.key] || 0;
+    return {
+      ...card,
+      value: card.key === 'todayRevenue' ? formatMNT(rawValue) : rawValue,
+      tone: card.key === 'pendingCount' && rawValue > 0 ? 'warning' : card.key === 'lowStockCount' && rawValue > 0 ? 'danger' : 'neutral',
+    };
+  });
 
-        if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-          const ordersSnap = await getDocs(collection(db, 'orders'));
-          orderList = ordersSnap.docs.map(doc => {
-            const data = doc.data();
-            return { id: doc.id, ...data, orderTime: getOrderTime(data) };
-          });
+  const businessPulse = useMemo(() => [
+    { label: 'Энэ сарын орлого', value: formatMNT(stats?.monthlyRevenue || 0), icon: ReceiptText, href: '/admin/analytics' },
+    { label: 'Төлбөр хүлээгдэж буй', value: formatMNT(analytics?.summary?.pendingPaymentAmount || 0), icon: ClipboardList, href: '/admin/orders?status=pending' },
+    { label: 'Нийт хэрэглэгч', value: stats?.totalCustomers || 0, icon: Users, href: '/admin/customers' },
+    { label: 'Бүтээгдэхүүн', value: stats?.totalProducts || 0, icon: Package, href: '/admin/products' },
+  ], [analytics, stats]);
 
-          const usersSnap = await getDocs(query(collection(db, 'users'), orderBy('createdAt', 'desc')));
-          setRecentUsers(usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        } else {
-          const mock = JSON.parse(localStorage.getItem('mock_orders') || '[]') as Record<string, unknown>[];
-          orderList  = mock.map(o => ({ ...o, orderTime: getOrderTime(o) }));
-        }
-
-        orderList.sort((a, b) => (b.orderTime as number) - (a.orderTime as number));
-        setOrders(orderList);
-      } catch (err) {
-        console.error('Error fetching dashboard data:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchDashboardData();
-  }, []);
-
-  /* ── Stats ───────────────────────────────────────────────────────────── */
-  const stats = useMemo(() => {
-    const todayStart = getPeriodStart('today');
-    type Stats = { totalOrders: number; todayOrders: number; pendingOrders: number; totalRevenue: number };
-    return orders.reduce<Stats>(
-      (acc, order) => {
-        acc.totalOrders += 1;
-        if ((order.orderTime as number) >= todayStart) acc.todayOrders   += 1;
-        if (order.status === 'pending')                acc.pendingOrders += 1;
-        if (PAID_STATUSES.includes(order.status as typeof PAID_STATUSES[number])) {
-          acc.totalRevenue += Number(order.total || 0);
-        }
-        return acc;
-      },
-      { totalOrders: 0, todayOrders: 0, pendingOrders: 0, totalRevenue: 0 },
-    );
-  }, [orders]);
-
-  /* ── Chart data ──────────────────────────────────────────────────────── */
-  const chartData = useMemo(() => {
-    const start = getPeriodStart(period);
-    const byDate: Record<string, { date: string; total: number; count: number }> = {};
-
-    orders
-      .filter(o => PAID_STATUSES.includes(o.status as typeof PAID_STATUSES[number]) && (o.orderTime as number) >= start)
-      .forEach(o => {
-        const date = new Date(o.orderTime as number).toISOString().slice(5, 10);
-        if (!byDate[date]) byDate[date] = { date, total: 0, count: 0 };
-        byDate[date].total += Number(o.total || 0);
-        byDate[date].count += 1;
-      });
-
-    return Object.values(byDate);
-  }, [orders, period]);
-
-  const recentOrders = orders.slice(0, 10);
-  const latestUsers  = recentUsers.slice(0, 10);
-
-  /* ── Stat cards ──────────────────────────────────────────────────────── */
-  const cards = [
-    { label: 'Нийт захиалга',       value: stats.totalOrders,             note: 'Бүх төлөв багтсан',             accent: 'border-l-dusty-rose' },
-    { label: 'Өнөөдрийн захиалга',  value: stats.todayOrders,             note: 'Өнөөдөр ирсэн',                 accent: 'border-l-status-confirmed-border' },
-    { label: 'Хүлээгдэж буй',       value: stats.pendingOrders,           note: 'Анхаарал шаардлагатай',         accent: 'border-l-status-pending-border' },
-    { label: 'Баталгаажсан орлого', value: formatPrice(stats.totalRevenue),note: 'Цуцлагдсан захиалга ороогүй',  accent: 'border-l-rose-gold' },
-  ];
-
-  if (loading) {
-    return (
-      <div className="flex justify-center py-32">
-        <div className="h-8 w-8 animate-spin rounded-full border border-charcoal border-t-transparent" />
-      </div>
-    );
-  }
+  // Format chart data for Recharts
+  const formattedChartData = useMemo(() => {
+    if (!chartData?.labels) return [];
+    return chartData.labels.map((label: string, index: number) => ({
+      name: label,
+      revenue: chartData.revenue[index] || 0,
+    }));
+  }, [chartData]);
 
   return (
-    <div className="space-y-4 md:space-y-10">
+    <div className="flex flex-col gap-6 bg-[var(--color-brand-bg)] p-4 md:p-0 pb-[104px] md:pb-8">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <section className="flex-1 rounded-[28px] bg-white p-5 shadow-[var(--shadow-mobile-card)] md:rounded-[24px]">
+          <p className="text-[12px] font-bold uppercase tracking-[0.16em] text-[var(--color-brand-accent)]">UJ Admin</p>
+          <h1 className="mt-1 font-serif text-[25px] text-[var(--color-brand-text)]">Өдрийн самбар</h1>
+          <p className="mt-1 text-[13px] capitalize text-[var(--color-brand-muted)]">{todayStr}</p>
+          <div className="mt-5 grid grid-cols-2 gap-2 md:flex md:w-fit">
+            <Link href="/admin/analytics" className="flex h-12 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-accent)] px-6 text-[12px] font-extrabold text-white">
+              <BarChart3 size={16} /> Тайлан харах
+            </Link>
+            <a href={reportUrl} className="flex h-12 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-secondary)] px-6 text-[12px] font-extrabold text-[var(--color-brand-text)]">
+              <Download size={16} /> CSV татах
+            </a>
+          </div>
+        </section>
+      </div>
 
-      {/* ── KPI Cards ─────────────────────────────────────────────────────── */}
-      <section>
-        <div className="mb-5">
-          <p className="text-[10px] uppercase tracking-[0.1em] text-text-subtle">Өнөөдрийн тойм</p>
-          <h2 className="mt-1 text-[22px] font-semibold text-charcoal md:text-3xl">Гол үзүүлэлтүүд</h2>
-        </div>
-
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {cards.map(card => (
-            <div
-              key={card.label}
-              className={`card-brand border-l-4 ${card.accent} p-6`}
-            >
-              <p className="text-[11px] uppercase tracking-wider text-text-subtle">{card.label}</p>
-              <p className="mt-4 text-3xl font-semibold text-charcoal">{card.value}</p>
-              <p className="mt-3 text-xs text-text-subtle">{card.note}</p>
-            </div>
-          ))}
-        </div>
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {statsLoading
+          ? Array.from({ length: 4 }).map((_, index) => <SkeletonCard key={index} className="h-28 md:h-32" />)
+          : metricCards.map((card) => (
+              <Link key={card.title} href={card.href} className={`flex h-28 flex-col justify-between rounded-[22px] border bg-white p-4 shadow-[var(--shadow-mobile-card)] active:scale-[0.98] transition-transform hover:-translate-y-1 ${card.tone === 'warning' ? 'border-[var(--status-warning)]' : card.tone === 'danger' ? 'border-[var(--color-brand-danger)]' : 'border-transparent'}`}>
+                <p className="text-[12px] font-bold leading-tight text-[var(--color-brand-muted)]">{card.title}</p>
+                <p className="truncate text-[23px] font-extrabold leading-none text-[var(--color-brand-text)]">{card.value}</p>
+              </Link>
+            ))}
       </section>
 
-      {/* ── Revenue chart ─────────────────────────────────────────────────── */}
-      <section className="card-brand p-5 md:p-7">
-        <div className="mb-7 flex flex-col justify-between gap-5 md:flex-row md:items-center">
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.1em] text-text-subtle">Орлогын хөдөлгөөн</p>
-            <h3 className="mt-1 text-lg font-semibold text-charcoal md:text-2xl">Баталгаажсан борлуулалт</h3>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {(Object.keys(PERIOD_LABELS) as Period[]).map(key => (
+      {/* Revenue Chart Section */}
+      <section className="rounded-[24px] bg-white p-5 shadow-[var(--shadow-mobile-card)]">
+        <div className="mb-4 flex flex-col gap-3">
+          <h2 className="text-[17px] font-extrabold text-[var(--color-brand-text)]">Орлогын график</h2>
+          <div className="grid grid-cols-3 gap-2 rounded-full bg-[var(--color-brand-bg)] p-1">
+            {[
+              { value: '7d', label: '7 хоног' },
+              { value: '1m', label: '1 сар' },
+              { value: '3m', label: '3 сар' },
+            ].map((item) => (
               <button
-                key={key}
-                onClick={() => setPeriod(key)}
-                className={`min-h-10 rounded-btn border px-3 text-xs transition-colors ${
-                  period === key
-                    ? 'border-dusty-rose bg-blush text-charcoal'
-                    : 'border-border-faint text-text-subtle hover:bg-sand'
-                }`}
+                key={item.value}
+                type="button"
+                onClick={() => setChartRange(item.value as '7d' | '1m' | '3m')}
+                className={`h-10 rounded-full text-[12px] font-extrabold ${chartRange === item.value ? 'bg-[var(--color-brand-accent)] text-white' : 'text-[var(--color-brand-muted)]'}`}
               >
-                {PERIOD_LABELS[key]}
+                {item.label}
               </button>
             ))}
           </div>
         </div>
-
-        <div className="h-[260px] md:h-[360px]">
-          {chartData.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-sm text-text-subtle">Мэдээлэл алга</div>
-          ) : (
+        <div className="h-[250px] w-full">
+          {chartLoading ? (
+            <SkeletonCard height="h-full" />
+          ) : formattedChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fill: '#8B6B78', fontSize: 11 }} />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fill: '#8B6B78', fontSize: 11 }}
-                  tickFormatter={(v: number) => `${v / 1000}k`}
+              <BarChart data={formattedChartData} margin={{ top: 10, right: 0, left: -8, bottom: 0 }}>
+                <XAxis 
+                  dataKey="name" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 11, fill: 'var(--color-brand-muted)', fontWeight: 600 }} 
+                  dy={10}
                 />
-                <Tooltip
-                  contentStyle={{ border: '1px solid rgba(242,199,216,1)', background: '#fff', borderRadius: 0 }}
-                  formatter={(v) => formatPrice(Number(v ?? 0))}
+                <YAxis hide />
+                <Tooltip 
+                  formatter={(value) => [formatMNT(Number(value || 0)), 'Орлого']}
+                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: 'var(--shadow-mobile-card)', fontSize: '12px', fontWeight: 'bold' }}
                 />
-                <Line type="monotone" dataKey="total" stroke="#D994B5" strokeWidth={2} dot={{ r: 3, fill: '#D994B5' }} />
-              </LineChart>
+                <Bar dataKey="revenue" fill="var(--color-brand-accent)" radius={[10, 10, 0, 0]} barSize={chartRange === '3m' ? 44 : 18} />
+              </BarChart>
             </ResponsiveContainer>
+          ) : (
+            <div className="flex h-full items-center justify-center rounded-[20px] bg-[var(--color-brand-bg)]">
+              <p className="text-sm font-bold text-[var(--color-brand-muted)]">Дата байхгүй байна</p>
+            </div>
           )}
         </div>
       </section>
 
-      {/* ── Recent orders + Users ─────────────────────────────────────────── */}
-      <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-6">
+          <section className="grid grid-cols-2 gap-3">
+            {businessPulse.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link key={item.label} href={item.href} className="rounded-[22px] bg-white p-4 shadow-[var(--shadow-mobile-card)] transition-transform hover:-translate-y-1">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-brand-secondary)] text-[var(--color-brand-accent)]"><Icon size={18} /></span>
+                  <p className="mt-3 text-[11px] font-bold text-[var(--color-brand-muted)]">{item.label}</p>
+                  <p className="mt-1 truncate text-[18px] font-extrabold text-[var(--color-brand-text)]">{item.value}</p>
+                </Link>
+              );
+            })}
+          </section>
 
-        {/* Orders table */}
-        <div className="surface-panel xl:col-span-2">
-          <div className="flex items-center justify-between gap-4 border-b border-border-faint bg-gradient-to-r from-white to-blush/45 p-5 md:p-6">
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.1em] text-text-subtle">Сүүлийн захиалгууд</p>
-              <h3 className="mt-1 text-lg font-semibold text-charcoal">Шинэ хөдөлгөөн</h3>
-            </div>
-            <Link
-              href="/admin/orders"
-              className="btn-secondary h-11 px-6 text-xs"
-            >
-              Бүгдийг үзэх
-            </Link>
-          </div>
-
-          {/* Table header */}
-          <div className="hidden grid-cols-[minmax(0,1fr)_130px_120px_150px] items-center gap-4 border-b border-border-faint bg-sand/75 px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-text-subtle md:grid">
-            <span>Харилцагч</span>
-            <span className="text-right">Дүн</span>
-            <span>Огноо</span>
-            <span className="text-right">Төлөв</span>
-          </div>
-
-          <div className="divide-y divide-border-faint">
-            {recentOrders.length === 0 ? (
-              <p className="p-8 text-center text-sm text-text-subtle">Захиалга олдсонгүй</p>
-            ) : recentOrders.map(order => (
-              <Link
-                key={order.id as string}
-                href="/admin/orders"
-                className="block px-5 py-4 transition-colors hover:bg-sand/80"
-              >
-                <div className="grid grid-cols-[1fr_auto] items-center gap-3 md:grid-cols-[minmax(0,1fr)_130px_120px_150px] md:gap-4">
-                  <div className="min-w-0">
-                    <p className="truncate text-[15px] font-semibold text-charcoal">
-                      {String(order.customerName || 'Харилцагч')}
-                    </p>
-                    <p className="mt-1 truncate text-xs text-text-subtle">
-                      #{String(order.id).slice(0, 8)} · {String(order.phone || '-')}
-                    </p>
-                  </div>
-                  <p className="hidden whitespace-nowrap text-right text-sm font-semibold tabular-nums text-charcoal md:block">
-                    {formatPrice(Number(order.total || 0))}
-                  </p>
-                  <p className="hidden text-xs text-text-subtle md:block">
-                    {order.orderTime ? new Date(order.orderTime as number).toLocaleDateString('mn-MN') : '-'}
-                  </p>
-                  <span
-                    className={`status-badge ml-auto max-w-[150px] shrink-0 px-3 py-1.5 ${getStatusBadgeClass(String(order.status))}`}
-                  >
-                    {STATUS_LABELS[String(order.status)] || String(order.status)}
-                  </span>
-                </div>
-
-                {/* Mobile: date + total */}
-                <div className="mt-3 flex items-center justify-between text-sm md:hidden">
-                  <span className="text-text-subtle">
-                    {order.orderTime ? new Date(order.orderTime as number).toLocaleDateString('mn-MN') : '-'}
-                  </span>
-                  <span className="font-semibold text-charcoal">{formatPrice(Number(order.total || 0))}</span>
-                </div>
-              </Link>
-            ))}
-          </div>
+          <section className="grid grid-cols-2 gap-3">
+            {DASHBOARD_ACTION_CONFIG.map((action) => {
+              const Icon = action.key === 'newProduct' ? PackagePlus : action.key === 'orders' ? ClipboardList : action.key === 'reviews' ? Star : Users;
+              return (
+                <Link key={action.href} href={action.href} className="flex min-h-[92px] flex-col items-center justify-center rounded-[20px] bg-[var(--color-brand-secondary)] p-3 text-center shadow-[var(--shadow-mobile-card)] active:scale-[0.97] transition-colors hover:bg-[var(--color-brand-accent)] hover:text-white group">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[var(--color-brand-accent)] shadow-sm"><Icon size={20} strokeWidth={2.4} /></span>
+                  <span className="mt-2 text-[12px] font-extrabold leading-tight text-[var(--color-brand-text)] group-hover:text-white">{action.label}</span>
+                </Link>
+              );
+            })}
+          </section>
         </div>
 
-        {/* Users */}
-        <div className="surface-panel">
-          <div className="flex items-center justify-between gap-4 border-b border-border-faint bg-gradient-to-r from-white to-blush/45 p-5 md:p-6">
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.1em] text-text-subtle">Хэрэглэгчид</p>
-              <h3 className="mt-1 text-lg font-semibold text-charcoal">Сүүлд бүртгүүлсэн</h3>
-            </div>
-            <Link
-              href="/admin/users"
-              className="btn-secondary h-11 px-6 text-xs"
-            >
-              Бүгдийг үзэх
-            </Link>
-          </div>
-
-          <div className="divide-y divide-border-faint">
-            {latestUsers.length === 0 ? (
-              <p className="p-8 text-center text-sm text-text-subtle">Хэрэглэгч олдсонгүй</p>
-            ) : latestUsers.map(u => (
-              <div key={u.id as string} className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-sand/80">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full border border-border-faint bg-blush text-sm font-semibold text-charcoal">
-                  {(String(u.displayName || u.email || 'U')).charAt(0).toUpperCase()}
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-sm text-charcoal">{String(u.displayName || 'Нэргүй хэрэглэгч')}</p>
-                  <p className="truncate text-xs text-text-subtle">{String(u.email || '')}</p>
-                </div>
+        <div className="space-y-6">
+          <section className="rounded-[24px] bg-white p-4 shadow-[var(--shadow-mobile-card)] h-fit">
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <h2 className="text-[17px] font-extrabold text-[var(--color-brand-text)]">Promote хийх санал</h2>
+                <p className="mt-1 text-[12px] text-[var(--color-brand-muted)]">Борлуулалтын дата дээр үндэслэнэ</p>
               </div>
-            ))}
-          </div>
+              <Megaphone size={20} className="text-[var(--color-brand-accent)]" />
+            </div>
+            <div className="space-y-2">
+              {(analytics?.topProducts || []).slice(0, 3).map((product: any, index: number) => (
+                <Link key={product.id} href={`/admin/products/${product.id}/edit`} className="flex items-center gap-3 rounded-[18px] bg-[var(--color-brand-bg)] p-3 hover:bg-[var(--color-brand-secondary)] transition-colors">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-[12px] font-extrabold text-[var(--color-brand-accent)]">{index + 1}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13px] font-extrabold text-[var(--color-brand-text)]">{product.name}</span>
+                    <span className="mt-0.5 block text-[11px] text-[var(--color-brand-muted)]">{product.quantity} ширхэг зарагдсан · {formatMNT(product.revenue)}</span>
+                  </span>
+                  <ChevronRight size={16} className="text-[var(--color-brand-muted)]" />
+                </Link>
+              ))}
+              {!analytics?.topProducts?.length && <p className="rounded-[18px] bg-[var(--color-brand-bg)] p-4 text-center text-[12px] font-bold text-[var(--color-brand-muted)]">Борлуулалтын дата хараахан алга</p>}
+            </div>
+          </section>
+
+          <section className={`rounded-[24px] border p-4 ${stats?.lowStockCount > 0 ? 'border-[var(--color-brand-danger)]/20 bg-[#fff3f3]' : 'border-[var(--status-success-bg)] bg-[var(--status-success-bg)]/20'}`}>
+            <div className={`flex items-center gap-2 ${stats?.lowStockCount > 0 ? 'text-[var(--color-brand-danger)]' : 'text-[var(--status-success)]'}`}>
+              <AlertTriangle size={18} />
+              <h2 className="text-sm font-extrabold">{stats?.lowStockCount > 0 ? 'Нөөц багатай бараа байна' : 'Нөөц хэвийн байна'}</h2>
+            </div>
+            {stats?.lowStockCount > 0 && lowStockData?.products?.length > 0 ? (
+              <div className="mt-3 flex flex-col gap-2">
+                {lowStockData.products.slice(0, 3).map((product: any) => (
+                  <Link key={product.id} href={`/admin/products/${product.id}/edit`} className="flex items-center justify-between gap-3 rounded-[14px] bg-white/75 p-3 text-xs hover:bg-white transition-colors">
+                    <span className="min-w-0 flex-1 truncate font-bold text-[var(--color-brand-text)]">{product.name}</span>
+                    <span className="shrink-0 rounded-full bg-red-100 px-2 py-1 font-bold text-red-700">Нөөц: {product.stock ?? 0}</span>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-2 text-xs font-semibold text-[var(--status-success)]">Бүх барааны нөөц хангалттай байна.</p>
+            )}
+          </section>
+        </div>
+      </div>
+
+      <section>
+        <div className="mb-3 flex items-center justify-between md:mb-5">
+          <h2 className="text-[18px] font-extrabold text-[var(--color-brand-text)]">Сүүлийн захиалга</h2>
+          <Link href="/admin/orders" className="text-[12px] font-extrabold text-[var(--color-brand-accent)] hover:underline">Бүгдийг харах</Link>
+        </div>
+        <div className="flex flex-col gap-3 md:grid md:grid-cols-2 lg:grid-cols-3">
+          {ordersLoading ? (
+            Array.from({ length: 3 }).map((_, index) => <SkeletonCard key={index} height="h-[76px]" />)
+          ) : ordersData?.orders?.length > 0 ? (
+            ordersData.orders.map((order: any) => (
+              <Link key={order.id} href={`/admin/orders?id=${order.id}`} className="flex h-[76px] items-center justify-between rounded-[20px] bg-white px-3 shadow-[var(--shadow-mobile-card)] active:scale-[0.98] transition-transform hover:-translate-y-1">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-accent)] text-sm font-extrabold text-white">{getInitials(order.customerName || order.user?.name)}</div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-extrabold text-[var(--color-brand-text)]">{order.customerName || order.user?.name || 'Зочин'}</p>
+                    <p className="mt-0.5 truncate text-[12px] text-[var(--color-brand-muted)]">{order.items?.length || 0} бараа · {formatMNT(order.total)}</p>
+                  </div>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-1 pl-2">
+                  <StatusBadge status={order.status} />
+                  <span className="text-[11px] text-[var(--color-brand-muted)]">{mounted ? formatRelativeMN(order.createdAt) : ''}</span>
+                </div>
+              </Link>
+            ))
+          ) : (
+            <div className="col-span-full rounded-[22px] bg-white p-8 text-center shadow-[var(--shadow-mobile-card)]"><p className="text-sm font-semibold text-[var(--color-brand-muted)]">Одоогоор захиалга алга.</p></div>
+          )}
         </div>
       </section>
     </div>

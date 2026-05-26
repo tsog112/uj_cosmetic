@@ -1,522 +1,314 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import imageCompression from 'browser-image-compression';
-import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
-import { db } from '@/lib/firebase';
-import { doc, collection, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
-import type { Category } from '@/types';
+import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, Camera, Check, GripVertical, Loader2, Minus, Plus, Save, Trash2, X } from 'lucide-react';
+import AdminConfirmSheet from '@/components/admin/AdminConfirmSheet';
+import { useAdminCategories } from '@/lib/hooks/useAdmin';
 
-interface ProductFormProps {
-  initialData?: any;
-  onCancel: () => void;
-  onSuccess: () => void;
+type SpecRow = { key: string; value: string };
+type EditorTab = 'basic' | 'stock' | 'specs' | 'visibility';
+
+type ProductInitialData = {
+  id?: string;
+  name?: string;
+  brand?: string;
+  categoryId?: string;
+  description?: string;
+  ingredients?: string;
+  howToUse?: string;
+  price?: string | number;
+  salePrice?: string | number | null;
+  saleUntil?: string | Date | null;
+  costPrice?: string | number | null;
+  stock?: string | number;
+  lowStockThreshold?: string | number;
+  isVisible?: boolean;
+  isFeatured?: boolean;
+  showOnHome?: boolean;
+  showInSearch?: boolean;
+  slug?: string;
+  images?: string[] | string;
+  specs?: Record<string, string>;
+};
+
+type FormState = {
+  name: string;
+  brand: string;
+  categoryId: string;
+  description: string;
+  ingredients: string;
+  howToUse: string;
+  price: string;
+  salePrice: string;
+  saleUntil: string;
+  costPrice: string;
+  stock: string;
+  lowStockThreshold: string;
+  isVisible: boolean;
+  isFeatured: boolean;
+  showOnHome: boolean;
+  showInSearch: boolean;
+  slug: string;
+  images: string[];
+  specs: SpecRow[];
+};
+
+const tabs: Array<{ id: EditorTab; label: string }> = [
+  { id: 'basic', label: 'Үндсэн мэдээлэл' },
+  { id: 'stock', label: 'Нөөц & Үнэ' },
+  { id: 'specs', label: 'Дэлгэрэнгүй' },
+  { id: 'visibility', label: 'Promote' },
+];
+
+const specSuggestions = ['Брэнд', 'Хэмжээ', 'Хугацаа', 'Гүйцэтгэл', 'Найрлага', 'Орон', 'Батлагдсан'];
+
+function parseImages(value: ProductInitialData['images']) {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== 'string') return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+  } catch {
+    return [];
+  }
 }
 
-export default function ProductForm({ initialData, onCancel, onSuccess }: ProductFormProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  
-  // Basic Fields
-  const [name_mn, setNameMn] = useState(initialData?.name_mn || '');
-  const [category, setCategory] = useState(initialData?.category || '');
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [priceStr, setPriceStr] = useState(initialData?.price?.toString() || '');
-  const [salePriceStr, setSalePriceStr] = useState(initialData?.salePrice?.toString() || '');
-  const [stockQuantity, setStockQuantity] = useState<number>(
-    Number(initialData?.stockQuantity ?? initialData?.stock ?? (initialData?.inStock === false ? 0 : 50))
-  );
-  const [saleEndDate, setSaleEndDate] = useState(initialData?.saleEndDate || '');
-  const [description_mn, setDescriptionMn] = useState(initialData?.description_mn || '');
-  const [ingredients, setIngredients] = useState(initialData?.ingredients || '');
-  const [howToUse, setHowToUse] = useState(initialData?.howToUse || '');
-  
-  // Toggles
-  const [featured, setFeatured] = useState(initialData?.featured || false);
-  const [published, setPublished] = useState(initialData?.published ?? true);
-  const [outOfStock, setOutOfStock] = useState(initialData ? !initialData.inStock : false);
+function toDateInput(value: ProductInitialData['saleUntil']) {
+  if (!value) return '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
+}
 
-  // Media
-  const [images, setImages] = useState<string[]>([]);
-  const [uploadProgress, setUploadProgress] = useState<number[]>([]);
-  const [uploading, setUploading] = useState(false);
-  
+function makeForm(initialData?: ProductInitialData): FormState {
+  return {
+    name: initialData?.name || '',
+    brand: initialData?.brand || '',
+    categoryId: initialData?.categoryId || '',
+    description: initialData?.description || '',
+    ingredients: initialData?.ingredients || '',
+    howToUse: initialData?.howToUse || '',
+    price: String(initialData?.price || ''),
+    salePrice: initialData?.salePrice ? String(initialData.salePrice) : '',
+    saleUntil: toDateInput(initialData?.saleUntil),
+    costPrice: initialData?.costPrice ? String(initialData.costPrice) : '',
+    stock: String(initialData?.stock || ''),
+    lowStockThreshold: String(initialData?.lowStockThreshold || 5),
+    isVisible: initialData?.isVisible ?? true,
+    isFeatured: Boolean(initialData?.isFeatured),
+    showOnHome: initialData?.showOnHome ?? true,
+    showInSearch: initialData?.showInSearch ?? true,
+    slug: initialData?.slug || '',
+    images: parseImages(initialData?.images),
+    specs: initialData?.specs ? Object.entries(initialData.specs).map(([key, value]) => ({ key, value: String(value) })) : [],
+  };
+}
+
+export default function ProductForm({ initialData }: { initialData?: ProductInitialData }) {
+  const router = useRouter();
+  const { data: categories } = useAdminCategories();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [formData, setFormData] = useState<FormState>(() => makeForm(initialData));
+  const [activeTab, setActiveTab] = useState<EditorTab>('basic');
+  const [dirtyTabs, setDirtyTabs] = useState<Set<EditorTab>>(new Set());
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
-  // Initialization
-  useEffect(() => {
-    if (initialData?.images) {
-      setImages(initialData.images);
-    }
-  }, [initialData]);
+  useEffect(() => setFormData(makeForm(initialData)), [initialData]);
 
-  useEffect(() => {
-    getDocs(query(collection(db, 'categories'), orderBy('order', 'asc')))
-      .then(snap => {
-        const fetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as Category));
-        setCategories(fetched);
-        if (!initialData?.category && fetched[0]?.slug) {
-          setCategory(fetched[0].slug);
-        }
-      })
-      .catch(() => setCategories([]));
-  }, [initialData?.category]);
+  const inputClass = 'h-12 w-full rounded-[16px] border border-white bg-white px-4 text-[14px] font-semibold text-[var(--color-brand-text)] shadow-[var(--shadow-mobile-card)] outline-none focus:ring-2 focus:ring-[#f3b8cf]';
+  const labelClass = 'mb-2 block text-[11px] font-extrabold uppercase tracking-[0.14em] text-[var(--color-brand-muted)]';
 
-  const formatPriceInput = (val: string) => {
-    const num = val.replace(/\D/g, '');
-    if (!num) return '';
-    return Number(num).toLocaleString('en-US');
+  const updateField = <K extends keyof FormState>(name: K, value: FormState[K]) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setDirtyTabs((prev) => new Set(prev).add(activeTab));
   };
 
-  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<string>>) => {
-    setter(formatPriceInput(e.target.value));
-  };
-
-  const handleStockQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const nextStock = parseInt(e.target.value, 10) || 0;
-    setStockQuantity(nextStock);
-    setOutOfStock(nextStock <= 0);
-  };
-
-  async function handleImageUpload(files: FileList | File[]) {
+  const uploadImages = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []).slice(0, 8 - formData.images.length);
     if (!files.length) return;
-    const slug = name_mn ? name_mn.toLowerCase().replace(/[\s\W]+/g, '-') : `product-${Date.now()}`;
-    setUploading(true);
-    
+    setIsUploading(true);
     try {
-      const fileArray = Array.from(files).filter(f => f.type.startsWith('image/')).slice(0, 5); // max 5 images
-      if (fileArray.length === 0) return;
-      
-      setUploadProgress(new Array(fileArray.length).fill(0));
-      
-      const { uploadMultipleImages } = await import('@/lib/uploadImage');
-      const urls = await uploadMultipleImages(
-        fileArray,
-        slug,
-        (fileIndex, progress) => {
-          setUploadProgress(prev => {
-            const next = [...prev];
-            next[fileIndex] = progress;
-            return next;
-          });
-        }
-      );
-      
-      setImages(prev => [...prev, ...urls].slice(0, 5));
-    } catch (error) {
-      alert('Зураг оруулахад алдаа гарлаа. Дахин оролдоно уу.');
-      console.error('[ProductForm] Image upload error:', error);
+      const uploaded: string[] = [];
+      for (const file of files) {
+        const body = new FormData();
+        body.append('file', file);
+        body.append('folder', 'products');
+        const response = await fetch('/api/admin/upload', { method: 'POST', body });
+        if (!response.ok) throw new Error();
+        const data = await response.json() as { url?: string };
+        if (data.url) uploaded.push(data.url);
+      }
+      updateField('images', [...formData.images, ...uploaded]);
+      setStatusMessage('Зураг амжилттай нэмэгдлээ');
+    } catch {
+      setStatusMessage('Зураг оруулахад алдаа гарлаа');
     } finally {
-      setUploading(false);
-      setUploadProgress([]);
-    }
-  }
-
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      await handleImageUpload(e.target.files);
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  const handleDropUpload = async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      await handleImageUpload(e.dataTransfer.files);
-    }
-  };
-
-  const removeImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
-  };
-
-  // Drag to reorder
-  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
-
-  const handleDragStart = (idx: number) => {
-    setDraggedIdx(idx);
-  };
-
-  const handleDragOver = (e: React.DragEvent, idx: number) => {
-    e.preventDefault();
-    if (draggedIdx === null || draggedIdx === idx) return;
-    const items = [...images];
-    const draggedItem = items[draggedIdx];
-    items.splice(draggedIdx, 1);
-    items.splice(idx, 0, draggedItem);
-    setDraggedIdx(idx);
-    setImages(items);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (uploading) {
-      alert("Файл хуулж дуустал хүлээнэ үү.");
-      return;
-    }
-
-    if (images.length === 0) {
-      alert("Ядаж 1 зураг оруулна уу.");
-      return;
-    }
-    
-    setIsSubmitting(true);
-    
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setIsSaving(true);
+    setStatusMessage('');
+    const payload = {
+      ...formData,
+      specs: Object.fromEntries(formData.specs.filter((spec) => spec.key.trim()).map((spec) => [spec.key.trim(), spec.value.trim()])),
+    };
     try {
-      let productId = initialData?.id;
-      if (!productId) {
-        productId = doc(collection(db, "products")).id;
-      }
+      const response = await fetch(initialData?.id ? `/api/admin/products/${initialData.id}` : '/api/admin/products', {
+        method: initialData?.id ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) throw new Error();
+      router.push('/admin/products');
+      router.refresh();
+    } catch {
+      setStatusMessage('Бүтээгдэхүүн хадгалахад алдаа гарлаа');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
-      const numPrice = Number(priceStr.replace(/,/g, ''));
-      const numSalePrice = salePriceStr ? Number(salePriceStr.replace(/,/g, '')) : null;
-      
-      const slug = name_mn.toLowerCase().replace(/[\s\W]+/g, '-');
-
-      const productData = {
-        id: productId,
-        slug,
-        name_mn,
-        name_en: initialData?.name_en || name_mn,
-        price: numPrice,
-        salePrice: numSalePrice,
-        saleEndDate: numSalePrice && saleEndDate ? saleEndDate : null,
-        category,
-        description_mn,
-        ingredients,
-        howToUse,
-        images: images,
-        featured,
-        published,
-        inStock: stockQuantity > 0 && !outOfStock,
-        stockQuantity: outOfStock ? 0 : stockQuantity,
-        updatedAt: serverTimestamp(),
-      };
-
-      if (!initialData) {
-        (productData as any).createdAt = serverTimestamp();
-        (productData as any).orderCount = 0;
-      }
-
-      if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-        if (initialData) {
-          await updateDoc(doc(db, "products", productId), productData);
-        } else {
-          await setDoc(doc(db, "products", productId), productData);
-        }
-      } else {
-        // Mock
-        const mockProds = JSON.parse(localStorage.getItem('mock_products') || '[]');
-        if (initialData) {
-          const updated = mockProds.map((p:any) => p.id === productId ? { ...p, ...productData } : p);
-          localStorage.setItem('mock_products', JSON.stringify(updated));
-        } else {
-          mockProds.push(productData);
-          localStorage.setItem('mock_products', JSON.stringify(mockProds));
-        }
-      }
-
-      setToastMessage("Амжилттай хадгаллаа!");
-      setTimeout(() => {
-        onSuccess();
-      }, 1500);
-      
-    } catch (error) {
-      console.error(error);
-      alert("Хадгалахад алдаа гарлаа");
-      setIsSubmitting(false);
+  const deleteProduct = async () => {
+    if (!initialData?.id) return;
+    setIsSaving(true);
+    try {
+      const response = await fetch(`/api/admin/products/${initialData.id}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error();
+      router.push('/admin/products');
+      router.refresh();
+    } catch {
+      setStatusMessage('Бүтээгдэхүүн устгахад алдаа гарлаа');
+    } finally {
+      setIsSaving(false);
+      setConfirmDelete(false);
     }
   };
 
   return (
-    <div className="bg-white max-w-4xl w-full shadow-2xl flex flex-col max-h-[92vh] border border-border-light/40">
-      <div className="px-5 md:px-6 py-4 border-b border-border-light/40 flex justify-between items-center sticky top-0 bg-white z-10">
-        <h2 className="font-serif text-xl md:text-2xl font-light text-charcoal">{initialData ? 'Бараа засах' : 'Шинэ бараа нэмэх'}</h2>
-        <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 transition-colors">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
+    <form onSubmit={submit} className="space-y-6 p-4 pb-[128px]">
+      <header className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <button type="button" onClick={() => router.push('/admin/products')} className="mt-1 flex h-11 w-11 items-center justify-center rounded-full bg-white text-[var(--color-brand-text)] shadow-[var(--shadow-mobile-card)]" aria-label="Буцах">
+            <ArrowLeft size={18} />
+          </button>
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--color-brand-accent)]">Product editor</p>
+            <h1 className="mt-1 text-[24px] font-extrabold text-[var(--color-brand-text)]">{initialData ? 'Бараа засах' : 'Шинэ бараа'}</h1>
+          </div>
+        </div>
+      </header>
 
-      <div className="flex-1 overflow-y-auto p-5 md:p-6 pb-28 md:pb-6">
-        <form id="product-form" onSubmit={handleSubmit} className="space-y-10">
-          
-          {/* SECTION 1 - MEDIA */}
-          <section>
-            <h3 className="text-[11px] font-medium text-text-subtle uppercase tracking-[0.18em] mb-4 border-b border-border-light/40 pb-2">Зураг</h3>
-            
-            <div 
-              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-              onDrop={handleDropUpload}
-              onClick={() => !uploading && fileInputRef.current?.click()}
-              className={`min-h-[180px] border border-dashed border-dusty-rose p-6 md:p-10 text-center cursor-pointer hover:bg-blush transition-colors mb-4 group ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <div className="w-14 h-14 mx-auto bg-blush flex items-center justify-center text-[#FFB7D5] group-hover:scale-105 transition-transform mb-4">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="17 8 12 3 7 8" />
-                  <line x1="12" y1="3" x2="12" y2="15" />
-                </svg>
-              </div>
-              <p className="font-medium text-gray-700 mb-1">Зургаа энд чирж буулга эсвэл дарж сонго</p>
-              <p className="text-xs text-gray-500">JPG, PNG, WEBP. Хамгийн ихдээ 5 зураг.</p>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileSelect} 
-                className="hidden" 
-                multiple 
-                accept="image/*" 
-              />
-            </div>
+      {statusMessage && <div className="rounded-[18px] bg-white p-3 text-[12px] font-bold text-[var(--color-brand-muted)] shadow-[var(--shadow-mobile-card)]"><Check size={15} className="mr-2 inline text-[var(--color-brand-accent)]" />{statusMessage}</div>}
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3 md:gap-4">
-              {images.map((url, idx) => (
-                <div 
-                  key={idx} 
-                  draggable 
-                  onDragStart={() => handleDragStart(idx)}
-                  onDragOver={(e) => handleDragOver(e, idx)}
-                  className="relative aspect-square overflow-hidden border border-border-light/50 cursor-move group"
-                >
-                  <img src={url} alt="upload" className="w-full h-full object-cover" />
-                  {idx === 0 && (
-                    <span className="absolute bottom-0 left-0 right-0 bg-accent text-white text-[9px] font-bold text-center py-0.5">НҮҮР</span>
-                  )}
-                  <button type="button" onClick={() => removeImage(idx)} className="absolute top-1 right-1 bg-black/50 text-white w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      <nav className="grid grid-cols-2 gap-2 rounded-[24px] bg-white p-2 shadow-[var(--shadow-mobile-card)]">
+        {tabs.map((tab) => (
+          <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} className={`relative min-h-11 rounded-full px-3 text-[12px] font-extrabold ${activeTab === tab.id ? 'bg-[var(--color-brand-accent)] text-white' : 'bg-[var(--color-brand-bg)] text-[var(--color-brand-text)]'}`}>
+            {tab.label}
+            {dirtyTabs.has(tab.id) && <span className="absolute right-3 top-2 h-2 w-2 rounded-full bg-[var(--status-warning)]" />}
+          </button>
+        ))}
+      </nav>
+
+      {activeTab === 'basic' && (
+        <section className="space-y-5">
+          <div>
+            <p className={labelClass}>Зураг</p>
+            <div className="grid grid-cols-3 gap-3">
+              <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading || formData.images.length >= 8} className="flex aspect-square min-h-28 flex-col items-center justify-center rounded-[22px] border-2 border-dashed border-[#f3b8cf] bg-white text-[var(--color-brand-accent)] disabled:opacity-50">
+                {isUploading ? <Loader2 className="animate-spin" size={24} /> : <Camera size={24} />}
+                <span className="mt-2 text-[10px] font-extrabold">{isUploading ? 'Оруулж байна' : 'Зураг нэмэх'}</span>
+              </button>
+              <input ref={fileInputRef} type="file" multiple accept="image/*" className="hidden" onChange={uploadImages} />
+              {formData.images.map((image, index) => (
+                <div key={`${image}-${index}`} className="relative aspect-square min-h-28 overflow-hidden rounded-[22px] bg-white shadow-[var(--shadow-mobile-card)]">
+                  <Image src={image} alt="" fill className="object-cover" />
+                  {index === 0 && <span className="absolute left-2 top-2 rounded-full bg-white px-2 py-1 text-[9px] font-extrabold text-[var(--color-brand-accent)]">Thumb</span>}
+                  <button type="button" onClick={() => updateField('images', formData.images.filter((_, current) => current !== index))} className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white" aria-label="Зураг устгах">
+                    <X size={13} />
                   </button>
                 </div>
               ))}
-
-              {/* Progress bars for currently uploading images */}
-              {uploading && uploadProgress.map((prog, idx) => (
-                <div key={`prog-${idx}`} className="relative aspect-square overflow-hidden border border-border-light/50 bg-sand flex flex-col items-center justify-center">
-                   <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden mb-2">
-                     <div className="h-full bg-accent" style={{width: `${prog}%`}} />
-                   </div>
-                   <span className="text-[10px] text-gray-500 font-bold">{prog}%</span>
-                </div>
+            </div>
+          </div>
+          <label className="block"><span className={labelClass}>Бүтээгдэхүүний нэр *</span><input required value={formData.name} onChange={(event) => updateField('name', event.target.value)} className={`${inputClass} text-[18px]`} /></label>
+          <div>
+            <p className={labelClass}>Ангилал *</p>
+            <div className="mobile-chip-grid">
+              {categories?.map((category: { id: string; name: string }) => (
+                <button key={category.id} type="button" onClick={() => updateField('categoryId', category.id)} className={`mobile-chip ${formData.categoryId === category.id ? 'bg-[var(--color-brand-accent)] text-white' : 'bg-white text-[var(--color-brand-text)] shadow-[var(--shadow-mobile-card)]'}`}>{category.name}</button>
               ))}
             </div>
-          </section>
-
-          {/* SECTION 2 - INFO */}
-          <section>
-            <h3 className="text-[11px] font-medium text-text-subtle uppercase tracking-[0.18em] mb-4 border-b border-border-light/40 pb-2">Барааны мэдээлэл</h3>
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Барааны нэр *</label>
-                <input 
-                  required 
-                  value={name_mn} 
-                  onChange={e => setNameMn(e.target.value)} 
-                  placeholder="Жишээ: UJ Серум Арьс тэнцвэржүүлэгч" 
-                  className="w-full min-h-12 p-4 border border-border-light/60 focus:border-dusty-rose focus:outline-none text-charcoal placeholder:text-text-subtle/60 bg-white"
-                />
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Ангилал *</label>
-                  <select 
-                    value={category} 
-                    onChange={e => setCategory(e.target.value)} 
-                    required
-                    className="w-full min-h-12 p-4 border border-border-light/60 focus:border-dusty-rose focus:outline-none bg-white text-charcoal"
-                  >
-                    <option value="">Ангилал сонгоно уу</option>
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.slug}>
-                        {cat.name_mn}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Үнэ *</label>
-                  <div className="relative">
-                    <input 
-                      required 
-                      value={priceStr} 
-                      onChange={e => handlePriceChange(e, setPriceStr)} 
-                      placeholder="89,000" 
-                      className="w-full min-h-12 p-4 pr-10 border border-border-light/60 focus:border-dusty-rose focus:outline-none text-charcoal font-medium bg-white"
-                    />
-                    <span className="absolute right-4 top-4 text-gray-500 font-medium">₮</span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Нөөцийн тоо *</label>
-                  <input
-                    required
-                    type="number"
-                    min="0"
-                    value={stockQuantity}
-                    onChange={handleStockQuantityChange}
-                    placeholder="0"
-                    className="w-full min-h-12 p-4 border border-border-light/60 focus:border-dusty-rose focus:outline-none text-charcoal font-medium bg-white"
-                  />
-                </div>
-              </div>
-
-              {/* ХЯМДРАЛ ТОХИРУУЛАХ */}
-              <div className="bg-sand p-5 border border-border-light/40 space-y-4">
-                <h4 className="text-sm font-bold text-red-600 flex items-center gap-2">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-                  Хямдрал тохируулах
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Хямдарсан үнэ (₮)</label>
-                    <input 
-                      value={salePriceStr} 
-                      onChange={e => handlePriceChange(e, setSalePriceStr)} 
-                      placeholder="Хямдарсан үнэ..." 
-                      className="w-full p-3 border border-red-200 rounded-md focus:border-red-400 focus:outline-none text-red-600 font-bold placeholder-red-300 bg-sand"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Дуусах огноо (заавал биш)</label>
-                    <input 
-                      type="datetime-local"
-                      value={saleEndDate}
-                      onChange={e => setSaleEndDate(e.target.value)}
-                      className="w-full p-3 border border-red-200 rounded-md focus:border-red-400 focus:outline-none text-gray-700 bg-sand"
-                    />
-                  </div>
-                </div>
-                {salePriceStr && (
-                  <p className="text-xs text-red-500">
-                    Үндсэн үнэ: <span className="line-through">{priceStr}₮</span> → Хямдарсан: <b>{salePriceStr}₮</b>
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Тайлбар</label>
-                <textarea 
-                  maxLength={500}
-                  rows={4} 
-                  value={description_mn} 
-                  onChange={e => setDescriptionMn(e.target.value)} 
-                  placeholder="Барааны онцлог, үр дүн..." 
-                  className="w-full p-4 border border-border-light/60 focus:border-dusty-rose focus:outline-none resize-none text-charcoal placeholder:text-text-subtle/60 bg-white"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Найрлага</label>
-                  <textarea 
-                    rows={3} 
-                    value={ingredients} 
-                    onChange={e => setIngredients(e.target.value)} 
-                    placeholder="Усны экстракт, Витамин С..." 
-                    className="w-full p-4 border border-border-light/60 focus:border-dusty-rose focus:outline-none resize-none text-charcoal placeholder:text-text-subtle/60 bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Хэрэглэх заавар</label>
-                  <textarea 
-                    rows={3} 
-                    value={howToUse} 
-                    onChange={e => setHowToUse(e.target.value)} 
-                    placeholder="Арьсаа угааж цэвэрлэсний дараа..." 
-                    className="w-full p-4 border border-border-light/60 focus:border-dusty-rose focus:outline-none resize-none text-charcoal placeholder:text-text-subtle/60 bg-white"
-                  />
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* SECTION 3 - SETTINGS */}
-          <section>
-            <h3 className="text-[11px] font-medium text-text-subtle uppercase tracking-[0.18em] mb-4 border-b border-border-light/40 pb-2">Нэмэлт тохиргоо</h3>
-            <div className="space-y-4">
-              
-              <label className="flex items-center gap-4 p-4 border border-border-light/40 cursor-pointer hover:bg-sand transition-colors">
-                <div className={`w-12 h-6 rounded-full p-1 transition-colors ${featured ? 'bg-accent' : 'bg-gray-300'}`}>
-                  <div className={`w-4 h-4 bg-sand rounded-full shadow-md transform transition-transform ${featured ? 'translate-x-6' : 'translate-x-0'}`} />
-                </div>
-                <input type="checkbox" checked={featured} onChange={e => setFeatured(e.target.checked)} className="hidden" />
-                <div>
-                  <p className="font-medium text-gray-900">Онцлох бараа</p>
-                  <p className="text-xs text-gray-500">Нүүр хуудсанд харагдана</p>
-                </div>
-              </label>
-
-              <label className="flex items-center gap-4 p-4 border border-border-light/40 cursor-pointer hover:bg-sand transition-colors">
-                <div className={`w-12 h-6 rounded-full p-1 transition-colors ${published ? 'bg-green-500' : 'bg-gray-300'}`}>
-                  <div className={`w-4 h-4 bg-sand rounded-full shadow-md transform transition-transform ${published ? 'translate-x-6' : 'translate-x-0'}`} />
-                </div>
-                <input type="checkbox" checked={published} onChange={e => setPublished(e.target.checked)} className="hidden" />
-                <div>
-                  <p className="font-medium text-gray-900">Нийтлэгдсэн</p>
-                  <p className="text-xs text-gray-500">Дэлгүүрт нийтдээ харагдах эсэх</p>
-                </div>
-              </label>
-
-              <label className="flex items-center gap-4 p-4 border border-border-light/40 cursor-pointer hover:bg-sand transition-colors">
-                <div className={`w-12 h-6 rounded-full p-1 transition-colors ${outOfStock ? 'bg-red-500' : 'bg-gray-300'}`}>
-                  <div className={`w-4 h-4 bg-sand rounded-full shadow-md transform transition-transform ${outOfStock ? 'translate-x-6' : 'translate-x-0'}`} />
-                </div>
-                <input
-                  type="checkbox"
-                  checked={outOfStock}
-                  onChange={e => {
-                    const checked = e.target.checked;
-                    setOutOfStock(checked);
-                    if (checked) setStockQuantity(0);
-                    else if (stockQuantity <= 0) setStockQuantity(1);
-                  }}
-                  className="hidden"
-                />
-                <div>
-                  <p className="font-medium text-gray-900">Нөөц дууссан</p>
-                  <p className="text-xs text-gray-500">"Дуусжээ" бичигтэй болж, сагсанд нэмэх боломжгүй болно</p>
-                </div>
-              </label>
-
-            </div>
-          </section>
-
-        </form>
-      </div>
-
-      <div className="fixed md:sticky bottom-0 left-0 right-0 md:left-auto md:right-auto p-4 md:p-6 border-t border-border-light/40 bg-white flex gap-3 md:gap-4 z-20">
-        <button 
-          onClick={onCancel}
-          type="button"
-          disabled={isSubmitting}
-          className="flex-1 min-h-12 text-charcoal font-medium bg-white border border-border-light hover:bg-sand transition-colors disabled:opacity-50"
-        >
-          Цуцлах
-        </button>
-        <button 
-          type="submit"
-          form="product-form"
-          disabled={isSubmitting}
-          className="flex-1 min-h-12 bg-[#1A1A1A] text-white font-medium hover:bg-[#333] transition-colors disabled:opacity-70 flex justify-center items-center gap-3"
-        >
-          {isSubmitting ? (
-            <>
-              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              <span>Хадгалж байна...</span>
-            </>
-          ) : (
-            'Нийтлэх'
-          )}
-        </button>
-      </div>
-
-      {toastMessage && (
-        <div className="absolute top-8 left-1/2 -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-full shadow-lg font-medium animate-fade-in z-50">
-          {toastMessage}
-        </div>
+          </div>
+          <label className="block"><span className={labelClass}>Үнэ *</span><input required type="number" min="0" value={formData.price} onChange={(event) => updateField('price', event.target.value)} className={inputClass} placeholder="₮" /></label>
+          <label className="block"><span className={labelClass}>Тайлбар</span><textarea value={formData.description} onChange={(event) => updateField('description', event.target.value)} rows={4} className="w-full rounded-[18px] border border-white bg-white p-4 text-[15px] font-semibold leading-6 text-[var(--color-brand-text)] shadow-[var(--shadow-mobile-card)] outline-none focus:ring-2 focus:ring-[#f3b8cf]" /></label>
+          <label className="flex min-h-12 items-center justify-between rounded-[18px] bg-white px-4 shadow-[var(--shadow-mobile-card)]"><span className="text-sm font-extrabold">Апп дээр харуулах</span><input type="checkbox" checked={formData.isVisible} onChange={(event) => updateField('isVisible', event.target.checked)} className="accent-[var(--color-brand-accent)]" /></label>
+        </section>
       )}
-    </div>
+
+      {activeTab === 'stock' && (
+        <section className="space-y-4">
+          <div>
+            <span className={labelClass}>Одоогийн нөөц</span>
+            <div className="grid grid-cols-[52px_1fr_52px] gap-2">
+              <button type="button" onClick={() => updateField('stock', String(Math.max(0, Number(formData.stock || 0) - 1)))} className="h-13 rounded-full bg-white shadow-[var(--shadow-mobile-card)]"><Minus className="mx-auto" size={18} /></button>
+              <input required type="number" min="0" value={formData.stock} onChange={(event) => updateField('stock', event.target.value)} className="h-13 rounded-[18px] bg-white text-center text-[28px] font-extrabold shadow-[var(--shadow-mobile-card)] outline-none" />
+              <button type="button" onClick={() => updateField('stock', String(Number(formData.stock || 0) + 1))} className="h-13 rounded-full bg-white shadow-[var(--shadow-mobile-card)]"><Plus className="mx-auto" size={18} /></button>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <label><span className={labelClass}>Анхааруулах</span><input type="number" min="0" value={formData.lowStockThreshold} onChange={(event) => updateField('lowStockThreshold', event.target.value)} className={inputClass} /></label>
+            <label><span className={labelClass}>Зардлын үнэ</span><input type="number" min="0" value={formData.costPrice} onChange={(event) => updateField('costPrice', event.target.value)} className={inputClass} /></label>
+          </div>
+          <label className="flex min-h-12 items-center justify-between rounded-[18px] bg-white px-4 shadow-[var(--shadow-mobile-card)]"><span className="text-sm font-extrabold">Хямдралтай үнэ</span><input type="checkbox" checked={Boolean(formData.salePrice)} onChange={(event) => updateField('salePrice', event.target.checked ? formData.price : '')} className="accent-[var(--color-brand-accent)]" /></label>
+          {formData.salePrice && <div className="grid grid-cols-2 gap-3"><input type="number" min="0" value={formData.salePrice} onChange={(event) => updateField('salePrice', event.target.value)} className={inputClass} /><input type="date" value={formData.saleUntil} onChange={(event) => updateField('saleUntil', event.target.value)} className={inputClass} /></div>}
+          <div className="rounded-[20px] bg-white p-4 shadow-[var(--shadow-mobile-card)]"><p className={labelClass}>Нөөц засварлах түүх</p><p className="text-sm leading-6 text-[var(--color-brand-muted)]">Сүүлийн 5 өөрчлөлт audit log холбогдсоны дараа энд харагдана.</p></div>
+        </section>
+      )}
+
+      {activeTab === 'specs' && (
+        <section className="space-y-4">
+          <div className="flex flex-wrap gap-2">{specSuggestions.map((item) => <button key={item} type="button" onClick={() => updateField('specs', [...formData.specs, { key: item, value: '' }])} className="h-10 rounded-full bg-white px-3 text-[12px] font-extrabold shadow-[var(--shadow-mobile-card)]">{item}</button>)}</div>
+          <div className="space-y-2">
+            {formData.specs.map((spec, index) => (
+              <div key={`${spec.key}-${index}`} className="grid grid-cols-[24px_1fr_1fr_38px] items-center gap-2 rounded-[18px] bg-white p-2 shadow-[var(--shadow-mobile-card)]">
+                <GripVertical size={16} className="text-[var(--color-brand-muted)]" />
+                <input value={spec.key} onChange={(event) => { const next = [...formData.specs]; next[index] = { ...next[index], key: event.target.value }; updateField('specs', next); }} className="h-11 min-w-0 rounded-[14px] bg-[var(--color-brand-bg)] px-3 text-sm font-bold outline-none" placeholder="Нэр" />
+                <input value={spec.value} onChange={(event) => { const next = [...formData.specs]; next[index] = { ...next[index], value: event.target.value }; updateField('specs', next); }} className="h-11 min-w-0 rounded-[14px] bg-[var(--color-brand-bg)] px-3 text-sm font-bold outline-none" placeholder="Утга" />
+                <button type="button" onClick={() => updateField('specs', formData.specs.filter((_, current) => current !== index))} className="h-10 rounded-full bg-[var(--status-error-bg)] text-[var(--status-error)]"><Trash2 className="mx-auto" size={15} /></button>
+              </div>
+            ))}
+          </div>
+          <button type="button" onClick={() => updateField('specs', [...formData.specs, { key: '', value: '' }])} className="h-12 w-full rounded-full bg-[var(--color-brand-secondary)] text-sm font-extrabold text-[var(--color-brand-text)]">+ Шинж чанар нэмэх</button>
+        </section>
+      )}
+
+      {activeTab === 'visibility' && (
+        <section className="space-y-4">
+          {[
+            ['isFeatured', 'Featured / Promote хийх'],
+            ['showOnHome', 'Нүүр хуудсанд харуулах'],
+            ['showInSearch', 'Хайлтад харуулах'],
+          ].map(([key, label]) => <label key={key} className="flex min-h-12 items-center justify-between rounded-[18px] bg-white px-4 shadow-[var(--shadow-mobile-card)]"><span className="text-sm font-extrabold">{label}</span><input type="checkbox" checked={Boolean(formData[key as keyof FormState])} onChange={(event) => updateField(key as keyof FormState, event.target.checked as never)} className="accent-[var(--color-brand-accent)]" /></label>)}
+          <label><span className={labelClass}>SEO / slug</span><input value={formData.slug} onChange={(event) => updateField('slug', event.target.value)} className={inputClass} /></label>
+          <label><span className={labelClass}>Найрлага</span><input value={formData.ingredients} onChange={(event) => updateField('ingredients', event.target.value)} className={inputClass} /></label>
+          <label><span className={labelClass}>Хэрэглэх заавар</span><input value={formData.howToUse} onChange={(event) => updateField('howToUse', event.target.value)} className={inputClass} /></label>
+        </section>
+      )}
+
+      <section className="fixed inset-x-0 bottom-0 z-40 mx-auto grid max-w-[430px] grid-cols-[112px_1fr] gap-2 border-t border-[#f8dbe8] bg-white/95 p-3 pb-[calc(env(safe-area-inset-bottom)+12px)] backdrop-blur">
+        <button disabled={!initialData?.id || isSaving || isUploading} type="button" onClick={() => setConfirmDelete(true)} className="flex h-12 items-center justify-center gap-2 rounded-full border border-[var(--status-error)] bg-white text-sm font-extrabold text-[var(--status-error)] disabled:opacity-40"><Trash2 size={16} /> Устгах</button>
+        <button disabled={isSaving || isUploading} type="submit" className="flex h-12 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-accent)] text-sm font-extrabold text-white shadow-lg disabled:opacity-60">{isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={17} />} Хадгалах</button>
+      </section>
+
+      <AdminConfirmSheet open={confirmDelete} title="Бараа устгах уу?" body="Энэ үйлдлийг буцаах боломжгүй. Барааг устгахдаа итгэлтэй байна уу?" confirmLabel="Устгах" destructive loading={isSaving} onClose={() => setConfirmDelete(false)} onConfirm={() => void deleteProduct()} />
+    </form>
   );
 }

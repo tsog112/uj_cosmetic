@@ -87,7 +87,7 @@ export default function InstagramSection() {
   return (
     <section
       ref={ref}
-      className="fade-in-section border-t border-border-light bg-blush py-16 md:py-28 lg:py-32"
+      className="fade-in-section border-t border-border-light bg-blush py-16 md:py-24 lg:py-28"
       id="instagram"
     >
       <div className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-10">
@@ -113,7 +113,7 @@ export default function InstagramSection() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6 md:gap-4">
           {slots.map((slot, index) => {
             const hasImage = Boolean(slot?.imageUrl);
-            const baseClass = 'group relative aspect-square overflow-hidden rounded-[22px] border border-white/70 bg-white shadow-brand-md md:rounded-[18px]';
+            const baseClass = 'group relative aspect-square overflow-hidden rounded-[14px] border border-white/70 bg-white shadow-brand-md';
 
             return slot?.instagramUrl && hasImage ? (
               <a

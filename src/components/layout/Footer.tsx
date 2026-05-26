@@ -19,10 +19,6 @@ const HELP_LINKS = [
   { href: '/about', label: 'Брэндийн тухай' },
 ];
 
-function cleanSetting(value: string, fallback: string) {
-  if (!value || value.includes('?')) return fallback;
-  return value;
-}
 
 export default function Footer() {
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
@@ -33,9 +29,9 @@ export default function Footer() {
       .catch(() => { });
   }, []);
 
-  const instagramHandle = settings.instagramUrl.split('/').filter(Boolean).pop() || 'uj_cosmetic';
-  const displayPhone = cleanSetting(settings.phone, '+976 9900-0000');
-  const displayEmail = cleanSetting(settings.email, 'info@ujcosmetic.mn');
+  const instagramHandle = settings.instagramUrl ? settings.instagramUrl.split('/').filter(Boolean).pop() || '' : '';
+  const displayPhone = settings.phone || '';
+  const displayEmail = settings.email || '';
 
   const socialLinks = [
     { Icon: Camera, href: settings.instagramUrl, label: 'Instagram' },
@@ -46,7 +42,7 @@ export default function Footer() {
   return (
     <footer className="relative mt-auto overflow-hidden border-t border-white/10 bg-charcoal text-white">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-dusty-rose/70 to-transparent" />
-      <div className="max-content relative py-8 md:py-10">
+      <div className="max-content relative py-10 md:py-12">
 
         {/* ── Main grid ──────────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-12 lg:gap-8">
@@ -65,7 +61,7 @@ export default function Footer() {
               бүтээгдэхүүнийг Монгол хэрэглэгчдэдээ хүргэнэ.
             </p>
 
-            <div className="mt-8 flex gap-3">
+            <div className="mt-7 flex gap-3">
               {socialLinks.map(({ Icon, href, label }) => (
                 <a
                   key={label}
@@ -83,7 +79,7 @@ export default function Footer() {
 
           {/* Navigation */}
           <div className="lg:col-span-2">
-            <h4 className="mb-5 text-base font-semibold uppercase tracking-[0.14em] text-white/60">Цэс</h4>
+            <h4 className="mb-5 text-sm font-semibold uppercase tracking-[0.2em] text-white/60 md:text-base">Цэс</h4>
             <nav className="flex flex-col gap-3.5">
               {NAV_LINKS.map(link => (
                 <Link
@@ -99,7 +95,7 @@ export default function Footer() {
 
           {/* Help */}
           <div className="lg:col-span-2">
-            <h4 className="mb-5 text-base font-semibold uppercase tracking-[0.14em] text-white/60">Тусламж</h4>
+            <h4 className="mb-5 text-sm font-semibold uppercase tracking-[0.2em] text-white/60 md:text-base">Тусламж</h4>
             <nav className="flex flex-col gap-3.5 text-sm text-white/70">
               {HELP_LINKS.map(link => (
                 <Link key={link.href} href={link.href} className="transition-colors hover:text-white">
@@ -109,41 +105,50 @@ export default function Footer() {
             </nav>
           </div>
 
-          {/* Contact */}
           <div className="sm:col-span-2 lg:col-span-4">
-            <h4 className="mb-5 text-base font-semibold uppercase tracking-[0.14em] text-white/60">Холбоо барих</h4>
+            <h4 className="mb-5 text-sm font-semibold uppercase tracking-[0.2em] text-white/60 md:text-base">Холбоо барих</h4>
             <div className="flex flex-col gap-4 text-sm text-white/70">
-              <a
-                href={`tel:${displayPhone.replace(/[\s-]/g, '')}`}
-                className="group flex items-center gap-3 transition-colors hover:text-white"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/8 text-white/60 transition-colors group-hover:bg-dusty-rose/20 group-hover:text-dusty-rose">
-                  <Phone size={14} />
-                </span>
-                <span>{displayPhone}</span>
-              </a>
+              {displayPhone && (
+                <a
+                  href={`tel:${displayPhone.replace(/[\s-]/g, '')}`}
+                  className="group flex items-center gap-3 transition-colors hover:text-white"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/8 text-white/60 transition-colors group-hover:bg-dusty-rose/20 group-hover:text-dusty-rose">
+                    <Phone size={14} />
+                  </span>
+                  <span>{displayPhone}</span>
+                </a>
+              )}
 
-              <a
-                href={`mailto:${displayEmail}`}
-                className="group flex items-center gap-3 transition-colors hover:text-white"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/8 text-white/60 transition-colors group-hover:bg-dusty-rose/20 group-hover:text-dusty-rose">
-                  <Mail size={14} />
-                </span>
-                <span className="break-all">{displayEmail}</span>
-              </a>
+              {displayEmail && (
+                <a
+                  href={`mailto:${displayEmail}`}
+                  className="group flex items-center gap-3 transition-colors hover:text-white"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/8 text-white/60 transition-colors group-hover:bg-dusty-rose/20 group-hover:text-dusty-rose">
+                    <Mail size={14} />
+                  </span>
+                  <span className="break-all">{displayEmail}</span>
+                </a>
+              )}
 
-              <a
-                href={settings.instagramUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex items-center gap-3 transition-colors hover:text-white"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/8 text-white/60 transition-colors group-hover:bg-dusty-rose/20 group-hover:text-dusty-rose">
-                  <Camera size={14} />
-                </span>
-                <span>@{instagramHandle}</span>
-              </a>
+              {settings.instagramUrl && (
+                <a
+                  href={settings.instagramUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-center gap-3 transition-colors hover:text-white"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/8 text-white/60 transition-colors group-hover:bg-dusty-rose/20 group-hover:text-dusty-rose">
+                    <Camera size={14} />
+                  </span>
+                  <span>{instagramHandle ? `@${instagramHandle}` : settings.instagramUrl}</span>
+                </a>
+              )}
+
+              {!displayPhone && !displayEmail && !settings.instagramUrl && (
+                <p className="text-xs text-white/40">Холбоо барих мэдээлэл тохируулаагүй байна</p>
+              )}
             </div>
           </div>
         </div>

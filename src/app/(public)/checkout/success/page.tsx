@@ -3,124 +3,84 @@
 import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { Camera, Check, Copy, Home, ShoppingBag } from 'lucide-react';
+import { DEFAULT_SETTINGS, type SiteSettings } from '@/types';
 import { getSiteSettings } from '@/lib/services/firestoreService';
-import { DEFAULT_SETTINGS, SiteSettings } from '@/types';
 
 function SuccessContent() {
   const searchParams = useSearchParams();
-  const orderId = searchParams.get('order') || 'ORD-123456';
-  const [copied, setCopied] = useState(false);
+  const orderId = searchParams.get('order');
+  const payment = searchParams.get('payment');
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    getSiteSettings()
-      .then((siteSettings) => {
-        if (siteSettings) setSettings(siteSettings);
-      })
-      .catch(() => {});
+    getSiteSettings().then((siteSettings) => siteSettings && setSettings(siteSettings)).catch(() => {});
   }, []);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(settings.bankAccount);
+  const copyAccount = async () => {
+    await navigator.clipboard.writeText(settings.bankAccount);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    window.setTimeout(() => setCopied(false), 1800);
   };
 
   return (
-    <div className="max-w-[600px] mx-auto px-6 lg:px-10 py-20 text-center">
-      <div className="w-20 h-20 bg-accent text-text-primary rounded-full flex items-center justify-center mx-auto mb-8">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="20 6 9 17 4 12" />
-        </svg>
-      </div>
-
-      <h1 className="section-heading text-3xl mb-4">Захиалга амжилттай!</h1>
-      <p className="text-text-muted mb-8">
-        Баярлалаа. Таны захиалгын дугаар: <strong className="text-text-primary">{orderId}</strong>
-      </p>
-
-      <div className="relative mb-8 overflow-hidden rounded-[18px] border border-border-light bg-sand p-8 text-left shadow-[0_18px_50px_rgba(91,46,67,0.08)]">
-        <div className="absolute right-0 top-0 rounded-bl-[12px] bg-dusty-rose px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
-          Банкны шилжүүлэг
+    <div className="px-4 pb-[104px]">
+      <section className="rounded-[28px] bg-white p-6 text-center shadow-[var(--shadow-mobile-card)]">
+        <div className="mx-auto flex h-18 w-18 items-center justify-center rounded-full bg-[var(--color-brand-secondary)] text-[var(--color-brand-accent)]">
+          <Check size={34} strokeWidth={2.4} />
         </div>
-
-        <h3 className="font-medium text-text-primary mb-4 text-sm uppercase tracking-widest">
-          {settings.bankName}
-        </h3>
-
-        <div className="space-y-4 text-sm">
-          <div className="flex justify-between items-center border-thin-b pb-3 border-border-light/50">
-            <span className="text-text-muted">Дансны дугаар:</span>
-            <div className="flex items-center gap-3">
-              <strong className="text-text-primary text-base">{settings.bankAccount}</strong>
-              <button
-                onClick={handleCopy}
-                className="rounded-[8px] border border-border-light bg-white p-2 text-[#D994B5] transition-colors hover:bg-blush hover:text-charcoal"
-                title={copied ? 'Хуулагдлаа!' : 'Хуулах'}
-                aria-label={copied ? 'Хуулагдлаа!' : 'Хуулах'}
-              >
-                {copied ? (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                ) : (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                  </svg>
-                )}
-              </button>
-            </div>
-          </div>
-
-          <div className="flex justify-between items-center border-thin-b pb-3 border-border-light/50">
-            <span className="text-text-muted">Хүлээн авагч:</span>
-            <strong className="text-text-primary">{settings.bankAccountName}</strong>
-          </div>
-
-          <div className="flex justify-between items-center">
-            <span className="text-text-muted">Гүйлгээний утга:</span>
-            <strong className="rounded-[8px] bg-white px-2 py-1 text-[#D994B5]">{orderId}</strong>
-          </div>
-        </div>
-      </div>
-
-      <div className="mb-10">
-        <p className="text-sm text-text-primary font-medium mb-6">
-          Имэйлээ шалгана уу. Шилжүүлэг хийсний дараа захиалгын дугаараа манай Instagram руу илгээнэ үү.
+        <h1 className="mt-5 text-[25px] font-extrabold text-[var(--color-brand-text)]">Захиалга амжилттай</h1>
+        <p className="mt-3 text-[13px] leading-relaxed text-[var(--color-brand-muted)]">
+          Таны захиалга бүртгэгдлээ. Захиалгын дугаар:
+          <strong className="ml-1 text-[var(--color-brand-text)]">{orderId || 'үүсэж байна'}</strong>
         </p>
-        <a
-          href={settings.instagramUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-full border border-border-light bg-white px-6 text-sm font-semibold text-charcoal transition-colors hover:bg-blush md:w-auto"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="2" y="2" width="20" height="20" rx="5" />
-            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
-          </svg>
-          @{settings.instagramUrl.split('/').filter(Boolean).pop() || 'uj_cosmetic'}
-        </a>
-      </div>
+      </section>
 
-      <Link href="/" className="inline-flex min-h-11 items-center justify-center rounded-[11px] bg-[#241820] px-6 text-sm font-semibold text-white transition-colors hover:bg-dusty-rose">
-        Дэлгүүр рүү буцах
-      </Link>
+      {payment === 'qpay' ? (
+        <section className="mt-4 rounded-[24px] bg-white p-5 shadow-[var(--shadow-mobile-card)]">
+          <h2 className="text-[17px] font-extrabold text-[var(--color-brand-text)]">QPay төлбөр баталгаажлаа</h2>
+          <p className="mt-2 text-[13px] leading-relaxed text-[var(--color-brand-muted)]">Бид захиалгыг шалгаад хүргэлтийн мэдээллийг тантай холбогдон баталгаажуулна.</p>
+        </section>
+      ) : (
+        <section className="mt-4 rounded-[24px] bg-white p-5 shadow-[var(--shadow-mobile-card)]">
+          <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[var(--color-brand-accent)]">Дансны мэдээлэл</p>
+          <h2 className="mt-2 text-[18px] font-extrabold text-[var(--color-brand-text)]">{settings.bankName}</h2>
+          <div className="mt-4 space-y-3 text-[13px]">
+            <InfoRow label="Данс" value={settings.bankAccount} action={<button onClick={copyAccount} className="rounded-full bg-[var(--color-brand-secondary)] p-2 text-[var(--color-brand-accent)]">{copied ? <Check size={15} /> : <Copy size={15} />}</button>} />
+            <InfoRow label="Хүлээн авагч" value={settings.bankAccountName} />
+            <InfoRow label="Гүйлгээний утга" value={orderId || 'захиалгын дугаар'} />
+          </div>
+        </section>
+      )}
+
+      <section className="mt-4 rounded-[24px] bg-white p-5 text-center shadow-[var(--shadow-mobile-card)]">
+        <p className="text-[13px] leading-relaxed text-[var(--color-brand-muted)]">Асуух зүйл байвал Instagram-аар захиалгын дугаараа илгээгээрэй.</p>
+        <a href={settings.instagramUrl} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex h-11 items-center gap-2 rounded-full bg-[var(--color-brand-secondary)] px-5 text-[13px] font-extrabold text-[var(--color-brand-text)]">
+          <Camera size={16} /> @{settings.instagramUrl.split('/').filter(Boolean).pop() || 'uj_cosmetic'}
+        </a>
+      </section>
+
+      <div className="mt-5 grid grid-cols-2 gap-2">
+        <Link href="/shop" className="flex h-12 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-accent)] text-[13px] font-extrabold text-white"><ShoppingBag size={16} /> Дэлгүүр</Link>
+        <Link href="/" className="flex h-12 items-center justify-center gap-2 rounded-full bg-white text-[13px] font-extrabold text-[var(--color-brand-text)] shadow-[var(--shadow-mobile-card)]"><Home size={16} /> Нүүр</Link>
+      </div>
+    </div>
+  );
+}
+
+function InfoRow({ label, value, action }: { label: string; value: string; action?: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-[18px] bg-[var(--color-brand-bg)] p-3">
+      <span className="text-[var(--color-brand-muted)]">{label}</span>
+      <span className="flex items-center gap-2 text-right font-extrabold text-[var(--color-brand-text)]">{value}{action}</span>
     </div>
   );
 }
 
 export default function CheckoutSuccessPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="max-w-[600px] mx-auto px-6 py-20 text-center animate-pulse">
-          <div className="w-20 h-20 bg-cream-dark rounded-full mx-auto mb-8" />
-          <div className="h-8 bg-cream-dark w-64 mx-auto mb-4" />
-        </div>
-      }
-    >
+    <Suspense fallback={<div className="p-4"><div className="h-56 rounded-[28px] animate-shimmer" /></div>}>
       <SuccessContent />
     </Suspense>
   );

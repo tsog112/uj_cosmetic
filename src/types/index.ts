@@ -40,13 +40,16 @@ export interface Category {
 
 export interface OrderItem {
   productId: string;
+  productSlug?: string;
   name_mn: string;
   price: number;
   quantity: number;
   imageUrl: string;
 }
 
-export type OrderStatus = 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+export type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+export type PaymentMethod = 'bank_transfer' | 'qpay';
+export type PaymentStatus = 'unpaid' | 'pending' | 'paid' | 'failed';
 
 export interface Order {
   id: string;
@@ -62,8 +65,16 @@ export interface Order {
   address: string;
   note: string;
   status: OrderStatus;
-  paymentMethod: 'bank_transfer';
-  bankTransferRef: string;
+  paymentMethod: PaymentMethod;
+  paymentStatus?: PaymentStatus;
+  bankTransferRef?: string;
+  qpayInvoiceId?: string;
+  qpayQrText?: string;
+  qpayQrImage?: string;
+  qpayShortUrl?: string;
+  qpayPaidAmount?: number;
+  qpayPaymentId?: string;
+  paidAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -123,38 +134,24 @@ export interface AppUser {
   orderCount: number;
 }
 
-// Utility
 export function formatPrice(price: number): string {
-  return price.toLocaleString('mn-MN') + '₮';
+  return `${Math.round(price || 0).toLocaleString('mn-MN')}₮`;
 }
-
-export const CATEGORIES: Category[] = [
-  { id: 'serum', name_mn: 'Серум', slug: 'serum', image: '/images/categories/serum.png' },
-  { id: 'toner', name_mn: 'Тоник', slug: 'toner', image: '/images/categories/toner.png' },
-  { id: 'oil', name_mn: 'Нүүрний тос', slug: 'oil', image: '/images/categories/oil.png' },
-  { id: 'cream', name_mn: 'Нүүрний тосолгоо', slug: 'cream', image: '/images/categories/cream.png' },
-  { id: 'sunscreen', name_mn: 'Наран хамгаалагч', slug: 'sunscreen', image: '/images/categories/sunscreen.png' },
-  { id: 'cleanser', name_mn: 'Нүүр угаалга', slug: 'cleanser', image: '/images/categories/cleanser.png' },
-  { id: 'mask', name_mn: 'Нүүрний маск', slug: 'mask', image: '/images/categories/mask.png' },
-  { id: 'other', name_mn: 'Бусад', slug: 'other', image: '/images/categories/other.png' },
-];
 
 export function getCategoryName(slug: string): string {
-  const cat = CATEGORIES.find(c => c.slug === slug);
-  return cat ? cat.name_mn : slug;
+  return slug;
 }
 
-// Default site settings fallback
 export const DEFAULT_SETTINGS: SiteSettings = {
-  announcementText: 'Монгол даяар хүргэлт хийдэг · 50,000₮-с дээш захиалгад үнэгүй хүргэлт',
-  announcementActive: true,
+  announcementText: '',
+  announcementActive: false,
   freeShippingThreshold: 50000,
   shippingCost: 5000,
-  bankName: 'ХААН БАНК',
-  bankAccount: '5000123456',
-  bankAccountName: 'УЖ Косметик ХХК',
-  instagramUrl: 'https://instagram.com/uj_cosmetic',
+  bankName: '',
+  bankAccount: '',
+  bankAccountName: '',
+  instagramUrl: '',
   facebookUrl: '',
-  phone: '+976 9900-1234',
-  email: 'info@ujcosmetic.mn',
+  phone: '',
+  email: '',
 };

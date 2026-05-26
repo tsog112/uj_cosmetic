@@ -1,7 +1,10 @@
 import AnnouncementBar from '@/components/layout/AnnouncementBar';
 import Header from '@/components/layout/Header';
-import Footer from '@/components/layout/Footer';
+import ShopShell from '@/components/layout/ShopShell';
 import ChatAssistant from '@/components/ui/ChatAssistant';
+import BottomTabBar from '@/components/layout/BottomTabBar';
+import DesktopNav from '@/components/layout/DesktopNav';
+import HeaderSpacer from '@/components/layout/HeaderSpacer';
 
 export default function PublicLayout({
   children,
@@ -9,16 +12,23 @@ export default function PublicLayout({
   children: React.ReactNode;
 }) {
   return (
-    <>
+    <ShopShell>
       <AnnouncementBar />
-      <Header />
-      {/* No pt here – hero section is full-bleed behind transparent header.
-          Non-hero pages like /shop and /about set their own top padding. */}
-      <main className="flex-1 min-h-screen pb-20 md:pb-0">
+      {/* Mobile header (hidden on desktop) */}
+      <div className="md:hidden">
+        <Header />
+      </div>
+      {/* Desktop nav (hidden on mobile) */}
+      <DesktopNav />
+      <HeaderSpacer />
+      <main className="min-h-screen flex-1 pb-[85px] md:pb-0">
         {children}
       </main>
-      <Footer />
       <ChatAssistant />
-    </>
+      {/* Bottom tab only on mobile */}
+      <div className="md:hidden">
+        <BottomTabBar />
+      </div>
+    </ShopShell>
   );
 }

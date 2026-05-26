@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getAllProducts, getSiteSettings } from '@/lib/services/firestoreService';
+import { getSiteSettings } from '@/lib/services/firestoreService';
+import { getAdminDb } from '@/lib/firebaseAdmin';
+import { toPublicProduct } from '@/lib/publicDto';
 import { DEFAULT_SETTINGS, formatPrice } from '@/types';
 
 type ChatMessage = {
@@ -53,9 +55,14 @@ function productLine(product: any) {
 }
 
 async function getChatData() {
+  const publicProducts = async () => {
+    const snap = await getAdminDb().collection('products').where('published', '==', true).get();
+    return snap.docs.map((doc) => toPublicProduct(doc.id, doc.data()));
+  };
+
   const [settingsResult, productsResult] = await Promise.allSettled([
     getSiteSettings(),
-    getAllProducts({ published: true }),
+    publicProducts(),
   ]);
 
   const settings = settingsResult.status === 'fulfilled' && settingsResult.value

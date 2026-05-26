@@ -12,7 +12,7 @@ export async function POST(request: Request) {
       settings = await getSiteSettings()
     } catch (e) {
       console.error('getSiteSettings failed:', e)
-      settings = { bankName: 'Банк', bankAccount: '-' }
+      settings = { bankName: '', bankAccount: '' }
     }
 
     try {

@@ -26,11 +26,15 @@ export default function ReviewSection() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Fixed grid with reasonable max-width to prevent cards from becoming massive
-  const reviewGridClass = 'mx-auto flex flex-wrap justify-center gap-4 md:gap-6';
+  const reviewGridClass = [
+    'mx-auto grid gap-4 md:gap-6',
+    reviews.length === 1 && 'max-w-xl grid-cols-1',
+    reviews.length === 2 && 'max-w-4xl grid-cols-1 md:grid-cols-2',
+    reviews.length >= 3 && 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
+  ].filter(Boolean).join(' ');
 
   return (
-    <section className="bg-sand py-14 md:py-20">
+    <section className="bg-white py-16 md:py-24">
       <div className="max-content">
         {/* Section header */}
         <div className="mb-8 text-center md:mb-10">
@@ -47,7 +51,7 @@ export default function ReviewSection() {
         {loading ? (
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
             {[1, 2, 3].map(item => (
-              <div key={item} className="h-64 animate-pulse rounded-[22px] bg-blush" />
+              <div key={item} className="h-64 animate-pulse rounded-[14px] bg-blush" />
             ))}
           </div>
         ) : reviews.length > 0 ? (
@@ -58,7 +62,7 @@ export default function ReviewSection() {
                 <Link
                   key={review.id}
                   href={`/shop/${review.productSlug}`}
-                  className="group overflow-hidden rounded-[22px] border border-border-light bg-white transition-transform duration-300 hover:-translate-y-1 hover:shadow-brand-md w-full max-w-[280px] md:max-w-[300px]"
+                  className="group overflow-hidden rounded-[14px] border border-border-light bg-white transition-transform duration-300 hover:-translate-y-1 hover:shadow-brand-md"
                 >
                   <div className="relative aspect-square bg-blush">
                     {cover ? (
@@ -110,7 +114,7 @@ export default function ReviewSection() {
           <div className="mt-8 flex justify-center">
             <Link
               href="/reviews"
-              className="inline-flex min-h-12 items-center justify-center rounded-full border border-dusty-rose px-7 text-xs font-semibold uppercase tracking-[0.16em] text-charcoal transition-colors hover:bg-dusty-rose hover:text-white"
+              className="inline-flex min-h-12 items-center justify-center rounded-[12px] border border-dusty-rose px-7 text-xs font-semibold uppercase tracking-[0.16em] text-charcoal transition-colors hover:bg-dusty-rose hover:text-white"
             >
               Бусад сэтгэгдэл үзэх
             </Link>
