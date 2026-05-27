@@ -12,6 +12,7 @@ export async function GET(req: NextRequest) {
 
     const result = await listAdminOrders({
       status,
+      search: searchParams.get('search') || undefined,
       page: parseInt(searchParams.get('page') || '1', 10),
       limit: parseInt(searchParams.get('limit') || '20', 10),
     });

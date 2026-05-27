@@ -46,12 +46,21 @@ export default function DesktopNav() {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [hasUnread, setHasUnread] = useState(true);
   const [scrolled, setScrolled] = useState(false);
+  const [hasAnnouncement, setHasAnnouncement] = useState(true);
   const [copiedCode, setCopiedCode] = useState('');
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
+    const handleAnnouncementVisibility = (event: Event) => {
+      setHasAnnouncement(Boolean((event as CustomEvent<boolean>).detail));
+    };
+    window.addEventListener('announcement-visibility-change', handleAnnouncementVisibility);
+    return () => window.removeEventListener('announcement-visibility-change', handleAnnouncementVisibility);
   }, []);
 
   const copyCode = async (code: string) => {
@@ -64,7 +73,7 @@ export default function DesktopNav() {
     <>
       {/* Desktop top nav bar — hidden on mobile */}
       <header
-        className="fixed left-0 right-0 top-0 z-40 hidden md:block"
+        className={`fixed left-0 right-0 z-40 hidden md:block transition-all duration-300 ${hasAnnouncement ? 'top-9' : 'top-0'}`}
         style={{
           background: scrolled ? 'rgba(253,248,250,0.92)' : 'rgba(253,248,250,0.80)',
           backdropFilter: 'blur(20px) saturate(180%)',

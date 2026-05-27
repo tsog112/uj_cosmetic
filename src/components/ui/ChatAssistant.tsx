@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { MessageCircle, Send, Sparkles, X } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { getAllProducts, getSiteSettings } from '@/lib/services/firestoreService';
 import { DEFAULT_SETTINGS, Product, SiteSettings, formatPrice } from '@/types';
 
@@ -70,7 +71,7 @@ function buildFallbackReply(question: string, settings: SiteSettings, products: 
   }
 
   if (hasAny(text, ['захиалах', 'сагс', 'checkout', 'авах'])) {
-    return 'Бүтээгдэхүүний дэлгэрэнгүй дээрээс “Сагс” эсвэл “Авах” товч дарна. Дараа нь нэр, утас, хаягаа бөглөөд захиалгаа баталгаажуулна.';
+    return 'Бүтээгдэхүүний дэлгэрэнгүй дээрээс "Сагс" эсвэл "Авах" товч дарна. Дараа нь нэр, утас, хаягаа бөглөөд захиалгаа баталгаажуулна.';
   }
 
   return 'Ойлголоо. Бүтээгдэхүүн, арьсны төрөл, хүргэлт, төлбөр эсвэл захиалгын талаар асууж болно.';
@@ -98,32 +99,59 @@ function ChatBody({ scrollRef, messages, sending, input, setInput, onSubmit, onQ
   return (
     <>
       <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-[var(--color-brand-bg)] px-4 py-4">
-        {messages.map((message, index) => (
-          <div key={`${message.role}-${index}`} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[84%] whitespace-pre-line rounded-[20px] px-4 py-3 text-[13px] leading-6 ${message.role === 'user' ? 'rounded-br-[6px] bg-[var(--color-brand-text)] text-white' : 'rounded-bl-[6px] bg-white text-[var(--color-brand-text)] shadow-[var(--shadow-mobile-card)]'}`}>
-              {message.text}
-            </div>
-          </div>
-        ))}
+        <AnimatePresence initial={false}>
+          {messages.map((message, index) => (
+            <motion.div
+              key={`${message.role}-${index}`}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              <div className={`max-w-[84%] whitespace-pre-line rounded-[20px] px-4 py-3 text-[13px] leading-6 ${message.role === 'user' ? 'rounded-br-[6px] bg-[var(--color-brand-text)] text-white' : 'rounded-bl-[6px] bg-white text-[var(--color-brand-text)] shadow-[var(--shadow-mobile-card)]'}`}>
+                {message.text}
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
         {sending && (
-          <div className="flex justify-start">
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex justify-start"
+          >
             <div className="rounded-[20px] rounded-bl-[6px] bg-white px-4 py-3 text-[13px] font-bold text-[var(--color-brand-muted)] shadow-[var(--shadow-mobile-card)]">
-              Зөвлөгөө бэлдэж байна...
+              <span className="inline-flex gap-1">
+                <span className="animate-bounce" style={{ animationDelay: '0ms' }}>·</span>
+                <span className="animate-bounce" style={{ animationDelay: '150ms' }}>·</span>
+                <span className="animate-bounce" style={{ animationDelay: '300ms' }}>·</span>
+              </span>
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
       <div className="border-t border-[#f8dbe8] bg-white p-4">
         <div className="mb-3 flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
           {quickQuestions.map((question) => (
-            <button key={question} onClick={() => onQuickQuestion(question)} disabled={sending} className="shrink-0 rounded-full bg-[var(--color-brand-secondary)] px-3 py-2 text-[11px] font-extrabold leading-tight text-[var(--color-brand-text)] disabled:opacity-50">
+            <button key={question} onClick={() => onQuickQuestion(question)} disabled={sending} className="shrink-0 rounded-full bg-[var(--color-brand-secondary)] px-3 py-2 text-[11px] font-extrabold leading-tight text-[var(--color-brand-text)] disabled:opacity-50 transition-all hover:bg-[var(--color-soft-pink)] hover:scale-[1.03] active:scale-[0.97]">
               {question}
             </button>
           ))}
         </div>
         <form onSubmit={onSubmit} className="flex items-center gap-2">
-          <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Асуултаа бичээрэй..." disabled={sending} className="h-12 min-w-0 flex-1 rounded-full bg-[var(--color-brand-bg)] px-4 text-sm font-bold outline-none placeholder:text-[var(--color-brand-muted)] focus:ring-2 focus:ring-[#f3b8cf] disabled:opacity-60" />
-          <button type="submit" disabled={sending} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-accent)] text-white disabled:opacity-50" aria-label="Илгээх">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Асуултаа бичээрэй..."
+            disabled={sending}
+            className="h-12 min-w-0 flex-1 rounded-full bg-[var(--color-brand-bg)] px-4 text-sm font-bold outline-none placeholder:text-[var(--color-brand-muted)] disabled:opacity-60 transition-all duration-200"
+            style={{
+              boxShadow: '0 0 0 1.5px rgba(233,30,140,0.15)',
+            }}
+            onFocus={(e) => { e.currentTarget.style.boxShadow = '0 0 0 3px rgba(233,30,140,0.20)'; }}
+            onBlur={(e) => { e.currentTarget.style.boxShadow = '0 0 0 1.5px rgba(233,30,140,0.15)'; }}
+          />
+          <button type="submit" disabled={sending} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-accent)] text-white disabled:opacity-50 transition-all hover:scale-[1.05] active:scale-[0.95]" aria-label="Илгээх">
             <Send size={18} />
           </button>
         </form>
@@ -133,6 +161,46 @@ function ChatBody({ scrollRef, messages, sending, input, setInput, onSubmit, onQ
         </div>
       </div>
     </>
+  );
+}
+
+// Shared chat panel component
+function ChatPanel({ onClose, scrollRef, messages, sending, input, setInput, onSubmit, onQuickQuestion, instagramHandle, settings }: ChatBodyProps & { onClose: () => void }) {
+  return (
+    <div className="flex h-full flex-col overflow-hidden rounded-[24px] bg-white shadow-[0_20px_60px_rgba(166,66,112,0.22)]">
+      <div className="bg-[var(--color-brand-accent)] px-5 py-4 text-white">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/18">
+              <Sparkles size={20} />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/75">UJ Assistant</p>
+              <h3 className="mt-1 text-[17px] font-extrabold leading-tight">Арьс арчилгааны зөвлөх</h3>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/15 transition-all hover:bg-white/25 active:scale-90"
+            aria-label="Чат хаах"
+            style={{ lineHeight: 1 }}
+          >
+            <X size={16} strokeWidth={2.5} />
+          </button>
+        </div>
+      </div>
+      <ChatBody
+        scrollRef={scrollRef}
+        messages={messages}
+        sending={sending}
+        input={input}
+        setInput={setInput}
+        onSubmit={onSubmit}
+        onQuickQuestion={onQuickQuestion}
+        instagramHandle={instagramHandle}
+        settings={settings}
+      />
+    </div>
   );
 }
 
@@ -193,90 +261,109 @@ export default function ChatAssistant() {
     void sendMessage(input);
   };
 
+  const chatProps = {
+    scrollRef,
+    messages,
+    sending,
+    input,
+    setInput,
+    onSubmit: handleSubmit,
+    onQuickQuestion: sendMessage,
+    instagramHandle,
+    settings,
+  };
+
+  const springTransition = { type: 'spring' as const, stiffness: 380, damping: 28 };
+
   return (
     <>
-      {/* Mobile: inside shell, above bottom nav */}
-      <div className="fixed bottom-[72px] inset-x-0 mx-auto z-[55] w-full max-w-[430px] px-4 pointer-events-none md:hidden">
-        {open && (
-          <div className="pointer-events-auto mb-3 ml-auto flex h-[min(580px,72dvh)] w-full max-w-[390px] flex-col overflow-hidden rounded-[24px] bg-white shadow-[0_20px_60px_rgba(166,66,112,0.22)]">
-            <div className="bg-[var(--color-brand-accent)] px-5 py-4 text-white">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/18">
-                    <Sparkles size={20} />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/75">UJ Assistant</p>
-                    <h3 className="mt-1 text-[17px] font-extrabold leading-tight">Арьс арчилгааны зөвлөх</h3>
+      {/* Mobile: full bottom-sheet on open, fab otherwise */}
+      <div className="md:hidden">
+        <AnimatePresence>
+          {open && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[290] bg-black/30 backdrop-blur-sm"
+                onClick={() => setOpen(false)}
+              />
+              {/* Bottom sheet */}
+              <motion.div
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={springTransition}
+                className="fixed bottom-0 left-0 right-0 z-[300] mx-auto max-w-[430px] h-[85dvh] pointer-events-auto"
+                style={{ left: '50%', transform: 'translateX(-50%)', width: '100%' }}
+              >
+                <div className="mx-auto h-full max-w-[430px] px-0 pb-[env(safe-area-inset-bottom)]">
+                  <div className="h-full overflow-hidden rounded-t-[28px] bg-white shadow-[0_-8px_40px_rgba(166,66,112,0.22)]">
+                    {/* Drag handle */}
+                    <div className="flex justify-center pt-3 pb-1">
+                      <div className="h-1.5 w-12 rounded-full bg-gray-200" />
+                    </div>
+                    <ChatPanel onClose={() => setOpen(false)} {...chatProps} />
                   </div>
                 </div>
-                <button onClick={() => setOpen(false)} className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15" aria-label="Чат хаах">
-                  <X size={18} />
-                </button>
-              </div>
-            </div>
-            <ChatBody
-              scrollRef={scrollRef}
-              messages={messages}
-              sending={sending}
-              input={input}
-              setInput={setInput}
-              onSubmit={handleSubmit}
-              onQuickQuestion={sendMessage}
-              instagramHandle={instagramHandle}
-              settings={settings}
-            />
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* FAB — only visible when chat closed */}
+        {!open && (
+          <div className="fixed bottom-[80px] right-4 z-[300] pointer-events-auto">
+            <motion.button
+              onClick={() => setOpen(true)}
+              className="flex h-[56px] w-[56px] items-center justify-center rounded-full bg-[var(--color-brand-accent)] text-white shadow-[0_14px_34px_rgba(228,95,154,0.34)] ring-4 ring-white"
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.93 }}
+              aria-label="Чат нээх"
+            >
+              <MessageCircle size={24} />
+            </motion.button>
           </div>
         )}
-        <button
-          onClick={() => setOpen((prev) => !prev)}
-          className="pointer-events-auto ml-auto flex h-[56px] w-[56px] items-center justify-center rounded-full bg-[var(--color-brand-accent)] text-white shadow-[0_14px_34px_rgba(228,95,154,0.34)] ring-4 ring-white transition-transform active:scale-95"
-          aria-label={open ? 'Чат хаах' : 'Чат нээх'}
-        >
-          {open ? <X size={24} /> : <MessageCircle size={26} />}
-        </button>
       </div>
 
-      {/* Desktop: fixed bottom-right, independent */}
-      <div className="fixed bottom-8 right-8 z-[55] hidden pointer-events-none md:flex md:flex-col md:items-end">
-        {open && (
-          <div className="pointer-events-auto mb-3 flex h-[min(620px,80vh)] w-[380px] flex-col overflow-hidden rounded-[24px] bg-white shadow-[0_20px_60px_rgba(166,66,112,0.22)]">
-            <div className="bg-[var(--color-brand-accent)] px-5 py-4 text-white">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/18">
-                    <Sparkles size={20} />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/75">UJ Assistant</p>
-                    <h3 className="mt-1 text-[17px] font-extrabold leading-tight">Арьс арчилгааны зөвлөх</h3>
-                  </div>
-                </div>
-                <button onClick={() => setOpen(false)} className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15" aria-label="Чат хаах">
-                  <X size={18} />
-                </button>
-              </div>
-            </div>
-            <ChatBody
-              scrollRef={scrollRef}
-              messages={messages}
-              sending={sending}
-              input={input}
-              setInput={setInput}
-              onSubmit={handleSubmit}
-              onQuickQuestion={sendMessage}
-              instagramHandle={instagramHandle}
-              settings={settings}
-            />
-          </div>
-        )}
-        <button
+      {/* Desktop: fixed bottom-right corner popup */}
+      <div className="fixed bottom-8 right-8 z-[300] hidden md:flex md:flex-col md:items-end pointer-events-none">
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.88, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.88, y: 16 }}
+              transition={springTransition}
+              className="pointer-events-auto mb-3 h-[min(620px,80vh)] w-[380px]"
+            >
+              <ChatPanel onClose={() => setOpen(false)} {...chatProps} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <motion.button
           onClick={() => setOpen((prev) => !prev)}
-          className="pointer-events-auto flex h-[58px] w-[58px] items-center justify-center rounded-full bg-[var(--color-brand-accent)] text-white shadow-[0_14px_34px_rgba(228,95,154,0.34)] ring-4 ring-white transition-transform hover:scale-105 active:scale-95"
+          className="pointer-events-auto flex h-[58px] w-[58px] items-center justify-center rounded-full bg-[var(--color-brand-accent)] text-white shadow-[0_14px_34px_rgba(228,95,154,0.34)] ring-4 ring-white"
+          whileHover={{ scale: 1.08 }}
+          whileTap={{ scale: 0.93 }}
           aria-label={open ? 'Чат хаах' : 'Чат нээх'}
         >
-          {open ? <X size={24} /> : <MessageCircle size={26} />}
-        </button>
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={open ? 'close' : 'open'}
+              initial={{ rotate: -90, opacity: 0 }}
+              animate={{ rotate: 0, opacity: 1 }}
+              exit={{ rotate: 90, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="flex items-center justify-center"
+            >
+              {open ? <X size={22} strokeWidth={2.5} /> : <MessageCircle size={24} />}
+            </motion.span>
+          </AnimatePresence>
+        </motion.button>
       </div>
     </>
   );

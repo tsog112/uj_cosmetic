@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
-import { CheckCircle2, Eye, EyeOff, MessageSquareReply, Search, Star, Trash2, SlidersHorizontal, ChevronDown } from 'lucide-react';
+import { CheckCircle2, Eye, EyeOff, MessageSquareReply, Search, Star, Trash2, SlidersHorizontal, BadgeCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import AdminSheet from '@/components/admin/AdminSheet';
@@ -42,27 +42,27 @@ export default function AdminReviewsPage() {
     searchTimeoutRef.current = setTimeout(() => setDebouncedSearch(value), 300);
   };
 
-  const setReviewStatus = async (id: string, status: 'pending' | 'approved' | 'hidden', adminReply?: string) => {
+  const setReviewStatus = async (id: string, status: 'pending' | 'visible' | 'hidden', adminReply?: string, featured?: boolean) => {
     mutate(
       (prev: any) =>
         prev
-          ? { ...prev, reviews: prev.reviews.map((r: any) => (r.id === id ? { ...r, status, approved: status === 'approved', adminReply: adminReply ?? r.adminReply } : r)) }
+          ? { ...prev, reviews: prev.reviews.map((r: any) => (r.id === id ? { ...r, status, approved: status === 'visible', featured: featured ?? r.featured, adminReply: adminReply ?? r.adminReply } : r)) }
           : prev,
       false
     );
-    setSelectedReview((prev: any) => (prev?.id === id ? { ...prev, status, approved: status === 'approved', adminReply: adminReply ?? prev.adminReply } : prev));
+    setSelectedReview((prev: any) => (prev?.id === id ? { ...prev, status, approved: status === 'visible', featured: featured ?? prev.featured, adminReply: adminReply ?? prev.adminReply } : prev));
     try {
       const res = await fetch(`/api/admin/reviews/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, adminReply }),
+        body: JSON.stringify({ status, adminReply, featured }),
       });
       if (!res.ok) throw new Error();
       mutate();
-      showToast(status === 'approved' ? 'Сэтгэгдэл нийтлэгдлээ' : status === 'hidden' ? 'Сэтгэгдэл нуугдлаа' : 'Сэтгэгдэл хүлээгдэж байна');
+      showToast(status === 'visible' ? 'С??г?гд?л ний?л?гдл??' : status === 'hidden' ? 'С??г?гд?л н??гдлаа' : 'С??г?гд?л ?үл??гд?ж байна');
     } catch {
       mutate();
-      showToast('Алдаа гарлаа', 'error');
+      showToast('?лдаа га?лаа', 'error');
     }
   };
 
@@ -75,16 +75,26 @@ export default function AdminReviewsPage() {
       const res = await fetch(`/api/admin/reviews/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error();
       mutate();
-      showToast('Сэтгэгдэл устгагдлаа');
+      showToast('С??г?гд?л ???гагдлаа');
     } catch {
       mutate();
-      showToast('Устгахад алдаа гарлаа', 'error');
+      showToast('У??га?ад алдаа га?лаа', 'error');
     }
   };
 
+  const toggleFeatured = async (review: any) => {
+    if (review.status !== 'visible') {
+      showToast('Нүүр хуудсанд харуулахын өмнө нийтэлнэ үү.', 'error');
+      return;
+    }
+    await setReviewStatus(review.id, 'visible', review.adminReply, !review.featured);
+  };
+
+  const featuredCount = data?.statusCounts?.featured || 0;
+
   return (
     <div className="space-y-4 p-4 pb-[104px]">
-      <AdminPageHeader eyebrow="Сэтгэгдлийн удирдлага" title="Сэтгэгдлүүд" />
+      <AdminPageHeader eyebrow="С??г?гдлийн ?ди?длага" title="С??г?гдлүүд" />
 
       <section className="rounded-[24px] bg-white p-3 shadow-[var(--shadow-mobile-card)]">
         <div className="flex items-center gap-2">
@@ -93,7 +103,7 @@ export default function AdminReviewsPage() {
             <input
               value={search}
               onChange={(event) => handleSearch(event.target.value)}
-              placeholder="Сэтгэгдэл, бараа, нэрээр хайх..."
+              placeholder="С??г?гд?л, ба?аа, н????? ?ай?..."
               className="h-11 w-full rounded-full border border-[#f8dbe8] bg-[var(--color-brand-bg)] pl-10 pr-4 text-[13px] font-semibold outline-none focus:ring-2 focus:ring-[#f3b8cf] transition-all"
             />
           </div>
@@ -121,7 +131,7 @@ export default function AdminReviewsPage() {
             >
               <div className="mt-3 rounded-[20px] p-4 bg-[var(--color-brand-bg)] border border-[#f8dbe8]">
                 <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-brand-muted)]">
-                  Төлөвөөр шүүх
+                  Төлөвөө? ?үү?
                 </p>
                 <div className="mobile-chip-grid">
                   {REVIEW_FILTERS.map((tab) => (
@@ -153,16 +163,21 @@ export default function AdminReviewsPage() {
           Array.from({ length: 4 }).map((_, index) => <div key={index} className="h-48 rounded-[24px] animate-shimmer" />)
         ) : data?.reviews?.length > 0 ? (
           data.reviews.map((review: any) => (
-            <article key={review.id} onClick={() => { setSelectedReview(review); setReplyText(review.adminReply || ''); }} className={`flex flex-col gap-3 rounded-[24px] p-4 shadow-[var(--shadow-mobile-card)] transition-opacity ${review.status === 'approved' ? 'bg-white' : 'bg-white/70'}`}>
+            <article key={review.id} onClick={() => { setSelectedReview(review); setReplyText(review.adminReply || ''); }} className={`flex flex-col gap-3 rounded-[24px] p-4 shadow-[var(--shadow-mobile-card)] transition-opacity ${review.status === 'visible' ? 'bg-white' : 'bg-white/70'}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <p className="truncate text-[14px] font-extrabold text-[var(--color-brand-text)]">{review.userName || 'Зочин'}</p>
-                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${review.status === 'approved' ? 'bg-[var(--status-success-bg)] text-[var(--status-success)]' : review.status === 'hidden' ? 'bg-[#f8dbe8] text-[var(--color-brand-muted)]' : 'bg-[var(--status-warning-bg)] text-[var(--status-warning)]'}`}>
-                      {review.status === 'approved' ? 'Approved' : review.status === 'hidden' ? 'Hidden' : 'Pending'}
+                    <p className="truncate text-[14px] font-extrabold text-[var(--color-brand-text)]">{review.userName || '?о?ин'}</p>
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${review.status === 'visible' ? 'bg-[var(--status-success-bg)] text-[var(--status-success)]' : review.status === 'hidden' ? 'bg-[#f8dbe8] text-[var(--color-brand-muted)]' : 'bg-[var(--status-warning-bg)] text-[var(--status-warning)]'}`}>
+                      {review.status === 'visible' ? '?ий?л?гд??н' : review.status === 'hidden' ? '????ан' : 'Хүл??гд?ж б?й'}
                     </span>
                   </div>
                   <p className="mt-0.5 truncate text-[11px] font-bold text-[var(--color-brand-accent)]">{review.productName}</p>
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    <span className="rounded-full bg-[var(--color-brand-bg)] px-2 py-0.5 font-mono text-[10px] font-bold text-[var(--color-brand-muted)]">#{String(review.orderId || 'no-order').slice(-6).toUpperCase()}</span>
+                    {review.verifiedPurchase && <span className="inline-flex items-center gap-1 rounded-full bg-[var(--status-success-bg)] px-2 py-0.5 text-[10px] font-bold text-[var(--status-success)]"><BadgeCheck size={11} /> Verified</span>}
+                    {review.featured && <span className="rounded-full bg-[var(--color-brand-secondary)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-brand-accent)]">Нүүр</span>}
+                  </div>
                   <p className="mt-1 text-[10px] text-[var(--color-brand-muted)]">{mounted ? formatDateMN(review.createdAt) : ''}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
@@ -188,7 +203,7 @@ export default function AdminReviewsPage() {
                     }}
                     className="mt-1 h-8 text-[12px] font-extrabold text-[var(--color-brand-accent)]"
                   >
-                    {expandedReviews.has(review.id) ? 'Хураах' : 'Дэлгэх'}
+                    {expandedReviews.has(review.id) ? 'Х??аа?' : '??лг??'}
                   </button>
                 )}
               </div>
@@ -208,15 +223,25 @@ export default function AdminReviewsPage() {
                   type="button"
                   onClick={(event) => {
                     event.stopPropagation();
-                    setReviewStatus(review.id, review.status === 'approved' ? 'hidden' : 'approved');
+                    void toggleFeatured(review);
+                  }}
+                  className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-full text-[12px] font-extrabold transition-colors ${review.featured ? 'bg-[var(--color-brand-accent)] text-white' : 'bg-[var(--color-brand-bg)] text-[var(--color-brand-text)]'}`}
+                >
+                  <Star size={14} /> {review.featured ? 'Нүүрт' : 'Нүүр'}
+                </button>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setReviewStatus(review.id, review.status === 'visible' ? 'hidden' : 'visible');
                   }}
                   className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-full text-[12px] font-extrabold transition-colors ${
-                    review.status === 'approved'
+                    review.status === 'visible'
                       ? 'bg-[var(--color-brand-secondary)] text-[var(--color-brand-text)]'
                       : 'bg-[var(--color-brand-accent)] text-white'
                   }`}
                 >
-                  {review.status === 'approved' ? <><EyeOff size={14} /> Нуух</> : <><Eye size={14} /> Нийтлэх</>}
+                  {review.status === 'visible' ? <><EyeOff size={14} /> ????</> : <><Eye size={14} /> ?ий?л??</>}
                 </button>
                 <button
                   type="button"
@@ -225,29 +250,32 @@ export default function AdminReviewsPage() {
                     setPendingDeleteReview(review.id);
                   }}
                   className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full bg-[#FFF0F3] text-[12px] font-extrabold text-[var(--color-brand-danger)] transition-colors"
-                  aria-label="Устгах"
+                  aria-label="У??га?"
                 >
-                  <Trash2 size={14} /> Устгах
+                  <Trash2 size={14} /> У??га?
                 </button>
               </div>
             </article>
           ))
         ) : (
           <div className="col-span-full rounded-[24px] bg-white p-10 text-center shadow-[var(--shadow-mobile-card)]">
-            <p className="text-sm font-bold text-[var(--color-brand-muted)]">Сэтгэгдэл олдсонгүй</p>
+            <p className="text-sm font-bold text-[var(--color-brand-muted)]">С??г?гд?л олд?онгүй</p>
           </div>
         )}
       </section>
 
       <Pagination page={page} totalItems={data?.totalCount || 0} pageSize={20} onPageChange={setPage} />
+      <div className="rounded-[18px] bg-white p-3 text-center text-[12px] font-extrabold text-[var(--color-brand-muted)] shadow-[var(--shadow-mobile-card)]">
+        Нүүр хуудсанд сонгосон: {featuredCount} / 6
+      </div>
 
       <AdminSheet open={Boolean(selectedReview)} onClose={() => setSelectedReview(null)}>
         {selectedReview && (
           <div className="space-y-5">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--color-brand-accent)]">Review detail</p>
-              <h2 className="mt-1 text-[21px] font-extrabold text-[var(--color-brand-text)]">{selectedReview.productName || 'Бүтээгдэхүүн'}</h2>
-              <p className="mt-1 text-[13px] text-[var(--color-brand-muted)]">{selectedReview.userName || 'Зочин'} · {mounted ? formatDateMN(selectedReview.createdAt) : ''}</p>
+              <h2 className="mt-1 text-[21px] font-extrabold text-[var(--color-brand-text)]">{selectedReview.productName || '?ү???гд??үүн'}</h2>
+              <p className="mt-1 text-[13px] text-[var(--color-brand-muted)]">{selectedReview.userName || '?о?ин'} · {mounted ? formatDateMN(selectedReview.createdAt) : ''}</p>
             </div>
 
             <div className="flex items-center gap-1 text-[var(--color-brand-accent)]">
@@ -259,18 +287,18 @@ export default function AdminReviewsPage() {
             <p className="rounded-[20px] bg-[var(--color-brand-bg)] p-4 text-[15px] leading-7 text-[var(--color-brand-text)]">{selectedReview.content}</p>
 
             <label className="block">
-              <span className="mb-2 flex items-center gap-2 text-[12px] font-extrabold uppercase tracking-[0.12em] text-[var(--color-brand-muted)]"><MessageSquareReply size={14} /> Админы хариу</span>
-              <textarea value={replyText} onChange={(event) => setReplyText(event.target.value)} rows={4} className="w-full rounded-[18px] bg-[var(--color-brand-bg)] p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-[#f3b8cf]" placeholder="Хэрэглэгчид харагдах хариу бичих..." />
+              <span className="mb-2 flex items-center gap-2 text-[12px] font-extrabold uppercase tracking-[0.12em] text-[var(--color-brand-muted)]"><MessageSquareReply size={14} /> ?дмин? ?а?и?</span>
+              <textarea value={replyText} onChange={(event) => setReplyText(event.target.value)} rows={4} className="w-full rounded-[18px] bg-[var(--color-brand-bg)] p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-[#f3b8cf]" placeholder="Х???гл?г?ид ?а?агда? ?а?и? би?и?..." />
             </label>
 
             <button onClick={() => setReviewStatus(selectedReview.id, selectedReview.status || 'pending', replyText)} className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--color-brand-accent)] text-sm font-extrabold text-white">
-              <CheckCircle2 size={17} /> Reply хадгалах
+              <CheckCircle2 size={17} /> Reply ?адгала?
             </button>
 
             <div className="grid grid-cols-3 gap-2">
-              <button onClick={() => setReviewStatus(selectedReview.id, 'approved', replyText)} className="h-11 rounded-full bg-[var(--status-success-bg)] text-[12px] font-extrabold text-[var(--status-success)]">Approve</button>
-              <button onClick={() => setReviewStatus(selectedReview.id, 'hidden', replyText)} className="h-11 rounded-full bg-[var(--color-brand-secondary)] text-[12px] font-extrabold text-[var(--color-brand-text)]">Hide</button>
-              <button onClick={() => setPendingDeleteReview(selectedReview.id)} className="h-11 rounded-full bg-[var(--status-error-bg)] text-[12px] font-extrabold text-[var(--status-error)]">Delete</button>
+              <button onClick={() => setReviewStatus(selectedReview.id, 'visible', replyText)} className="h-11 rounded-full bg-[var(--status-success-bg)] text-[12px] font-extrabold text-[var(--status-success)]">?ий?л??</button>
+              <button onClick={() => setReviewStatus(selectedReview.id, 'hidden', replyText)} className="h-11 rounded-full bg-[var(--color-brand-secondary)] text-[12px] font-extrabold text-[var(--color-brand-text)]">????</button>
+              <button onClick={() => setPendingDeleteReview(selectedReview.id)} className="h-11 rounded-full bg-[var(--status-error-bg)] text-[12px] font-extrabold text-[var(--status-error)]">У??га?</button>
             </div>
           </div>
         )}
@@ -278,9 +306,9 @@ export default function AdminReviewsPage() {
 
       <AdminConfirmSheet
         open={Boolean(pendingDeleteReview)}
-        title="Сэтгэгдэл устгах уу?"
-        body="Энэ үйлдлийг буцаах боломжгүй. Устгахдаа итгэлтэй байна уу?"
-        confirmLabel="Устгах"
+        title="С??г?гд?л ???га? ???"
+        body="Эн? үйлдлийг б??аа? боломжгүй. У??га?даа и?г?л??й байна ???"
+        confirmLabel="У??га?"
         destructive
         onClose={() => setPendingDeleteReview(null)}
         onConfirm={() => {

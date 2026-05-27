@@ -89,8 +89,12 @@ export interface Review {
   userEmail: string;
   rating: number;
   content: string;
+  body?: string;
   imageUrls: string[];
-  orderId?: string;
+  orderId: string;
+  status: 'pending' | 'visible' | 'hidden';
+  featured: boolean;
+  editCount: number;
   approved: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -126,10 +130,19 @@ export interface SiteSettings {
 export interface AppUser {
   uid: string;
   email: string;
+  email_verified?: boolean;
+  email_verified_at?: Date | null;
+  email_verify_token?: string | null;
   displayName: string;
   photoURL: string;
   role: 'user' | 'admin';
-  phone: string;
+  password_hash?: string | null;
+  google_id?: string | null;
+  google_email?: string | null;
+  google_avatar_url?: string | null;
+  phone?: string | { countryCode: string; localNumber: string; purpose?: 'delivery_only' } | null;
+  password_reset_token?: string | null;
+  password_reset_expires?: Date | null;
   createdAt: Date;
   orderCount: number;
 }

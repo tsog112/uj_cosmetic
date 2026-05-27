@@ -576,7 +576,7 @@ export default function HomePage() {
                       className="mt-2 line-clamp-3 text-[12.5px] leading-relaxed"
                       style={{ color: 'var(--color-text-dark)' }}
                     >
-                      {review.content}
+                      {review.content.length > 120 ? `${review.content.slice(0, 120)}...` : review.content}
                     </p>
                     <p className="mt-2 text-[10.5px] font-bold" style={{ color: 'var(--color-primary)' }}>
                       — {review.userName || 'UJ хэрэглэгч'}

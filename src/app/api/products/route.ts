@@ -2,16 +2,29 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { Query } from 'firebase-admin/firestore';
 import { getAdminDb } from '@/lib/firebaseAdmin';
 import { toPublicProduct } from '@/lib/publicDto';
+import catalog from '@/data/pdf-products.json';
 
 export const runtime = 'nodejs';
 
-export async function GET(req: NextRequest) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const slug = searchParams.get('slug');
-    const category = searchParams.get('category');
-    const featured = searchParams.get('featured');
+function fallbackProducts(filters: { slug?: string | null; category?: string | null; featured?: string | null }) {
+  let products = (catalog.products || [])
+    .map((product: any) => toPublicProduct(product.id || product.slug, product))
+    .filter((product) => product.published !== false);
 
+  if (filters.slug) products = products.filter((product) => product.slug === filters.slug);
+  if (filters.category) products = products.filter((product) => product.category === filters.category);
+  if (filters.featured === 'true') products = products.filter((product) => product.featured === true);
+
+  return products;
+}
+
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const slug = searchParams.get('slug');
+  const category = searchParams.get('category');
+  const featured = searchParams.get('featured');
+
+  try {
     const db = getAdminDb();
     let query: Query = db.collection('products')
       .where('published', '==', true);
@@ -30,6 +43,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ products });
   } catch (error) {
     console.error('Public products API failed:', error);
-    return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });
+    const products = fallbackProducts({ slug, category, featured });
+    if (slug) {
+      return NextResponse.json({
+        product: products[0] ?? null,
+        warning: 'Firestore products are temporarily unavailable; using local catalog fallback.',
+      });
+    }
+    return NextResponse.json({
+      products,
+      warning: 'Firestore products are temporarily unavailable; using local catalog fallback.',
+    });
   }
 }

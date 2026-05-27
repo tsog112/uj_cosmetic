@@ -1,12 +1,12 @@
 import type { OrderStatus as FirestoreOrderStatus } from '@/types';
 
 export const ORDER_STATUSES = [
-  { value: 'pending', label: 'Хүлээгдэж байна', color: 'var(--status-warning)', bg: 'var(--status-warning-bg)' },
-  { value: 'confirmed', label: 'Баталгаажсан', color: 'var(--status-info)', bg: 'var(--status-info-bg)' },
-  { value: 'processing', label: 'Бэлтгэгдэж байна', color: 'var(--status-purple)', bg: 'var(--status-purple-bg)' },
-  { value: 'shipped', label: 'Илгээгдсэн', color: 'var(--status-blue)', bg: 'var(--status-blue-bg)' },
-  { value: 'delivered', label: 'Хүргэгдсэн', color: 'var(--status-success)', bg: 'var(--status-success-bg)' },
-  { value: 'cancelled', label: 'Цуцлагдсан', color: 'var(--status-error)', bg: 'var(--status-error-bg)' },
+  { value: 'pending', label: 'Төлбөр хүлээж байна', color: '#854F0B', bg: '#FAEEDA' },
+  { value: 'confirmed', label: 'Төлбөр баталгаажуулсан', color: '#993556', bg: '#FBEAF0' },
+  { value: 'processing', label: 'Захиалга бэлдэж байна', color: '#993556', bg: '#FBEAF0' },
+  { value: 'shipped', label: 'Хүргэлтэд гарсан', color: '#993556', bg: '#FBEAF0' },
+  { value: 'delivered', label: 'Захиалга хүргэгдсэн', color: '#3B6D11', bg: '#EAF3DE' },
+  { value: 'cancelled', label: 'Цуцлагдсан', color: '#A32D2D', bg: '#FCEBEB' },
 ] as const;
 
 export type OrderStatus = FirestoreOrderStatus;
@@ -36,13 +36,13 @@ export const VALID_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
 };
 
 export const NOTIFICATION_TYPES = [
-  { value: 'ORDER_CONFIRMED', label: 'Захиалга баталгаажлаа', icon: '✅' },
-  { value: 'ORDER_SHIPPED', label: 'Захиалга илгээгдлээ', icon: '🚚' },
-  { value: 'ORDER_DELIVERED', label: 'Захиалга хүргэгдлээ', icon: '📦' },
-  { value: 'ORDER_CANCELLED', label: 'Захиалга цуцлагдлаа', icon: '❌' },
+  { value: 'ORDER_CONFIRMED', label: 'Захиалга баталгаажлаа', icon: 'check' },
+  { value: 'ORDER_SHIPPED', label: 'Захиалга илгээгдлээ', icon: '📦' },
+  { value: 'ORDER_DELIVERED', label: 'Захиалга хүргэгдлээ', icon: '🏠' },
+  { value: 'ORDER_CANCELLED', label: 'Захиалга цуцлагдлаа', icon: 'check' },
   { value: 'PROMO', label: 'Урамшуулал', icon: '🎁' },
-  { value: 'RESTOCK', label: 'Нөөц нөхөгдлөө', icon: '🔄' },
-  { value: 'ADMIN_BROADCAST', label: 'Нийтийн мэдэгдэл', icon: '📢' },
+  { value: 'RESTOCK', label: 'Бараа нөхөгдлөө', icon: '📋' },
+  { value: 'ADMIN_BROADCAST', label: 'Ерөнхий мэдэгдэл', icon: '📢' },
 ] as const;
 export type NotificationType = typeof NOTIFICATION_TYPES[number]['value'];
 
@@ -61,30 +61,30 @@ export const ADMIN_SIDEBAR_ITEMS = [
   { key: 'orders', label: 'Захиалгууд', href: '/admin/orders', icon: 'ShoppingBag', badgeKey: 'pendingCount' },
   { key: 'products', label: 'Бүтээгдэхүүн', href: '/admin/products', icon: 'Package' },
   { key: 'customers', label: 'Хэрэглэгчид', href: '/admin/customers', icon: 'Users' },
-  { key: 'reviews', label: 'Сэтгэгдэл', href: '/admin/reviews', icon: 'Star' },
+  { key: 'reviews', label: 'Сэтгэгдлүүд', href: '/admin/reviews', icon: 'Star' },
   { key: 'reports', label: 'Тайлан', href: '/admin/analytics', icon: 'BarChart3' },
   { key: 'settings', label: 'Тохиргоо', href: '/admin/settings', icon: 'Settings' },
 ] as const;
 
 export const PRODUCT_STOCK_FILTERS = [
   { label: 'Бүгд', value: 'all' },
-  { label: 'Нөөцтэй', value: 'inStock' },
-  { label: 'Бага нөөц', value: 'low' },
+  { label: 'Бэлэн байгаа', value: 'inStock' },
+  { label: 'Нөөц бага', value: 'low' },
   { label: 'Дууссан', value: 'empty' },
 ] as const;
 
 export const REVIEW_FILTERS = [
   { value: 'all', label: 'Бүгд' },
-  { value: 'pending', label: 'Хүлээгдэж' },
-  { value: 'approved', label: 'Нийтлэгдсэн' },
+  { value: 'pending', label: 'Хүлээгдэж буй' },
+  { value: 'visible', label: 'Харагдаж буй' },
   { value: 'hidden', label: 'Нуугдсан' },
 ] as const;
 
 export const SETTINGS_SECTIONS = [
   { id: 'store', title: 'Дэлгүүрийн мэдээлэл' },
   { id: 'shipping', title: 'Хүргэлтийн тохиргоо' },
-  { id: 'categories', title: 'Ангилал удирдах' },
-  { id: 'instagram', title: 'Instagram удирдах' },
+  { id: 'categories', title: 'Ангилал тохиргоо' },
+  { id: 'instagram', title: 'Instagram тохиргоо' },
   { id: 'system', title: 'Системийн мэдээлэл' },
 ] as const;
 

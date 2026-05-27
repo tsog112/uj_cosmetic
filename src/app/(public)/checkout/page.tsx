@@ -21,13 +21,37 @@ type QPayInvoice = {
   urls: Array<{ name: string; description?: string; logo?: string; link: string }>;
 };
 
-const phonePattern = /^[679]\d{7}$/;
+import { validatePhoneNumber } from '@/lib/phoneUtils';
 
 function validate(data: { customerName: string; email: string; phone: string; address: string }) {
   const errors: Record<string, string> = {};
   if (data.customerName.trim().length < 2) errors.customerName = 'Нэрээ хамгийн багадаа 2 үсгээр оруулна уу.';
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) errors.email = 'Зөв имэйл хаяг оруулна уу.';
-  if (!phonePattern.test(data.phone.replace(/[\s-]/g, ''))) errors.phone = 'Монгол утасны 8 оронтой дугаар оруулна уу.';
+
+  // Determine countryCode and localNumber from input phone
+  let countryCode = '+976';
+  let localNumber = data.phone.replace(/[\s-()]/g, ''); // strip spaces, hyphens, parens
+  if (localNumber.startsWith('+')) {
+    if (localNumber.startsWith('+82')) {
+      countryCode = '+82';
+      localNumber = localNumber.slice(3);
+    } else if (localNumber.startsWith('+1')) {
+      countryCode = '+1';
+      localNumber = localNumber.slice(2);
+    } else if (localNumber.startsWith('+81')) {
+      countryCode = '+81';
+      localNumber = localNumber.slice(3);
+    } else if (localNumber.startsWith('+976')) {
+      countryCode = '+976';
+      localNumber = localNumber.slice(4);
+    }
+  }
+
+  const phoneRes = validatePhoneNumber(countryCode, localNumber);
+  if (!phoneRes.isValid) {
+    errors.phone = phoneRes.error || 'Утасны дугаар буруу байна.';
+  }
+
   if (data.address.trim().length < 10) errors.address = 'Хүргэлтийн хаягаа дэлгэрэнгүй бичнэ үү.';
   return errors;
 }

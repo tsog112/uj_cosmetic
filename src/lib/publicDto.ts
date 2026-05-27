@@ -43,6 +43,10 @@ export function toPublicProduct(id: string, data: any): Product {
 
 export function toPublicReview(id: string, data: any): Review {
   const createdAt = toDate(data.createdAt);
+  const content = data.content ?? data.body ?? '';
+  const status = data.status === 'visible' || data.status === 'hidden' || data.status === 'pending'
+    ? data.status
+    : data.approved === true ? 'visible' : 'pending';
 
   return {
     id,
@@ -53,10 +57,14 @@ export function toPublicReview(id: string, data: any): Review {
     userName: maskDisplayName(data.userName),
     userEmail: '',
     rating: Math.max(1, Math.min(5, Number(data.rating ?? 5))),
-    content: data.content ?? '',
+    content,
+    body: content,
     imageUrls: Array.isArray(data.imageUrls) ? data.imageUrls : [],
-    orderId: undefined,
-    approved: data.status ? data.status === 'approved' : data.approved !== false,
+    orderId: data.orderId ?? '',
+    status,
+    featured: Boolean(data.featured),
+    editCount: Number(data.editCount || 0),
+    approved: status === 'visible',
     createdAt,
     updatedAt: toDate(data.updatedAt ?? createdAt),
   };

@@ -1,145 +1,150 @@
-import { 
-  signInWithPopup, 
-  signOut as firebaseSignOut,
-  User,
-  signInWithEmailAndPassword,
+import {
   createUserWithEmailAndPassword,
-  updateProfile
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut as firebaseSignOut,
+  updateProfile,
+  User,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db, googleProvider, facebookProvider } from '../firebase';
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { auth, db, googleProvider } from '../firebase';
 
 function toAuthError(error: any, fallback: string): Error {
   const code = error?.code || '';
+  const privateLoginMessage = 'И-мэйл эсвэл нууц үг буруу байна';
   const messages: Record<string, string> = {
-    'auth/operation-not-allowed': 'Email/Password бүртгэл Firebase дээр идэвхгүй байна. Firebase Console > Authentication > Sign-in method хэсгээс Email/Password provider-ийг идэвхжүүлнэ үү.',
-    'auth/email-already-in-use': 'Энэ имэйл хаягаар бүртгэл үүссэн байна. Нэвтрэх хэсгээр орно уу.',
-    'auth/invalid-email': 'Имэйл хаяг буруу байна.',
-    'auth/weak-password': 'Нууц үг дор хаяж 6 тэмдэгттэй байх шаардлагатай.',
-    'auth/user-not-found': 'Энэ имэйлээр бүртгэл олдсонгүй.',
-    'auth/wrong-password': 'Нууц үг буруу байна.',
-    'auth/invalid-credential': 'Имэйл эсвэл нууц үг буруу байна.',
-    'auth/popup-closed-by-user': 'Нэвтрэх цонх хаагдсан байна. Дахин оролдоно уу.',
+    'auth/invalid-credential': privateLoginMessage,
+    'auth/user-not-found': privateLoginMessage,
+    'auth/wrong-password': privateLoginMessage,
+    'auth/invalid-email': 'И-мэйл хаяг буруу байна.',
+    'auth/email-already-in-use': 'Энэ и-мэйлээр бүртгэл үүссэн байна.',
+    'auth/weak-password': 'Нууц үг хангалттай хүчтэй биш байна.',
+    'auth/popup-closed-by-user': 'Google цонх хаагдсан байна. Дахин оролдоно уу.',
+    'auth/email-not-verified': 'И-мэйл баталгаажаагүй байна. Таны и-мэйлд илгээсэн линкийг дарна уу.',
+    'auth/google-account-only': 'Энэ и-мэйл Google-р бүртгэлтэй байна. Google товч ашиглан нэвтэрнэ үү.',
   };
 
   const message = messages[code] || error?.message || fallback;
   return Object.assign(new Error(message), { code });
 }
 
+function googleProviderData(user: User) {
+  return user.providerData.find((provider) => provider.providerId === 'google.com');
+}
+
 export const authService = {
-  /**
-   * Login with Email and Password
-   */
   async loginWithEmail(email: string, password: string): Promise<User | null> {
     try {
-      if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-        console.warn("Firebase not configured.");
-        return null;
-      }
+      if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) return null;
+
       const result = await signInWithEmailAndPassword(auth, email, password);
       await this.syncUserToFirestore(result.user);
+
+      const userDoc = await getDoc(doc(db, 'users', result.user.uid));
+      const data = userDoc.data() || {};
+      if (data.google_id && !data.password_hash) {
+        await firebaseSignOut(auth);
+        throw Object.assign(new Error('Google account'), { code: 'auth/google-account-only' });
+      }
+      if (data.email_verified === false) {
+        await firebaseSignOut(auth);
+        throw Object.assign(new Error('Email not verified'), { code: 'auth/email-not-verified' });
+      }
+
       return result.user;
     } catch (error) {
-      console.error("Email login failed:", error);
+      console.error('Email login failed:', error);
       throw toAuthError(error, 'Нэвтрэхэд алдаа гарлаа.');
     }
   },
 
-  /**
-   * Register with Email, Password and Name
-   */
-  async registerWithEmail(email: string, password: string, name: string): Promise<User | null> {
+  async registerWithEmail(email: string, password: string, name: string, phone?: any): Promise<User | null> {
     try {
-      if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-        console.warn("Firebase not configured.");
-        return null;
-      }
+      if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) return null;
+
       const result = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(result.user, { displayName: name });
-      
-      // Sync to Firestore
-      await this.syncUserToFirestore(auth.currentUser || result.user);
+      await this.syncUserToFirestore(auth.currentUser || result.user, {
+        email_verified: false,
+        email_verified_at: null,
+        password_hash: 'firebase-auth-managed',
+        phone: phone || null,
+      });
+
+      await fetch('/api/auth/request-email-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: result.user.uid }),
+      });
+
       return result.user;
     } catch (error) {
-      console.error("Email registration failed:", error);
+      console.error('Email registration failed:', error);
       throw toAuthError(error, 'Бүртгэл үүсгэхэд алдаа гарлаа.');
     }
   },
 
-  /**
-   * Opens Firebase popup for Google Login
-   */
   async loginWithGoogle(): Promise<User | null> {
     try {
-      if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-        console.warn("Firebase not configured. Using mock environment.");
-        return null; // Mock mode fallback
-      }
-      
+      if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) return null;
+
       const result = await signInWithPopup(auth, googleProvider);
-      await this.syncUserToFirestore(result.user);
+      const google = googleProviderData(result.user);
+      await this.syncUserToFirestore(result.user, {
+        email_verified: true,
+        email_verified_at: serverTimestamp(),
+        google_id: google?.uid || result.user.uid,
+        google_email: result.user.email,
+        google_avatar_url: result.user.photoURL,
+      });
       return result.user;
     } catch (error) {
-      console.error("Google login failed:", error);
-      throw toAuthError(error, 'Google-ээр нэвтрэхэд алдаа гарлаа.');
+      console.error('Google login failed:', error);
+      throw toAuthError(error, 'Google-р нэвтрэхэд алдаа гарлаа.');
     }
   },
 
-  /**
-   * Opens Firebase popup for Facebook Login
-   */
-  async loginWithFacebook(): Promise<User | null> {
-    try {
-      if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-        console.warn("Firebase not configured. Using mock environment.");
-        return null;
-      }
-
-      const result = await signInWithPopup(auth, facebookProvider);
-      await this.syncUserToFirestore(result.user);
-      return result.user;
-    } catch (error) {
-      console.error("Facebook login failed:", error);
-      throw toAuthError(error, 'Facebook-ээр нэвтрэхэд алдаа гарлаа.');
-    }
-  },
-
-  /**
-   * Signs out the current user
-   */
   async logout(): Promise<void> {
-    try {
-      await firebaseSignOut(auth);
-    } catch (error) {
-      console.error("Logout failed:", error);
-      throw error;
-    }
+    await firebaseSignOut(auth);
   },
 
-  /**
-   * Synchronizes authenticated user data with Firestore '/users' collection.
-   * If it's a new user, saves their initial details.
-   */
-  async syncUserToFirestore(user: User): Promise<void> {
+  async syncUserToFirestore(user: User, extra: Record<string, any> = {}): Promise<void> {
     if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) return;
 
     try {
       const userDocRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
-      
+      const google = googleProviderData(user);
+      const base = {
+        uid: user.uid,
+        email: user.email || '',
+        displayName: user.displayName || '',
+        photoURL: user.photoURL || '',
+        updatedAt: serverTimestamp(),
+      };
+
       if (!userDoc.exists()) {
         await setDoc(userDocRef, {
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName,
-          photoURL: user.photoURL,
-          role: "user",
+          ...base,
+          email_verified: extra.email_verified ?? Boolean(google),
+          email_verified_at: extra.email_verified_at ?? (google ? serverTimestamp() : null),
+          email_verify_token: null,
+          password_hash: extra.password_hash ?? null,
+          google_id: extra.google_id ?? google?.uid ?? null,
+          google_email: extra.google_email ?? (google ? user.email : null),
+          google_avatar_url: extra.google_avatar_url ?? (google ? user.photoURL : null),
+          phone: extra.phone ?? null,
+          password_reset_token: null,
+          password_reset_expires: null,
+          role: 'user',
           createdAt: serverTimestamp(),
-          orderCount: 0
+          orderCount: 0,
         });
+      } else {
+        await setDoc(userDocRef, { ...base, ...extra }, { merge: true });
       }
     } catch (error) {
-      console.error("Failed to sync user to Firestore:", error);
+      console.error('Failed to sync user to Firestore:', error);
     }
-  }
+  },
 };

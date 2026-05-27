@@ -201,8 +201,13 @@ function AdminOrdersContent() {
               <span className="min-w-0 flex-1">
                 <span className="flex items-start justify-between gap-2">
                   <span className="min-w-0">
-                    <span className="block truncate text-[15px] font-extrabold text-[var(--color-brand-text)]">{order.customerName || order.user?.name || 'Зочин'}</span>
-                    <span className="mt-1 block truncate text-[12px] text-[var(--color-brand-muted)]">{order.customerPhone || order.user?.phone || `#${order.id.slice(-8)}`}</span>
+                    <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                      <span className="font-mono rounded-full bg-gray-100 border border-gray-200/50 px-2 py-0.5 text-[10px] text-gray-700 font-medium tracking-wide inline-block">
+                        {order.orderNumber}
+                      </span>
+                      <span className="block truncate text-[14px] font-extrabold text-[var(--color-brand-text)]">{order.customerName || order.user?.name || 'Зочин'}</span>
+                    </div>
+                    <span className="mt-1 block truncate text-[12px] text-[var(--color-brand-muted)]">{order.customerPhone || order.user?.phone || '—'}</span>
                   </span>
                   <StatusBadge status={order.status} />
                 </span>
@@ -230,9 +235,11 @@ function AdminOrdersContent() {
           {
             key: 'id',
             header: 'Дугаар',
-            minWidth: '88px',
+            minWidth: '100px',
             render: (order: any) => (
-              <span className="font-bold text-[var(--color-brand-muted)]">#{order.id.slice(-8)}</span>
+              <span className="font-mono rounded-full bg-gray-100 border border-gray-200/50 px-2.5 py-0.5 text-xs text-gray-700 font-medium tracking-wide">
+                {order.orderNumber}
+              </span>
             ),
           },
           {
@@ -294,83 +301,164 @@ function AdminOrdersContent() {
       <Pagination page={page} totalItems={data?.totalCount || 0} pageSize={10} onPageChange={setPage} />
 
       <AdminSheet open={Boolean(selectedOrder)} onClose={() => setSelectedOrder(null)}>
-        {selectedOrder && (
-          <>
-            <div className="mb-5">
-              <p className="text-[12px] font-bold text-[var(--color-brand-muted)]">
-                Захиалга #{selectedOrder.id.slice(-8).toUpperCase()}
-              </p>
-              <h3 className="mt-1 text-xl font-extrabold">{formatMNT(selectedOrder.total)}</h3>
-            </div>
+        {selectedOrder && (() => {
+          const flowStatuses = [
+            { value: 'pending', label: 'Төлбөр хүлээж байна' },
+            { value: 'confirmed', label: 'Төлбөр баталгаажуулах' },
+            { value: 'processing', label: 'Захиалга бэлдэх' },
+            { value: 'shipped', label: 'Хүргэлт хийгдэж байна' },
+            { value: 'delivered', label: 'Захиалга хүргэгдсэн' },
+          ];
 
-            <div className="mb-5 rounded-[22px] bg-[var(--color-brand-bg)] p-4">
-              <p className="text-[15px] font-extrabold">{selectedOrder.customerName || selectedOrder.user?.name || 'Зочин'}</p>
-              <p className="mt-1 text-[12px] text-[var(--color-brand-muted)]">{selectedOrder.shippingAddress || 'Хаяг бүртгээгүй'}</p>
-              {(selectedOrder.customerPhone || selectedOrder.user?.phone) && (
-                <a
-                  href={`tel:${selectedOrder.customerPhone || selectedOrder.user?.phone}`}
-                  className="mt-3 inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-[12px] font-extrabold text-[var(--color-brand-accent)] shadow-sm hover:shadow-md transition-shadow"
-                >
-                  <Phone size={15} /> Шууд залгах
-                </a>
-              )}
-            </div>
+          const currentIdx = flowStatuses.findIndex(s => s.value === selectedOrder.status);
 
-            <h4 className="mb-3 text-[12px] font-extrabold uppercase tracking-[0.14em] text-[var(--color-brand-muted)]">Бараанууд</h4>
-            <div className="mb-5 space-y-3">
-              {selectedOrder.items?.map((item: any) => {
-                const image = parseImages(item.product?.images)[0];
-                return (
-                  <div key={item.id} className="flex items-center gap-3">
-                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[16px] bg-[var(--color-brand-secondary)]">
-                      {image && <Image src={image} alt="" fill sizes="56px" className="object-cover" />}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px] font-bold">{item.product?.name || 'Бүтээгдэхүүн'}</p>
-                      <p className="mt-1 text-[12px] text-[var(--color-brand-muted)]">
-                        {formatMNT(item.price)} x {item.quantity}
+          const getNextStatusInfo = (status: string) => {
+            switch (status) {
+              case 'pending':
+                return { nextStatus: 'confirmed', label: 'Баталгаажуулах' };
+              case 'confirmed':
+                return { nextStatus: 'processing', label: 'Бэлтгэж эхлэх' };
+              case 'processing':
+                return { nextStatus: 'shipped', label: 'Илгээгдсэн болгох' };
+              case 'shipped':
+                return { nextStatus: 'delivered', label: 'Хүргэгдсэн болгох' };
+              default:
+                return null;
+            }
+          };
+
+          const nextInfo = getNextStatusInfo(selectedOrder.status);
+
+          return (
+            <>
+              {/* Order info always visible in the panel header */}
+              <div className="mb-5 border-b border-gray-100 pb-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-mono rounded-full bg-gray-100 border border-gray-200/50 px-2.5 py-0.5 text-xs text-gray-700 font-medium tracking-wide">
+                    {selectedOrder.orderNumber}
+                  </span>
+                  <h3 className="text-lg font-extrabold text-[var(--color-brand-accent)]">{formatMNT(selectedOrder.total)}</h3>
+                </div>
+
+                {/* Customer info + Call Shortcut */}
+                <div className="rounded-[18px] bg-gray-50 p-3.5 border border-black/[0.03] space-y-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-extrabold text-[var(--color-brand-text)]">{selectedOrder.customerName || selectedOrder.user?.name || 'Зочин'}</p>
+                      <p className="mt-0.5 text-[11px] text-[var(--color-brand-muted)] line-clamp-2">
+                        {selectedOrder.shippingAddress || 'Хаяг бүртгээгүй'}
                       </p>
                     </div>
-                    <span className="text-[13px] font-extrabold">{formatMNT(item.price * item.quantity)}</span>
+                    {(selectedOrder.customerPhone || selectedOrder.user?.phone) && (
+                      <a
+                        href={`tel:${selectedOrder.customerPhone || selectedOrder.user?.phone}`}
+                        className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-brand-secondary)] text-[var(--color-brand-accent)] active:scale-95 transition-transform"
+                        title="Шууд залгах"
+                      >
+                        <Phone size={13} strokeWidth={2.5} />
+                      </a>
+                    )}
                   </div>
-                );
-              })}
-            </div>
+                </div>
 
-            <div className="mb-5 rounded-[22px] bg-[var(--color-brand-bg)] p-4">
-              <p className="mb-3 text-[12px] font-extrabold uppercase tracking-[0.14em] text-[var(--color-brand-muted)]">Төлөв солих</p>
-              <div className="flex flex-wrap gap-2">
-                {ORDER_STATUSES.map((status) => (
-                  <button
-                    key={status.value}
-                    type="button"
-                    onClick={() => changeStatus(selectedOrder.id, status.value)}
-                    className={`rounded-full px-3 py-2 text-[11px] font-extrabold transition-all ${selectedOrder.status === status.value ? 'ring-2 ring-[var(--color-brand-accent)] scale-105' : 'hover:scale-105 opacity-70 hover:opacity-100'}`}
-                    style={{ backgroundColor: status.bg, color: status.color }}
-                  >
-                    {selectedOrder.status === status.value && <Check size={12} className="mr-1 inline" />}
-                    {status.label}
-                  </button>
-                ))}
+                {/* Compact Product list (1 line per item) */}
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-gray-400">Бүтээгдэхүүнүүд</p>
+                  <div className="max-h-24 overflow-y-auto divide-y divide-gray-100 pr-1">
+                    {selectedOrder.items?.map((item: any, idx: number) => (
+                      <div key={idx} className="flex justify-between py-1.5 text-[11px] font-medium text-gray-600">
+                        <span className="truncate pr-4">{item.product?.name || 'Бүтээгдэхүүн'}</span>
+                        <span className="shrink-0 font-bold">{item.quantity}ш</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-2">
-              {(ORDER_STATUS_TRANSITIONS[selectedOrder.status as OrderStatus] || []).map((action) => (
-                <button
-                  key={action.status}
-                  type="button"
-                  onClick={() => changeStatus(selectedOrder.id, action.status)}
-                  className={`flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-extrabold transition-transform hover:-translate-y-0.5 active:scale-[0.98] ${
-                    action.danger ? 'bg-[var(--color-brand-danger)] text-white shadow-sm' : 'bg-[var(--color-brand-accent)] text-white shadow-sm'
-                  }`}
-                >
-                  <PackageCheck size={17} /> {action.label}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
+              {/* Redesigned Linear Progress Flow UI */}
+              <div className="mb-6 rounded-[22px] bg-white p-4 border border-black/[0.04]">
+                <p className="mb-4 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-brand-muted)]">Захиалгын явц</p>
+                <div className="relative flex items-center justify-between">
+                  {/* Connector Lines */}
+                  <div className="absolute top-[14px] left-[8%] right-[8%] h-[2px] bg-gray-100 -z-0" />
+                  {currentIdx !== -1 && (
+                    <div
+                      className="absolute top-[14px] left-[8%] h-[2px] bg-[#D4537E] -z-0 transition-all duration-300"
+                      style={{ width: `${(Math.max(0, currentIdx) / 4) * 84}%` }}
+                    />
+                  )}
+
+                  {flowStatuses.map((step, idx) => {
+                    const isCompleted = currentIdx !== -1 && idx < currentIdx;
+                    const isCurrent = step.value === selectedOrder.status;
+                    const isUpcoming = currentIdx === -1 || idx > currentIdx;
+
+                    let circleClass = "";
+                    let textClass = "";
+
+                    if (isCompleted) {
+                      circleClass = "bg-[#EAF3DE] border border-[#3B6D11]/30 text-[#3B6D11]";
+                      textClass = "text-[#3B6D11] font-bold";
+                    } else if (isCurrent) {
+                      circleClass = "border-2 border-[#D4537E] bg-[#FBEAF0] text-[#993556] ring-4 ring-[#D4537E]/10";
+                      textClass = "text-[#993556] font-bold";
+                    } else {
+                      circleClass = "bg-gray-50 border border-gray-200 text-gray-400";
+                      textClass = "text-gray-400 font-medium";
+                    }
+
+                    return (
+                      <div key={step.value} className="relative z-10 flex flex-col items-center flex-1">
+                        <div className={`flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-extrabold ${circleClass}`}>
+                          {isCompleted ? (
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : (
+                            idx + 1
+                          )}
+                        </div>
+                        <span 
+                          className={`mt-2 text-center text-[9px] leading-[1.3] max-w-[60px] whitespace-normal ${textClass}`}
+                          style={{ display: 'block', margin: '0 auto' }}
+                        >
+                          {step.label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Actions: Strict Dynamic CTA & red Cancel button with confirmation */}
+              <div className="space-y-2.5">
+                {nextInfo && (
+                  <button
+                    type="button"
+                    onClick={() => changeStatus(selectedOrder.id, nextInfo.nextStatus as OrderStatus)}
+                    className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--color-brand-accent)] text-sm font-extrabold text-white shadow-sm transition-transform hover:-translate-y-0.5 active:scale-[0.98]"
+                  >
+                    <PackageCheck size={16} /> {nextInfo.label}
+                  </button>
+                )}
+
+                {selectedOrder.status !== 'delivered' && selectedOrder.status !== 'cancelled' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm("Энэ захиалгыг цуцлахдаа итгэлтэй байна уу?")) {
+                        changeStatus(selectedOrder.id, 'cancelled');
+                      }
+                    }}
+                    className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#FCEBEB] text-[#A32D2D] border border-[#A32D2D]/10 text-sm font-extrabold transition-transform hover:-translate-y-0.5 active:scale-[0.98]"
+                  >
+                    Цуцлах
+                  </button>
+                )}
+              </div>
+            </>
+          );
+        })()}
       </AdminSheet>
     </div>
   );

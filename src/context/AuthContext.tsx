@@ -12,9 +12,8 @@ interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;
   signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string, phone?: any) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
-  signInWithFacebook: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -70,16 +69,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await authService.loginWithEmail(email, password);
   };
 
-  const signUp = async (email: string, password: string, name: string) => {
-    await authService.registerWithEmail(email, password, name);
+  const signUp = async (email: string, password: string, name: string, phone?: any) => {
+    await authService.registerWithEmail(email, password, name, phone);
   };
 
   const signInWithGoogle = async () => {
     await authService.loginWithGoogle();
-  };
-
-  const signInWithFacebook = async () => {
-    await authService.loginWithFacebook();
   };
 
   const signOut = async () => {
@@ -95,7 +90,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signInWithEmail,
       signUp,
       signInWithGoogle,
-      signInWithFacebook,
       signOut
     }}>
       {children}

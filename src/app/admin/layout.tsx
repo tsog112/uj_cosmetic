@@ -16,7 +16,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <ToastProvider>
-      <div className={`${adminShellClass} md:max-w-none md:flex-row md:bg-[#f1dbe5]`}>
+      <div className={`${adminShellClass} md:max-w-none md:flex-row md:bg-[#f1dbe5]`} style={{ fontFamily: "'Plus Jakarta Sans', 'Noto Sans', 'Roboto', 'Arial Unicode MS', sans-serif" }}>
         {/* Mobile Header */}
         <header className="fixed top-0 z-[60] w-full border-b bg-white/92 backdrop-blur-xl md:hidden" style={{ borderColor: 'rgba(233,30,140,0.10)' }}>
           <div className="flex h-[60px] items-center justify-between px-4">

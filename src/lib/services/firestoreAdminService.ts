@@ -324,6 +324,7 @@ export function firestoreToAdminOrder(id: string, data: FirebaseFirestore.Docume
 
   return {
     id,
+    orderNumber: data.orderNumber || `#${id.slice(0, 6).toUpperCase()}`,
     userId: data.userId || null,
     customerName: data.customerName || '',
     customerPhone: data.phone || data.customerPhone || '',
@@ -336,6 +337,7 @@ export function firestoreToAdminOrder(id: string, data: FirebaseFirestore.Docume
     items: items.map((item: Record<string, unknown>, index: number) => ({
       id: `${id}-item-${index}`,
       productId: String(item.productId || ''),
+      productSlug: String(item.productSlug || ''),
       quantity: Number(item.quantity || 1),
       price: Number(item.price || 0),
       product: {
@@ -352,7 +354,7 @@ export function firestoreToAdminOrder(id: string, data: FirebaseFirestore.Docume
   };
 }
 
-export async function listAdminOrders(filters?: { status?: string; page?: number; limit?: number }) {
+export async function listAdminOrders(filters?: { status?: string; search?: string; page?: number; limit?: number }) {
   const db = getAdminDb();
   let baseQuery: any = db.collection('orders');
   
@@ -364,9 +366,8 @@ export async function listAdminOrders(filters?: { status?: string; page?: number
   const page = filters?.page || 1;
   const limitCount = filters?.limit || 20;
   
-  const [countSnap, snap, all, pen, pro, shi, del, can] = await Promise.all([
-    baseQuery.count().get(),
-    baseQuery.orderBy('createdAt', 'desc').limit(limitCount).offset((page - 1) * limitCount).get(),
+  // Clean counts in Firestore (index-free since there's no orderBy combined with where)
+  const [all, pen, pro, shi, del, can] = await Promise.all([
     db.collection('orders').count().get(),
     db.collection('orders').where('status', '==', 'pending').count().get(),
     db.collection('orders').where('status', '==', 'processing').count().get(),
@@ -374,9 +375,6 @@ export async function listAdminOrders(filters?: { status?: string; page?: number
     db.collection('orders').where('status', '==', 'delivered').count().get(),
     db.collection('orders').where('status', '==', 'cancelled').count().get(),
   ]);
-
-  const orders = snap.docs.map((doc: any) => firestoreToAdminOrder(doc.id, doc.data()));
-  const totalCount = countSnap.data().count;
 
   const statusCounts = {
     all: all.data().count,
@@ -386,6 +384,30 @@ export async function listAdminOrders(filters?: { status?: string; page?: number
     delivered: del.data().count,
     cancelled: can.data().count,
   };
+
+  let orders: any[] = [];
+  let totalCount = 0;
+
+  // Fetch from database and sort/filter in-memory to prevent FAILED_PRECONDITION errors
+  const snap = await baseQuery.get();
+  let allOrders = snap.docs.map((doc: any) => firestoreToAdminOrder(doc.id, doc.data()));
+
+  // Sort by date descending
+  allOrders.sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime());
+
+  if (filters?.search) {
+    const term = filters.search.toLowerCase().trim();
+    allOrders = allOrders.filter((o: any) => 
+      String(o.orderNumber || '').toLowerCase().includes(term) ||
+      String(o.id || '').toLowerCase().includes(term) ||
+      String(o.customerName || '').toLowerCase().includes(term) ||
+      String(o.customerPhone || '').toLowerCase().includes(term)
+    );
+  }
+
+  totalCount = allOrders.length;
+  const start = (page - 1) * limitCount;
+  orders = allOrders.slice(start, start + limitCount);
 
   return {
     orders,
@@ -764,17 +786,70 @@ export async function deleteAdminCategory(id: string) {
   return { success: true };
 }
 
-export async function listAdminCustomers(search?: string, page = 1, limit = 20) {
-  const { users } = await listAdminUsers(search);
-  const customers = users.filter((user) => user.role !== 'admin');
-  const totalCount = customers.length;
-  const start = (page - 1) * limit;
+async function hydrateUserStats(users: any[]) {
+  if (users.length === 0) return [];
+  
+  const db = getAdminDb();
+  const userIds = users.map(u => u.id);
+  
+  // Query orders for ONLY the sliced page users to avoid loading all orders
+  const ordersSnap = await db.collection('orders')
+    .where('userId', 'in', userIds)
+    .get();
+    
+  const orders = ordersSnap.docs.map(doc => firestoreToAdminOrder(doc.id, doc.data()));
+  
+  return users.map(u => {
+    const userOrders = orders.filter(order => order.userId === u.id && order.status !== CANCELLED_STATUS);
+    const totalSpent = userOrders.reduce((sum, order) => sum + order.total, 0);
+    
+    return {
+      id: u.id,
+      name: u.displayName || u.name || '',
+      email: u.email || '',
+      phone: u.phone || '',
+      role: u.role === 'admin' ? 'admin' : 'customer',
+      createdAt: toDate(u.createdAt),
+      orderCount: userOrders.length,
+      totalSpent,
+      orders: userOrders.slice(0, 5)
+    };
+  });
+}
 
+export async function listAdminCustomers(search?: string, page = 1, limit = 20) {
+  const db = getAdminDb();
+  
+  // 1. Fetch all users from Firestore (index-free since there's no native composite filter)
+  const snap = await db.collection('users').get();
+  let allUsers = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+  // 2. Filter in memory
+  if (search) {
+    const term = search.toLowerCase();
+    allUsers = allUsers.filter((u: any) => 
+      [u.displayName, u.name, u.email, u.phone].filter(Boolean).some(val => String(val).toLowerCase().includes(term))
+    );
+  }
+  
+  // Filter out admins in memory
+  allUsers = allUsers.filter((u: any) => u.role !== 'admin');
+
+  // Sort by createdAt descending in memory
+  allUsers.sort((a: any, b: any) => toDate(b.createdAt).getTime() - toDate(a.createdAt).getTime());
+  
+  const totalCount = allUsers.length;
+  const start = (page - 1) * limit;
+  const paginatedUsers = allUsers.slice(start, start + limit);
+  
+  // 3. Hydrate orders for paginated users only!
+  const customers = await hydrateUserStats(paginatedUsers);
+  
   return {
-    customers: customers.slice(start, start + limit),
+    customers,
     totalCount,
     totalPages: Math.ceil(totalCount / limit) || 1,
-    currentPage: page,
+    currentPage: page
   };
 }
 

@@ -35,22 +35,40 @@ export default function AnnouncementBar() {
 
   return (
     <div
-      className="fixed inset-x-0 mx-auto top-0 z-[60] w-full max-w-[430px] overflow-hidden"
+      className="fixed inset-x-0 mx-auto top-0 z-[60] w-full max-w-[430px] md:max-w-none overflow-hidden"
       style={{
         background: 'linear-gradient(90deg, #C2185B 0%, #E91E8C 50%, #C2185B 100%)',
         backgroundSize: '200% 100%',
         animation: 'gradientShift 4s ease infinite',
       }}
     >
-      {/* Marquee strip */}
+      {/* Marquee strip — seamless infinite scroll */}
       <div className="flex h-9 items-center overflow-hidden relative">
         {/* Edge fades */}
         <div className="pointer-events-none absolute left-0 z-10 h-full w-10 bg-gradient-to-r from-[#C2185B] to-transparent" />
         <div className="pointer-events-none absolute right-0 z-10 h-full w-10 bg-gradient-to-l from-[#C2185B] to-transparent" />
 
-        <div className="animate-marquee-fast flex shrink-0 items-center whitespace-nowrap">
+        {/* Two identical sets for seamless loop: translateX(-50%) covers exactly one set */}
+        <div className="animate-marquee-fast flex shrink-0 items-center whitespace-nowrap will-change-transform">
           {Array.from({ length: 8 }).map((_, i) => (
-            <span key={i} className="flex items-center">
+            <span key={`a-${i}`} className="flex items-center">
+              <Gem size={9} className="mx-3 shrink-0" style={{ color: 'rgba(255,182,217,0.85)' }} />
+              <span
+                style={{
+                  fontFamily: '"Montserrat", sans-serif',
+                  fontSize: 10,
+                  fontWeight: 600,
+                  letterSpacing: '0.18em',
+                  color: 'rgba(255,255,255,0.95)',
+                  textTransform: 'uppercase',
+                }}
+              >
+                {text}
+              </span>
+            </span>
+          ))}
+          {Array.from({ length: 8 }).map((_, i) => (
+            <span key={`b-${i}`} className="flex items-center">
               <Gem size={9} className="mx-3 shrink-0" style={{ color: 'rgba(255,182,217,0.85)' }} />
               <span
                 style={{
@@ -71,11 +89,13 @@ export default function AnnouncementBar() {
 
       <button
         onClick={() => setIsVisible(false)}
-        className="absolute right-0 top-0 z-20 flex h-full w-9 items-center justify-center transition-colors"
-        style={{ color: 'rgba(255,255,255,0.70)' }}
+        className="absolute right-0 top-0 z-20 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-white/10"
+        style={{ color: 'rgba(255,255,255,0.80)', lineHeight: 1 }}
         aria-label="Мэдэгдэл хаах"
       >
-        <span className="text-[16px] font-light leading-none">×</span>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+          <path d="M1 1L11 11M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+        </svg>
       </button>
 
       <style>{`

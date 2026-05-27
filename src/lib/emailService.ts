@@ -319,26 +319,26 @@ export async function sendOrderStatusNotification(
   const code = orderCode(order.id)
   const copy = {
     confirmed: {
-      subject: `Захиалга баталгаажлаа #${code}`,
-      eyebrow: 'Захиалга баталгаажлаа',
+      subject: `Төлбөр баталгаажлаа #${code}`,
+      eyebrow: 'Төлбөр баталгаажуулах',
       title: `Баярлалаа, ${order.customerName}`,
-      subtitle: `Таны #${code} дугаартай захиалга баталгаажлаа. Бид захиалгыг бэлтгээд хүргэлтийн явцыг дахин мэдэгдэнэ.`,
+      subtitle: `Таны #${code} дугаартай захиалгын төлбөр баталгаажлаа. Бид захиалгыг бэлтгээд явцыг дахин мэдэгдэнэ.`,
     },
     processing: {
-      subject: `Захиалгыг бэлтгэж байна #${code}`,
-      eyebrow: 'Бүтээгдэхүүн бэлтгэж байна',
-      title: 'Таны захиалга бэлтгэгдэж эхэллээ',
-      subtitle: `${order.customerName}, таны #${code} дугаартай захиалгын төлбөр баталгаажиж, бүтээгдэхүүнийг хүргэлтэд өгөхөөр бэлтгэж байна.`,
+      subject: `Захиалга бэлдэж байна #${code}`,
+      eyebrow: 'Захиалга бэлдэх',
+      title: 'Таны захиалгыг бэлтгэж эхэллээ',
+      subtitle: `${order.customerName}, таны #${code} дугаартай захиалгыг хүргэлтэд бэлтгэж байна.`,
     },
     shipped: {
       subject: `Захиалга хүргэлтэнд гарлаа #${code}`,
-      eyebrow: 'Хүргэлтийн мэдээлэл',
+      eyebrow: 'Хүргэлт хийгдэж байна',
       title: 'Таны захиалга замдаа гарлаа',
       subtitle: `${order.customerName}, таны #${code} дугаартай захиалга хүргэлтэнд гарлаа.`,
     },
     delivered: {
       subject: `Захиалга хүргэгдлээ #${code}`,
-      eyebrow: 'Захиалга хүргэгдлээ',
+      eyebrow: 'Захиалга хүргэгдсэн',
       title: 'Таны захиалга амжилттай хүргэгдлээ',
       subtitle: `UJ Cosmetic-ийг сонгосонд баярлалаа. Бүтээгдэхүүнээ хэрэглээд сэтгэгдлээ үлдээвэл бидэнд их тус болно.`,
     },
@@ -371,6 +371,62 @@ export async function sendOrderStatusNotification(
         `)}
       `,
       footerNote: 'UJ Cosmetic · Захиалгын төлөв шинэчлэгдсэн тухай мэдэгдэл',
+    }),
+  })
+}
+
+function buttonLink(href: string, label: string) {
+  return `
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin:22px 0 4px;">
+      <tr>
+        <td style="background:#D4537E;border-radius:999px;">
+          <a href="${escapeHtml(href)}" style="display:inline-block;padding:13px 22px;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;border-radius:999px;">
+            ${escapeHtml(label)}
+          </a>
+        </td>
+      </tr>
+    </table>
+  `
+}
+
+export async function sendEmailVerification(to: string, verifyUrl: string) {
+  await sendEmail({
+    to,
+    subject: 'UJ Beauty — И-мэйл хаяг баталгаажуулах',
+    html: emailShell({
+      eyebrow: 'И-мэйл баталгаажуулах',
+      title: 'И-мэйл хаягаа баталгаажуулна уу',
+      subtitle: 'Доорх товч дарж и-мэйл хаягаа баталгаажуулна уу. Энэ линк 24 цаг хүчинтэй.',
+      children: buttonLink(verifyUrl, 'И-мэйл баталгаажуулах'),
+    }),
+  })
+}
+
+export async function sendPasswordResetEmail(to: string, resetUrl: string) {
+  await sendEmail({
+    to,
+    subject: 'UJ Beauty — Нууц үг сэргээх',
+    html: emailShell({
+      eyebrow: 'Нууц үг сэргээх',
+      title: 'Нууц үгээ шинэчлэх линк',
+      subtitle: 'Нууц үг сэргээх хүсэлт ирсэн байна. Та хүсэлт гаргаагүй бол энэ и-мэйлийг үл тоомсорлоно уу. Энэ линк 30 минут хүчинтэй.',
+      children: buttonLink(resetUrl, 'Нууц үг шинэчлэх'),
+    }),
+  })
+}
+
+export async function sendPostDeliveryReviewInvitation(
+  to: string,
+  options: { productName: string; reviewUrl: string }
+) {
+  await sendEmail({
+    to,
+    subject: 'UJ Beauty — Барааны талаар сэтгэгдэлээ үлдээгээрэй',
+    html: emailShell({
+      eyebrow: 'Сэтгэгдэл үлдээх',
+      title: 'Туршлагаа хуваалцаарай',
+      subtitle: `${options.productName} барааг хүлээн авсан уу? Туршлагаа хуваалцаарай.`,
+      children: buttonLink(options.reviewUrl, 'Сэтгэгдэл бичих'),
     }),
   })
 }

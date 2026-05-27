@@ -12,13 +12,20 @@ import type { Product, Review } from '@/types';
 interface ReviewFormProps {
   product: Product;
   review?: Review;
+  orderId?: string;
   onSubmitted?: () => void;
   onCancel?: () => void;
 }
 
-const MAX_IMAGES = 4;
+const MAX_IMAGES = 5;
+const MAX_CONTENT = 500;
+const ratingLabels: Record<number, string> = { 1: 'Маш муу', 2: 'Муу', 3: 'Дунд', 4: 'Сайн', 5: 'Маш сайн' };
 
-export default function ReviewForm({ product, review, onSubmitted, onCancel }: ReviewFormProps) {
+function containsProfanity(text: string) {
+  return ['хараал', 'novsh', 'lalr', 'pizda', 'fuck', 'shit'].some((word) => text.toLowerCase().includes(word));
+}
+
+export default function ReviewForm({ product, review, orderId, onSubmitted, onCancel }: ReviewFormProps) {
   const { user, loading } = useAuth();
   const [rating, setRating] = useState(review?.rating ?? 5);
   const [content, setContent] = useState(review?.content ?? '');
@@ -68,6 +75,19 @@ export default function ReviewForm({ product, review, onSubmitted, onCancel }: R
       return;
     }
 
+    if (content.trim().length > MAX_CONTENT) {
+      setError(`Сэтгэгдэл ${MAX_CONTENT} тэмдэгтээс хэтэрч болохгүй.`);
+      return;
+    }
+    if (containsProfanity(content)) {
+      setError('Сэтгэгдэлд зохисгүй үг орсон байна.');
+      return;
+    }
+    if (!review && !orderId) {
+      setError('Баталгаат худалдан авалтын захиалга олдсонгүй.');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const uploadedImages = await uploadImages();
@@ -84,6 +104,7 @@ export default function ReviewForm({ product, review, onSubmitted, onCancel }: R
           userId: user.uid,
           userName: user.displayName || 'UJ хэрэглэгч',
           userEmail: user.email || '',
+          orderId: orderId || '',
           rating,
           content: content.trim(),
           imageUrls,

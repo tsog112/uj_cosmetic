@@ -79,7 +79,7 @@ export default function Header() {
   return (
     <>
       <header
-        className={`fixed inset-x-0 mx-auto z-40 w-full max-w-[430px] transition-all duration-300 ${hasAnnouncement ? 'top-9' : 'top-0'}`}
+        className={`fixed inset-x-0 mx-auto z-40 w-full max-w-[430px] md:hidden transition-all duration-300 ${hasAnnouncement ? 'top-9' : 'top-0'}`}
         style={{
           background: scrolled ? 'rgba(253, 232, 243, 0.92)' : 'rgba(253, 232, 243, 0.78)',
           backdropFilter: 'blur(24px) saturate(200%)',

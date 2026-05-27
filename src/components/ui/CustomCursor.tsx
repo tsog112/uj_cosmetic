@@ -1,13 +1,15 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export default function CustomCursor() {
   const dotRef = useRef<HTMLDivElement>(null);
+  const [isPointer, setIsPointer] = useState(false);
 
   useEffect(() => {
     // Only on pointer-capable (non-touch) devices
     if (window.matchMedia('(hover: none)').matches) return;
+    setIsPointer(true);
 
     const dot = dotRef.current;
     if (!dot) return;
@@ -52,6 +54,8 @@ export default function CustomCursor() {
       cancelAnimationFrame(rafId);
     };
   }, []);
+
+  if (!isPointer) return null;
 
   return (
     <div

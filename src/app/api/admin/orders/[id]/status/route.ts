@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ORDER_STATUS_VALUES, normalizeAdminOrderStatus } from '@/lib/constants/admin';
+import { getAdminDb } from '@/lib/firebaseAdmin';
 import { updateAdminOrderStatus } from '@/lib/services/firestoreAdminService';
-import { sendOrderStatusNotification } from '@/lib/emailService';
+import { sendOrderStatusNotification, sendPostDeliveryReviewInvitation } from '@/lib/emailService';
 
 export const runtime = 'nodejs';
 
 const EMAIL_STATUSES = new Set(['confirmed', 'processing', 'shipped', 'delivered', 'cancelled']);
+
+function appUrl(path: string) {
+  const base = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  return `${base.replace(/\/$/, '')}${path}`;
+}
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -20,6 +26,35 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const order = await updateAdminOrderStatus(id, normalized);
     if (!order) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+
+    if (normalized === 'delivered') {
+      try {
+        const firstItem: any = order.items?.[0];
+        const productSlug = firstItem?.productSlug || '';
+        const href = productSlug ? `/shop/${productSlug}?reviewOrderId=${order.id}` : '/account';
+        await getAdminDb().collection('notifications').add({
+          type: 'REVIEW_REQUEST',
+          userId: order.userId || '',
+          orderId: order.id,
+          title: 'Сэтгэгдэл бичих боломжтой боллоо',
+          body: 'Таны захиалга хүргэгдсэн тул худалдан авсан бүтээгдэхүүндээ сэтгэгдэл үлдээгээрэй.',
+          href,
+          channel: 'email',
+          status: 'scheduled',
+          createdAt: new Date(),
+          scheduledFor: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        });
+
+        if (order.customerEmail && firstItem) {
+          await sendPostDeliveryReviewInvitation(order.customerEmail, {
+            productName: firstItem.name_mn || firstItem.name || 'UJ Beauty бүтээгдэхүүн',
+            reviewUrl: appUrl(href),
+          });
+        }
+      } catch (notificationError) {
+        console.error('Review request email notification failed:', notificationError);
+      }
     }
 
     let emailSent = false;

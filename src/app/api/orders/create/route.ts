@@ -58,6 +58,18 @@ export async function POST(req: NextRequest) {
         });
       }
 
+      const year = new Date().getFullYear();
+      const counterRef = db.collection('counters').doc(`orders_${year}`);
+      const counterSnap = await transaction.get(counterRef);
+      let nextSeq = 1;
+      if (counterSnap.exists) {
+        nextSeq = (counterSnap.data()?.count || 0) + 1;
+        transaction.update(counterRef, { count: nextSeq });
+      } else {
+        transaction.set(counterRef, { count: 1 });
+      }
+      const orderNumber = `${year}-${String(nextSeq).padStart(4, '0')}`;
+
       const shippingCost = Math.round(Number(orderData.shippingCost || 0));
       const total = Math.round(calculatedSubtotal) + shippingCost;
       const now = Timestamp.now();
@@ -65,6 +77,7 @@ export async function POST(req: NextRequest) {
       const persistedOrder = {
         ...orderData,
         id: orderRef.id,
+        orderNumber,
         subtotal: Math.round(calculatedSubtotal),
         shippingCost,
         total,
@@ -74,6 +87,7 @@ export async function POST(req: NextRequest) {
 
       transaction.set(orderRef, {
         ...orderData,
+        orderNumber,
         subtotal: persistedOrder.subtotal,
         shippingCost,
         total,

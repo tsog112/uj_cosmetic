@@ -1,4 +1,4 @@
-﻿import {
+import {
   collection, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc,
   doc, query, where, orderBy, serverTimestamp,
   Timestamp
@@ -173,10 +173,16 @@ function normalizeReview(docId: string, data: any): Review {
     userName: maskDisplayName(data.userName),
     userEmail: '',
     rating: Number(data.rating ?? 5),
-    content: data.content ?? '',
+    content: data.content ?? data.body ?? '',
+    body: data.body ?? data.content ?? '',
     imageUrls: Array.isArray(data.imageUrls) ? data.imageUrls : [],
-    orderId: data.orderId,
-    approved: data.approved !== false,
+    orderId: data.orderId ?? '',
+    status: data.status === 'visible' || data.status === 'hidden' || data.status === 'pending'
+      ? data.status
+      : data.approved === true ? 'visible' : 'pending',
+    featured: Boolean(data.featured),
+    editCount: Number(data.editCount || 0),
+    approved: data.status ? data.status === 'visible' : data.approved === true,
     createdAt,
     updatedAt,
   };
@@ -200,7 +206,7 @@ export async function getUserReviews(userId: string): Promise<Review[]> {
 
 export async function getLatestReviews(count = 6): Promise<Review[]> {
   try {
-    return fetchPublicReviews({ limit: String(count) });
+    return fetchPublicReviews({ limit: String(count), featured: 'true' });
   } catch (e) { handleError(e, 'getLatestReviews'); }
 }
 
@@ -211,19 +217,17 @@ export async function getAllReviews(): Promise<Review[]> {
 }
 
 export async function createProductReview(
-  data: Omit<Review, 'id' | 'approved' | 'createdAt' | 'updatedAt'>
+  data: Omit<Review, 'id' | 'approved' | 'createdAt' | 'updatedAt' | 'status' | 'featured' | 'editCount' | 'body'>
 ): Promise<string> {
   try {
-    const ref = await addDoc(collection(db, REVIEWS), {
-      ...data,
-      userEmail: '',
-      rating: Math.max(1, Math.min(5, Math.round(data.rating))),
-      imageUrls: data.imageUrls ?? [],
-      approved: true,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+    const response = await fetch('/api/reviews', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
     });
-    return ref.id;
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.id) throw new Error(result.error || 'Failed to create review');
+    return result.id;
   } catch (e) { handleError(e, 'createProductReview'); }
 }
 
@@ -244,12 +248,13 @@ export async function updateUserReview(
   data: Pick<Review, 'rating' | 'content' | 'imageUrls'>
 ): Promise<void> {
   try {
-    await updateDoc(doc(db, REVIEWS, reviewId), {
-      rating: Math.max(1, Math.min(5, Math.round(data.rating))),
-      content: data.content,
-      imageUrls: data.imageUrls ?? [],
-      updatedAt: serverTimestamp(),
+    const response = await fetch(`/api/reviews/${encodeURIComponent(reviewId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
     });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || 'Failed to update review');
   } catch (e) { handleError(e, 'updateUserReview'); }
 }
 

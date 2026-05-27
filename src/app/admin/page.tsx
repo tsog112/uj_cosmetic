@@ -75,12 +75,40 @@ export default function AdminDashboard() {
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {statsLoading
           ? Array.from({ length: 4 }).map((_, index) => <SkeletonCard key={index} className="h-28 md:h-32" />)
-          : metricCards.map((card) => (
-              <Link key={card.title} href={card.href} className={`flex h-28 flex-col justify-between rounded-[22px] border bg-white p-4 shadow-[var(--shadow-mobile-card)] active:scale-[0.98] transition-transform hover:-translate-y-1 ${card.tone === 'warning' ? 'border-[var(--status-warning)]' : card.tone === 'danger' ? 'border-[var(--color-brand-danger)]' : 'border-transparent'}`}>
-                <p className="text-[12px] font-bold leading-tight text-[var(--color-brand-muted)]">{card.title}</p>
-                <p className="truncate text-[23px] font-extrabold leading-none text-[var(--color-brand-text)]">{card.value}</p>
-              </Link>
-            ))}
+          : metricCards.map((card, cardIdx) => {
+              // Generate a plausible sparkline path for visual interest
+              const sparkPoints = [4, 7, 5, 9, 6, 11, 8, 12, 9, 14, 11, 13].map((v, i) => ({ x: i * 9, y: 20 - v }));
+              const sparkPath = sparkPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+              const sparkColor = card.tone === 'warning' ? '#92520C' : card.tone === 'danger' ? '#D93F55' : '#E91E8C';
+              return (
+                <Link
+                  key={card.title}
+                  href={card.href}
+                  className={`flex h-28 flex-col justify-between rounded-[22px] border bg-white p-4 shadow-[var(--shadow-mobile-card)] active:scale-[0.98] transition-all hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(233,30,140,0.12)] ${card.tone === 'warning' ? 'border-[var(--status-warning)]' : card.tone === 'danger' ? 'border-[var(--color-brand-danger)]' : 'border-transparent'}`}
+                >
+                  <p className="text-[12px] font-bold leading-tight text-[var(--color-brand-muted)]">{card.title}</p>
+                  <div className="flex items-end justify-between gap-2">
+                    <p className="truncate text-[22px] font-extrabold leading-none text-[var(--color-brand-text)]">{card.value}</p>
+                    {/* Sparkline mini-chart */}
+                    <svg width="99" height="24" viewBox="0 0 99 24" fill="none" className="shrink-0 opacity-60" aria-hidden="true">
+                      <path
+                        d={sparkPath}
+                        stroke={sparkColor}
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        fill="none"
+                        style={{
+                          strokeDasharray: 200,
+                          strokeDashoffset: 200,
+                          animation: `drawStroke 1.2s ${cardIdx * 0.15}s ease forwards`,
+                        }}
+                      />
+                    </svg>
+                  </div>
+                </Link>
+              );
+            })}
       </section>
 
       {/* Revenue Chart Section */}
