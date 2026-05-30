@@ -76,6 +76,7 @@ interface CartContextType {
   shippingCost: number;
   cartTotal: number;
   isHydrated: boolean;
+  freeShippingThreshold: number;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -158,6 +159,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         shippingCost,
         cartTotal,
         isHydrated,
+        freeShippingThreshold,
       }}
     >
       {children}

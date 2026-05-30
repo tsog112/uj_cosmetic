@@ -30,6 +30,7 @@ export default function AdminSettingsPage() {
   const [announcementActive, setAnnouncementActive] = useState(true);
   const [freeShippingThreshold, setFreeShippingThreshold] = useState(SETTINGS_FALLBACK_FREE_SHIPPING_THRESHOLD);
   const [shippingCost, setShippingCost] = useState(SETTINGS_FALLBACK_SHIPPING_COST);
+  const [deliveryToken, setDeliveryToken] = useState('');
   const [bankName, setBankName] = useState('');
   const [bankAccount, setBankAccount] = useState('');
   const [bankAccountName, setBankAccountName] = useState('');
@@ -79,6 +80,7 @@ export default function AdminSettingsPage() {
     setAnnouncementActive(settings.announcementActive !== false);
     setFreeShippingThreshold(settings.freeShippingThreshold ?? SETTINGS_FALLBACK_FREE_SHIPPING_THRESHOLD);
     setShippingCost(settings.shippingCost ?? SETTINGS_FALLBACK_SHIPPING_COST);
+    setDeliveryToken(settings.deliveryToken || '');
     setBankName(settings.bankName || '');
     setBankAccount(settings.bankAccount || '');
     setBankAccountName(settings.bankAccountName || '');
@@ -104,6 +106,7 @@ export default function AdminSettingsPage() {
       announcementActive,
       freeShippingThreshold: Number(freeShippingThreshold),
       shippingCost: Number(shippingCost),
+      deliveryToken,
       bankName,
       bankAccount,
       bankAccountName,
@@ -305,6 +308,31 @@ export default function AdminSettingsPage() {
                       <input required type="number" min="0" step="500" value={shippingCost} onChange={(e) => setShippingCost(Number(e.target.value))} className={inputClass} />
                       <div className="mt-2 rounded-[18px] bg-[var(--color-brand-secondary)] p-3 text-center text-sm font-extrabold text-[var(--color-brand-text)]">Хүргэлт: {formatMNT(shippingCost)}</div>
                     </label>
+                    
+                    <div className="border-t border-[#f8dbe8] pt-4 mt-2 space-y-4">
+                      <h4 className="text-[12px] font-extrabold text-[var(--color-brand-text)] uppercase tracking-wider">🛵 Жолоочийн хандах линк тохиргоо</h4>
+                      <label className="block">
+                        <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-[0.12em] text-[var(--color-brand-muted)]">Жолоочийн хандах нууц түлхүүр (Token)</span>
+                        <div className="flex gap-2">
+                          <input required value={deliveryToken} onChange={(e) => setDeliveryToken(e.target.value)} placeholder="Нууц түлхүүр..." className="h-12 min-w-0 flex-1 rounded-[16px] bg-[var(--color-brand-bg)] px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-[#f3b8cf]" />
+                          <button type="button" onClick={() => setDeliveryToken('uj-rider-' + Math.random().toString(36).substring(2, 10))} className="h-12 px-4 rounded-[16px] bg-[var(--color-brand-secondary)] text-[12px] font-extrabold text-[var(--color-brand-accent)] hover:bg-[#ecd0dc] active:scale-95 transition-all">Үүсгэх</button>
+                        </div>
+                      </label>
+                      
+                      {deliveryToken && typeof window !== 'undefined' && (
+                        <div className="rounded-[18px] bg-gray-50 p-4 border border-black/[0.03] space-y-2">
+                          <span className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide">Жолоочийн хандах линк (Өнөөдөр):</span>
+                          <div className="flex items-center gap-2">
+                            <input readOnly value={`${window.location.origin}/delivery/${new Date().toISOString().split('T')[0]}/${deliveryToken}`} className="h-10 flex-1 rounded-[12px] bg-white border border-gray-200 px-3 text-[11px] font-mono font-bold text-gray-700 select-all" />
+                            <button type="button" onClick={() => {
+                              navigator.clipboard.writeText(`${window.location.origin}/delivery/${new Date().toISOString().split('T')[0]}/${deliveryToken}`);
+                              showToast('📋 Линк хуулагдлаа!');
+                            }} className="h-10 px-3 rounded-[12px] bg-[var(--color-brand-accent)] text-white text-[11px] font-bold hover:bg-[#c13d6a] active:scale-95 transition-all">Хуулах</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                     <button disabled={isSaving} className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--color-brand-accent)] text-sm font-extrabold text-white disabled:opacity-60">
                       {isSaving ? <Loader2 size={17} className="animate-spin" /> : <Check size={17} />} Хадгалах
                     </button>

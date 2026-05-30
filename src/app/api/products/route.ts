@@ -18,40 +18,91 @@ function fallbackProducts(filters: { slug?: string | null; category?: string | n
   return products;
 }
 
+let cachedProducts: any[] = [];
+let cacheTime = 0;
+
+async function getCachedProducts(db: any) {
+  const now = Date.now();
+  if (cachedProducts.length > 0 && now - cacheTime < 60 * 1000) {
+    return cachedProducts;
+  }
+  const snap = await db.collection('products').where('published', '==', true).get();
+  cachedProducts = snap.docs.map((doc: any) => toPublicProduct(doc.id, doc.data()));
+  cacheTime = now;
+  return cachedProducts;
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const slug = searchParams.get('slug');
   const category = searchParams.get('category');
   const featured = searchParams.get('featured');
+  const pageParam = searchParams.get('page');
+  const limitParam = searchParams.get('limit');
 
   try {
     const db = getAdminDb();
-    let query: Query = db.collection('products')
-      .where('published', '==', true);
-
-    if (slug) query = query.where('slug', '==', slug).limit(1);
-    if (category) query = query.where('category', '==', category);
-    if (featured === 'true') query = query.where('featured', '==', true);
-
-    const snap = await query.get();
-    const products = snap.docs.map((doc) => toPublicProduct(doc.id, doc.data()));
 
     if (slug) {
+      const snap = await db.collection('products').where('slug', '==', slug).limit(1).get();
+      const products = snap.docs.map((doc) => toPublicProduct(doc.id, doc.data()));
       return NextResponse.json({ product: products[0] ?? null });
     }
 
-    return NextResponse.json({ products });
+    let products = await getCachedProducts(db);
+
+    if (category && category !== 'all') {
+      products = products.filter((p) => p.category === category);
+    }
+    if (featured === 'true') {
+      products = products.filter((p) => p.featured === true);
+    }
+
+    const totalCount = products.length;
+    let totalPages = 1;
+    let currentPage = 1;
+
+    if (pageParam || limitParam) {
+      const page = parseInt(pageParam || '1', 10);
+      const limit = parseInt(limitParam || '12', 10);
+      currentPage = page;
+      totalPages = Math.ceil(totalCount / limit) || 1;
+      products = products.slice((page - 1) * limit, page * limit);
+    }
+
+    return NextResponse.json({
+      products,
+      totalCount,
+      totalPages,
+      currentPage,
+    });
   } catch (error) {
     console.error('Public products API failed:', error);
-    const products = fallbackProducts({ slug, category, featured });
+    let products = fallbackProducts({ slug, category, featured });
     if (slug) {
       return NextResponse.json({
         product: products[0] ?? null,
         warning: 'Firestore products are temporarily unavailable; using local catalog fallback.',
       });
     }
+
+    const totalCount = products.length;
+    let totalPages = 1;
+    let currentPage = 1;
+
+    if (pageParam || limitParam) {
+      const page = parseInt(pageParam || '1', 10);
+      const limit = parseInt(limitParam || '12', 10);
+      currentPage = page;
+      totalPages = Math.ceil(totalCount / limit) || 1;
+      products = products.slice((page - 1) * limit, page * limit);
+    }
+
     return NextResponse.json({
       products,
+      totalCount,
+      totalPages,
+      currentPage,
       warning: 'Firestore products are temporarily unavailable; using local catalog fallback.',
     });
   }

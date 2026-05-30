@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CheckCircle2, CircleDollarSign, ClipboardCheck, Edit3, Heart, Home, LogOut, MessageCircle, Package, PackageCheck, PackageOpen, Settings, Shield, Star, Trash2, Truck } from 'lucide-react';
+import { CheckCircle2, CircleDollarSign, ClipboardCheck, Edit3, Heart, Home, LogOut, MessageCircle, Package, PackageCheck, PackageOpen, Settings, Shield, Star, Trash2, Truck, ChevronDown, ChevronUp } from 'lucide-react';
 import AuthGuard from '@/components/ui/AuthGuard';
 import ReviewForm from '@/components/ui/ReviewForm';
 import { useAuth } from '@/context/AuthContext';
+import { useCart } from '@/context/CartContext';
 import { db } from '@/lib/firebase';
 import { deleteReview, getAllProducts, getUserReviews } from '@/lib/services/firestoreService';
 import { formatPrice, type Product, type Review } from '@/types';
@@ -314,6 +316,8 @@ function reviewToProduct(review: Review): Product {
 }
 
 function AccountContent() {
+  const router = useRouter();
+  const { addToCart } = useCart();
   const { user, isAdmin, signOut } = useAuth();
   const [orders, setOrders] = useState<any[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -321,21 +325,58 @@ function AccountContent() {
   const [activeTab, setActiveTab] = useState<AccountTab>('orders');
   const [editingReview, setEditingReview] = useState<Review | null>(null);
   const [productSlugById, setProductSlugById] = useState<Record<string, string>>({});
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [ordersSubTab, setOrdersSubTab] = useState<'active' | 'history'>('active');
   const [selectedHistoryOrder, setSelectedHistoryOrder] = useState<any>(null);
+  const [expandedHistoryIds, setExpandedHistoryIds] = useState<Record<string, boolean>>({});
   const [currentView, setCurrentView] = useState<'profile' | 'orders' | 'reviews'>('profile');
 
   const activeOrders = useMemo(() => {
-    return orders.filter((order) =>
-      ['pending', 'confirmed', 'processing', 'shipped'].includes(normalizeStatus(order.status))
-    );
+    return orders.filter((order) => order.archived !== true);
   }, [orders]);
 
   const historyOrders = useMemo(() => {
-    return orders.filter((order) =>
-      ['delivered', 'cancelled'].includes(normalizeStatus(order.status))
-    );
+    return orders.filter((order) => order.archived === true);
   }, [orders]);
+
+  const toggleExpandHistory = (orderId: string) => {
+    setExpandedHistoryIds((prev) => ({
+      ...prev,
+      [orderId]: !prev[orderId],
+    }));
+  };
+
+  const handleReorder = (order: any) => {
+    if (!order || !order.items) return;
+    order.items.forEach((item: any) => {
+      const match = allProducts.find((p) => p.id === item.productId);
+      const productObj: Product = match || {
+        id: item.productId,
+        slug: item.productSlug || '',
+        name_mn: item.name_mn || item.name || 'Бүтээгдэхүүн',
+        name_en: item.name_en || item.name || 'Product',
+        price: item.price || 0,
+        salePrice: null,
+        saleEndDate: null,
+        category: 'other',
+        images: item.image ? [item.image] : [],
+        description_mn: '',
+        ingredients: '',
+        howToUse: '',
+        featured: false,
+        published: true,
+        inStock: true,
+        stockQuantity: 99,
+        views: 0,
+        orderCount: 0,
+        videoUrl: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      addToCart(productObj, item.quantity || 1);
+    });
+    router.push('/cart');
+  };
 
   const loadAccountData = async () => {
     if (!user) return;
@@ -351,6 +392,7 @@ function AccountContent() {
     }
     if (reviewResult.status === 'fulfilled') setReviews(reviewResult.value);
     if (productResult.status === 'fulfilled') {
+      setAllProducts(productResult.value);
       setProductSlugById(Object.fromEntries(productResult.value.map((product) => [product.id, product.slug])));
     }
     setLoading(false);
@@ -697,123 +739,130 @@ function AccountContent() {
                     const itemsCount = order.items?.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0) || 0;
                     const productName = primaryProduct?.name_mn || primaryProduct?.name || 'Бүтээгдэхүүн';
                     const displayProductName = itemsCount > 1 ? `${productName} + ${itemsCount - 1} бараа` : productName;
+                    const isExpanded = !!expandedHistoryIds[order.id];
 
                     return (
-                      <button
+                      <div
                         key={order.id}
-                        type="button"
-                        onClick={() => setSelectedHistoryOrder(order)}
-                        className="flex w-full items-center justify-between gap-3 rounded-[20px] bg-white p-4 text-left border border-black/[0.04] shadow-[var(--shadow-mobile-card)] hover:bg-gray-50 active:scale-[0.99] transition-all"
+                        className="overflow-hidden rounded-[20px] bg-white border border-black/[0.04] shadow-[var(--shadow-mobile-card)] transition-all duration-200"
                       >
-                        <div className="min-w-0 flex-1 space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono rounded-full bg-gray-100 border border-gray-200/50 px-2 py-0.5 text-xs text-gray-700 tracking-wide font-medium">
-                              {order.orderNumber || `#${order.id.slice(-6).toUpperCase()}`}
-                            </span>
-                            <span className="text-[10px] font-bold text-gray-400">
-                              {toDate(order.createdAt)?.toLocaleDateString('mn-MN')}
-                            </span>
+                        {/* Collapsed Header / Row */}
+                        <button
+                          type="button"
+                          onClick={() => toggleExpandHistory(order.id)}
+                          className="flex w-full items-center justify-between gap-3 p-4 text-left hover:bg-gray-50/60 active:bg-gray-100/40 transition-colors"
+                        >
+                          <div className="min-w-0 flex-1 space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono rounded-full bg-gray-100 border border-gray-200/50 px-2 py-0.5 text-xs text-gray-700 tracking-wide font-medium">
+                                {order.orderNumber || `#${order.id.slice(-6).toUpperCase()}`}
+                              </span>
+                              <span className="text-[10px] font-bold text-gray-400">
+                                {toDate(order.createdAt)?.toLocaleDateString('mn-MN')}
+                              </span>
+                            </div>
+                            <p className="truncate text-[13px] font-extrabold text-[var(--color-text-dark)]">
+                              {displayProductName}
+                            </p>
+                            <p className="text-[12px] font-bold text-[var(--color-text-medium)]">
+                              {formatPrice(order.total || 0)}
+                            </p>
                           </div>
-                          <p className="truncate text-[13px] font-extrabold text-[var(--color-text-dark)]">
-                            {displayProductName}
-                          </p>
-                          <p className="text-[12px] font-bold text-[var(--color-text-medium)]">
-                            {formatPrice(order.total || 0)}
-                          </p>
-                        </div>
-                        <div className="shrink-0">
-                          <ClientStatusBadge status={order.status} />
-                        </div>
-                      </button>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <ClientStatusBadge status={order.status} />
+                            {isExpanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+                          </div>
+                        </button>
+
+                        {/* Expanded Content */}
+                        <AnimatePresence initial={false}>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.2 }}
+                              className="border-t border-gray-100 bg-gray-50/30"
+                            >
+                              <div className="p-4 space-y-4">
+                                {/* Product items inside expanded */}
+                                <div className="space-y-2">
+                                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-gray-400">Бараанууд</p>
+                                  {order.items?.map((item: any, index: number) => {
+                                    const slug = item.productSlug || productSlugById[item.productId];
+                                    const itemContent = (
+                                      <>
+                                        <span className="min-w-0 flex-1 font-bold line-clamp-1">
+                                          {item.name_mn || item.name || 'Бүтээгдэхүүн'} x {item.quantity || 1}
+                                        </span>
+                                        <strong className="shrink-0">{formatPrice((item.price || 0) * (item.quantity || 1))}</strong>
+                                      </>
+                                    );
+                                    return slug ? (
+                                      <Link
+                                        key={index}
+                                        href={`/shop/${slug}`}
+                                        className="flex items-center justify-between gap-3 rounded-[14px] bg-white p-3 text-[12px] border border-black/[0.02] hover:bg-pink-50/20 active:scale-[0.99] transition-all"
+                                      >
+                                        {itemContent}
+                                      </Link>
+                                    ) : (
+                                      <div
+                                        key={index}
+                                        className="flex items-center justify-between gap-3 rounded-[14px] bg-white p-3 text-[12px] border border-black/[0.02]"
+                                      >
+                                        {itemContent}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+
+                                {/* Price Details */}
+                                <div className="rounded-[18px] bg-white p-4 space-y-2 border border-black/[0.03]">
+                                  <div className="flex justify-between text-[12px] text-gray-500">
+                                    <span>Барааны дүн</span>
+                                    <span>{formatPrice(order.subtotal || 0)}</span>
+                                  </div>
+                                  <div className="flex justify-between text-[12px] text-gray-500">
+                                    <span>Хүргэлтийн төлбөр</span>
+                                    <span>{order.shippingCost === 0 ? 'Үнэгүй' : formatPrice(order.shippingCost || 0)}</span>
+                                  </div>
+                                  <div className="border-t border-gray-200/80 my-2 pt-2 flex justify-between text-[14px] font-extrabold text-[var(--color-text-dark)]">
+                                    <span>Нийт дүн</span>
+                                    <span className="text-[var(--color-primary)]">{formatPrice(order.total || 0)}</span>
+                                  </div>
+                                </div>
+
+                                {/* Address details */}
+                                <div className="space-y-1">
+                                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-gray-400">Хүргэлтийн хаяг</p>
+                                  <div className="rounded-[18px] bg-white p-4 border border-black/[0.03] text-[13px] leading-relaxed">
+                                    <p className="font-extrabold text-[var(--color-text-dark)]">{order.customerName || order.displayName}</p>
+                                    <p className="mt-1 font-medium text-gray-500">{order.address || order.shippingAddress}</p>
+                                    {order.phone && (
+                                      <p className="mt-1.5 font-bold text-[var(--color-text-medium)]">Утас: {order.phone}</p>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Reorder Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleReorder(order)}
+                                  className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] text-[12px] font-extrabold text-white shadow-xs active:scale-[0.98] transition-all hover:bg-[var(--color-primary)]/90"
+                                >
+                                  <PackageCheck size={15} />
+                                  Дахин захиалах
+                                </button>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
                     );
                   }) : <EmptyState title="Захиалгын түүх алга байна" href="/shop" label="Бараа үзэх" />}
                 </section>
               )}
-
-              {/* History order bottom sheet */}
-              <AnimatePresence>
-                {selectedHistoryOrder && (
-                  <>
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-xs"
-                      onClick={() => setSelectedHistoryOrder(null)}
-                    />
-                    <motion.div
-                      initial={{ y: '100%' }}
-                      animate={{ y: 0 }}
-                      exit={{ y: '100%' }}
-                      transition={{ type: 'spring', damping: 30, stiffness: 350 }}
-                      className="fixed bottom-0 left-1/2 z-[70] max-h-[85vh] w-full max-w-[430px] -translate-x-1/2 overflow-y-auto rounded-t-[28px] bg-white p-5 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] pb-[env(safe-area-inset-bottom)]"
-                    >
-                      <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-gray-200" />
-                      
-                      <div className="flex items-start justify-between border-b border-gray-100 pb-4">
-                        <div>
-                          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-primary)]">Захиалгын дэлгэрэнгүй</p>
-                          <div className="mt-1 flex items-center gap-2">
-                            <span className="font-mono rounded-full bg-gray-100 border border-gray-200/50 px-2.5 py-0.5 text-xs text-gray-700 tracking-wide font-medium">
-                              {selectedHistoryOrder.orderNumber || `#${selectedHistoryOrder.id.slice(-6).toUpperCase()}`}
-                            </span>
-                          </div>
-                          <p className="mt-1.5 text-[11px] font-medium text-gray-400">
-                            Огноо: {toDate(selectedHistoryOrder.createdAt)?.toLocaleString('mn-MN')}
-                          </p>
-                        </div>
-                        <ClientStatusBadge status={selectedHistoryOrder.status} />
-                      </div>
-
-                      <div className="mt-4 space-y-2">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-400">Бараанууд</p>
-                        {selectedHistoryOrder.items?.map((item: any, index: number) => (
-                          <div key={index} className="flex items-center justify-between gap-3 rounded-[14px] bg-[var(--color-brand-bg)] p-3 text-[12px] border border-black/[0.02]">
-                            <span className="min-w-0 flex-1 font-bold line-clamp-1">
-                              {item.name_mn || item.name || 'Бүтээгдэхүүн'} x {item.quantity || 1}
-                            </span>
-                            <strong className="shrink-0">{formatPrice((item.price || 0) * (item.quantity || 1))}</strong>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="mt-4 rounded-[18px] bg-gray-50 p-4 space-y-2 border border-black/[0.03]">
-                        <div className="flex justify-between text-[12px] text-gray-500">
-                          <span>Барааны дүн</span>
-                          <span>{formatPrice(selectedHistoryOrder.subtotal || 0)}</span>
-                        </div>
-                        <div className="flex justify-between text-[12px] text-gray-500">
-                          <span>Хүргэлтийн төлбөр</span>
-                          <span>{selectedHistoryOrder.shippingCost === 0 ? 'Үнэгүй' : formatPrice(selectedHistoryOrder.shippingCost || 0)}</span>
-                        </div>
-                        <div className="border-t border-gray-200/80 my-2 pt-2 flex justify-between text-[14px] font-extrabold text-[var(--color-text-dark)]">
-                          <span>Нийт дүн</span>
-                          <span className="text-[var(--color-primary)]">{formatPrice(selectedHistoryOrder.total || 0)}</span>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 space-y-1">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-400">Хүргэлтийн хаяг</p>
-                        <div className="rounded-[18px] bg-gray-50 p-4 border border-black/[0.03] text-[13px] leading-relaxed">
-                          <p className="font-extrabold text-[var(--color-text-dark)]">{selectedHistoryOrder.customerName || selectedHistoryOrder.displayName}</p>
-                          <p className="mt-1 font-medium text-gray-500">{selectedHistoryOrder.address || selectedHistoryOrder.shippingAddress}</p>
-                          {selectedHistoryOrder.phone && (
-                            <p className="mt-1.5 font-bold text-[var(--color-text-medium)]">Утас: {selectedHistoryOrder.phone}</p>
-                          )}
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => setSelectedHistoryOrder(null)}
-                        className="mt-6 flex h-12 w-full items-center justify-center rounded-full bg-[var(--color-primary)] text-sm font-extrabold text-white shadow-md active:scale-[0.98] transition-all hover:bg-[var(--color-primary)]/90"
-                      >
-                        Хаах
-                      </button>
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
             </div>
           )}
 

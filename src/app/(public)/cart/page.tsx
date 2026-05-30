@@ -65,6 +65,7 @@ export default function CartPage() {
     cartTotal,
     cartItemCount,
     isHydrated,
+    freeShippingThreshold,
   } = useCart();
 
   if (!isHydrated) {
@@ -79,9 +80,8 @@ export default function CartPage() {
 
   if (!items.length) return <EmptyCart />;
 
-  const FREE_SHIPPING_THRESHOLD = 100000;
-  const remaining = FREE_SHIPPING_THRESHOLD - cartSubtotal;
-  const freeShippingReached = cartSubtotal >= FREE_SHIPPING_THRESHOLD;
+  const remaining = freeShippingThreshold - cartSubtotal;
+  const freeShippingReached = cartSubtotal >= freeShippingThreshold;
 
   return (
     <main className="space-y-4 px-4 pb-[132px]">
@@ -141,7 +141,7 @@ export default function CartPage() {
                 className="h-full rounded-full"
                 style={{ background: 'linear-gradient(90deg, #E91E8C, #C2185B)' }}
                 initial={{ width: 0 }}
-                animate={{ width: `${Math.min((cartSubtotal / FREE_SHIPPING_THRESHOLD) * 100, 100)}%` }}
+                animate={{ width: `${Math.min((cartSubtotal / (freeShippingThreshold || 1)) * 100, 100)}%` }}
                 transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
               />
             </div>

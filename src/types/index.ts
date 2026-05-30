@@ -69,6 +69,8 @@ export interface Order {
   paymentStatus?: PaymentStatus;
   bankTransferRef?: string;
   qpayInvoiceId?: string;
+  promoCode?: string;
+  discount?: number;
   qpayQrText?: string;
   qpayQrImage?: string;
   qpayShortUrl?: string;

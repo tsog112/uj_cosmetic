@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 import { ArrowRight, BadgeCheck, Sparkles, Star, Truck, Droplet, Sun, Moon, Flower2, Leaf, Waves, Wind, Beaker, FlaskConical, Feather, Heart, Gem, ShieldPlus, MoreHorizontal, Tags, Syringe, Pill, Scale, Activity } from 'lucide-react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import ProductCard from '@/components/ui/ProductCard';
 import ScrollReveal from '@/components/ui/ScrollReveal';
 import FloatingPetals from '@/components/ui/FloatingPetals';
@@ -18,6 +18,35 @@ type InstagramSlot = { id: string; instagramUrl: string; imageUrl: string };
 const ICON_MAP: Record<string, React.ElementType> = {
   Droplet, Sparkles, Sun, Moon, Flower2, Leaf, Waves, Wind, Beaker, FlaskConical, Feather, Heart, Gem, ShieldPlus, Tags, MoreHorizontal, Syringe, Pill, Scale, Activity
 };
+
+function getVisiblePages(currentPage: number, totalPages: number): (number | string)[] {
+  const pages: (number | string)[] = [];
+  if (totalPages <= 5) {
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(i);
+    }
+  } else {
+    pages.push(1);
+    let start = Math.max(2, currentPage - 1);
+    let end = Math.min(totalPages - 1, currentPage + 1);
+    if (currentPage <= 3) {
+      end = 4;
+    } else if (currentPage >= totalPages - 2) {
+      start = totalPages - 3;
+    }
+    if (start > 2) {
+      pages.push('...');
+    }
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    if (end < totalPages - 1) {
+      pages.push('...');
+    }
+    pages.push(totalPages);
+  }
+  return pages;
+}
 
 // ── Word-by-word staggered text reveal ───────────────────────────────────
 function StaggeredText({ text, style }: { text: string; style?: React.CSSProperties }) {
@@ -222,12 +251,13 @@ function InstagramFeedSection() {
   );
 }
 
-// ── MAIN HOME PAGE ────────────────────────────────────────────────────────
 export default function HomePage() {
   const [categories, setCategories] = useState<any[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reviewsPage, setReviewsPage] = useState(1);
+  const [isMobile, setIsMobile] = useState(true);
 
   // Parallax for hero text
   const { scrollY } = useScroll();
@@ -235,9 +265,16 @@ export default function HomePage() {
   const heroBgScale = useTransform(scrollY, [0, 400], [1, 1.08]);
 
   useEffect(() => {
+    setIsMobile(window.innerWidth < 768);
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
     Promise.all([
       getAllProducts({ published: true }).catch(() => [] as Product[]),
-      getLatestReviews(4).catch(() => [] as Review[]),
+      getLatestReviews(12).catch(() => [] as Review[]),
       getCategories().catch(() => [] as any[]),
     ]).then(([productData, reviewData, categoriesData]) => {
       setProducts(productData || []);
@@ -255,6 +292,13 @@ export default function HomePage() {
     () => reviews.length ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0,
     [reviews]
   );
+
+  const reviewsPerPage = isMobile ? 1 : 3;
+  const totalReviewsPages = Math.ceil(reviews.length / reviewsPerPage) || 1;
+  const currentReviews = useMemo(() => {
+    const start = (reviewsPage - 1) * reviewsPerPage;
+    return reviews.slice(start, start + reviewsPerPage);
+  }, [reviews, reviewsPage, reviewsPerPage]);
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-10 pb-[96px] md:pb-16">
@@ -543,47 +587,120 @@ export default function HomePage() {
           </div>
 
           {reviews.length ? (
-            <div className="mt-4 flex gap-3 overflow-x-auto pb-1 hide-scrollbar">
-              {reviews.map((review, idx) => (
-                <motion.div
-                  key={review.id}
-                  initial={{ opacity: 0, x: 20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true, amount: 0.3 }}
-                  transition={{ delay: idx * 0.1, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                >
-                  <Link
-                    href={`/shop/${review.productSlug}`}
-                    className="block w-[232px] shrink-0 rounded-[18px] p-3 transition-all hover:scale-[1.02]"
-                    style={{ background: 'var(--color-soft-pink)' }}
+            <div className="relative mt-6">
+              <div className="relative overflow-hidden min-h-[300px]">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={reviewsPage}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                    className="grid grid-cols-1 md:grid-cols-3 gap-4"
                   >
-                    {review.imageUrls[0] && (
-                      <div
-                        className="relative mb-3 aspect-[4/3] overflow-hidden rounded-[12px]"
-                        style={{ background: 'var(--color-light-pink)' }}
-                      >
-                        <Image
-                          src={review.imageUrls[0]}
-                          alt={review.productName}
-                          fill
-                          sizes="232px"
-                          className="object-cover transition-transform duration-500 hover:scale-105"
-                        />
+                    {currentReviews.map((review) => (
+                      <div key={review.id} className="w-full h-full">
+                        <Link
+                          href={`/shop/${review.productSlug}`}
+                          className="block w-full rounded-[24px] p-5 transition-all hover:scale-[1.02] border border-[#fbe5f0] h-full flex flex-col justify-between"
+                          style={{ background: 'var(--color-soft-pink)', boxShadow: '0 4px 16px rgba(233,30,140,0.03)' }}
+                        >
+                          <div>
+                            {review.imageUrls?.[0] && (
+                              <div
+                                className="relative mb-4 aspect-[16/10] overflow-hidden rounded-[16px]"
+                                style={{ background: 'var(--color-light-pink)' }}
+                              >
+                                <Image
+                                  src={review.imageUrls[0]}
+                                  alt={review.productName}
+                                  fill
+                                  sizes="(max-width: 768px) 340px, 400px"
+                                  className="object-cover transition-transform duration-500 hover:scale-105"
+                                />
+                              </div>
+                            )}
+                            <Stars rating={review.rating} />
+                            <p
+                              className="mt-3 text-[13px] leading-relaxed text-gray-800 line-clamp-4"
+                              style={{ minHeight: '80px' }}
+                            >
+                              {review.content}
+                            </p>
+                          </div>
+                          <div className="mt-4 flex items-center justify-between border-t border-[#fbe5f0] pt-3 shrink-0">
+                            <span className="text-[12px] font-bold text-[var(--color-primary)]">
+                              — {review.userName || 'UJ хэрэглэгч'}
+                            </span>
+                            <span className="text-[10px] font-bold text-gray-400 truncate max-w-[140px]">
+                              {review.productName}
+                            </span>
+                          </div>
+                        </Link>
                       </div>
-                    )}
-                    <Stars rating={review.rating} />
-                    <p
-                      className="mt-2 line-clamp-3 text-[12.5px] leading-relaxed"
-                      style={{ color: 'var(--color-text-dark)' }}
-                    >
-                      {review.content.length > 120 ? `${review.content.slice(0, 120)}...` : review.content}
-                    </p>
-                    <p className="mt-2 text-[10.5px] font-bold" style={{ color: 'var(--color-primary)' }}>
-                      — {review.userName || 'UJ хэрэглэгч'}
-                    </p>
-                  </Link>
-                </motion.div>
-              ))}
+                    ))}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+
+              {/* Dynamic reviews pagination */}
+              {totalReviewsPages >= 1 && (
+                <div className="mt-8 flex items-center justify-center gap-1.5 py-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (reviewsPage > 1) {
+                        setReviewsPage((prev) => prev - 1);
+                      }
+                    }}
+                    disabled={reviewsPage === 1}
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-[#f8dbe8] bg-white text-[12px] font-bold text-[var(--color-text-dark)] shadow-sm transition-all hover:bg-[var(--color-soft-pink)] disabled:opacity-40 active:scale-95"
+                  >
+                    &lt;
+                  </button>
+                  
+                  {getVisiblePages(reviewsPage, totalReviewsPages).map((pageNum, idx) => {
+                    if (pageNum === '...') {
+                      return (
+                        <span key={`ellipsis-${idx}`} className="flex h-9 w-6 items-center justify-center text-[12px] font-bold text-[var(--color-brand-muted)]">
+                          ...
+                        </span>
+                      );
+                    }
+
+                    const isActive = pageNum === reviewsPage;
+                    return (
+                      <button
+                        key={pageNum}
+                        type="button"
+                        onClick={() => {
+                          setReviewsPage(pageNum as number);
+                        }}
+                        className={`flex h-9 w-9 items-center justify-center rounded-full text-[12px] font-bold transition-all shadow-sm active:scale-95 ${
+                          isActive
+                            ? 'bg-gradient-to-r from-[#E91E8C] to-[#C2185B] text-white shadow-[0_3px_10px_rgba(233,30,140,0.20)]'
+                            : 'border border-[#f8dbe8] bg-white text-[var(--color-text-dark)] hover:bg-[var(--color-soft-pink)]'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (reviewsPage < totalReviewsPages) {
+                        setReviewsPage((prev) => prev - 1 + 2);
+                      }
+                    }}
+                    disabled={reviewsPage === totalReviewsPages}
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-[#f8dbe8] bg-white text-[12px] font-bold text-[var(--color-text-dark)] shadow-sm transition-all hover:bg-[var(--color-soft-pink)] disabled:opacity-40 active:scale-95"
+                  >
+                    &gt;
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <p

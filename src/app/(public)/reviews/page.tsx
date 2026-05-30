@@ -14,6 +14,36 @@ function Stars({ rating }: { rating: number }) {
   );
 }
 
+function getVisiblePages(currentPage: number, totalPages: number): (number | string)[] {
+  const pages: (number | string)[] = [];
+  if (totalPages <= 5) {
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(i);
+    }
+  } else {
+    pages.push(1);
+    let start = Math.max(2, currentPage - 1);
+    let end = Math.min(totalPages - 1, currentPage + 1);
+    if (currentPage <= 3) {
+      end = 4;
+    } else if (currentPage >= totalPages - 2) {
+      start = totalPages - 3;
+    }
+    if (start > 2) {
+      pages.push('...');
+    }
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    if (end < totalPages - 1) {
+      pages.push('...');
+    }
+    pages.push(totalPages);
+  }
+  return pages;
+}
+
+
 export default function ReviewsPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,7 +148,7 @@ export default function ReviewsPage() {
           ))}
 
           {/* Premium Pill Pagination UI */}
-          {totalPages > 1 && (
+          {totalPages >= 1 && (
             <div className="mt-8 flex items-center justify-center gap-1.5 py-4">
               <button
                 onClick={() => {
@@ -133,14 +163,21 @@ export default function ReviewsPage() {
                 &lt;
               </button>
               
-              {Array.from({ length: totalPages }).map((_, idx) => {
-                const pageNum = idx + 1;
+              {getVisiblePages(page, totalPages).map((pageNum, idx) => {
+                if (pageNum === '...') {
+                  return (
+                    <span key={`ellipsis-${idx}`} className="flex h-10 w-8 items-center justify-center text-[13px] font-bold text-[var(--color-brand-muted)]">
+                      ...
+                    </span>
+                  );
+                }
+
                 const isActive = pageNum === page;
                 return (
                   <button
                     key={pageNum}
                     onClick={() => {
-                      setPage(pageNum);
+                      setPage(pageNum as number);
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
                     className={`flex h-10 w-10 items-center justify-center rounded-full text-[13px] font-bold transition-all shadow-sm active:scale-95 ${
@@ -157,7 +194,7 @@ export default function ReviewsPage() {
               <button
                 onClick={() => {
                   if (page < totalPages) {
-                    setPage(prev => prev + 1);
+                    setPage(prev => prev - 1 + 2);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }
                 }}

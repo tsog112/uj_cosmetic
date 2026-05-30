@@ -51,7 +51,6 @@ export const ADMIN_NAV_ITEMS = [
   { key: 'orders', label: 'Захиалга', href: '/admin/orders', icon: 'ShoppingBag' },
   { key: 'products', label: 'Бараа', href: '/admin/products', icon: 'Package' },
   { key: 'customers', label: 'Хэрэглэгч', href: '/admin/customers', icon: 'Users' },
-  { key: 'reviews', label: 'Сэтгэгдэл', href: '/admin/reviews', icon: 'Star' },
   { key: 'reports', label: 'Тайлан', href: '/admin/analytics', icon: 'BarChart3' },
   { key: 'settings', label: 'Тохиргоо', href: '/admin/settings', icon: 'Settings' },
 ] as const;

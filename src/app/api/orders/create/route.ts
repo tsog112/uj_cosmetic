@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getAdminDb } from '@/lib/firebaseAdmin';
 import { sendNewOrderNotificationToAdmin } from '@/lib/emailService';
+import { getAddressLabelSnapshot } from '@/lib/addressData';
 import type { Order, OrderStatus } from '@/types';
 
 type IncomingOrder = Omit<Order, 'id' | 'createdAt' | 'updatedAt'>;
@@ -13,6 +14,18 @@ export async function POST(req: NextRequest) {
     const orderData = await req.json() as IncomingOrder;
     if (!Array.isArray(orderData.items) || orderData.items.length === 0) {
       return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
+    }
+    const phoneDigits = String(orderData.phone || '').replace(/\D/g, '');
+    if (phoneDigits.length < 8) {
+      return NextResponse.json({ error: 'Утасны дугаар хамгийн багадаа 8 оронтой байх ёстой.' }, { status: 400 });
+    }
+    const incomingSnapshot: any = (orderData as any).addressSnapshot || null;
+    const regionId = String(incomingSnapshot?.region_id || incomingSnapshot?.regionId || '').trim();
+    const districtId = String(incomingSnapshot?.district_id || incomingSnapshot?.districtId || '').trim();
+    const khorooId = String(incomingSnapshot?.khoroo_id || incomingSnapshot?.khorooId || '').trim();
+    const detail = String(incomingSnapshot?.detail || '').trim();
+    if (!regionId || !districtId || !khorooId || detail.length < 5 || detail.length > 200) {
+      return NextResponse.json({ error: 'Хүргэлтийн хаяг бүрэн биш байна.' }, { status: 400 });
     }
 
     const db = getAdminDb();
@@ -68,10 +81,33 @@ export async function POST(req: NextRequest) {
       } else {
         transaction.set(counterRef, { count: 1 });
       }
-      const orderNumber = `${year}-${String(nextSeq).padStart(4, '0')}`;
+      const orderNumber = `#${year}-${String(nextSeq).padStart(4, '0')}`;
 
+      // Securely recalculate the promo code discount on the backend
+      const promoCode = (orderData as any).promoCode || '';
+      let discount = 0;
+      if (promoCode.trim().toUpperCase() === 'WELCOME10') {
+        discount = Math.round(calculatedSubtotal * 0.1);
+      }
+
+      const labels = await getAddressLabelSnapshot(regionId, districtId, khorooId);
+      if (!labels.region || !labels.district || !labels.khoroo) {
+        throw new Error('Хүргэлтийн хаягийн сонголт буруу байна.');
+      }
+      const addressSnapshot = {
+        region_id: regionId,
+        district_id: districtId,
+        khoroo_id: khorooId,
+        region: labels.region.name_mn,
+        district: labels.district.name_mn,
+        district_short: labels.district.name_short,
+        khoroo: labels.khoroo.name_mn,
+        detail,
+        full_address: `${labels.region.name_mn}, ${labels.district.name_mn}, ${labels.khoroo.name_mn}, ${detail}`,
+        full: `${labels.region.name_mn}, ${labels.district.name_mn}, ${labels.khoroo.name_mn}, ${detail}`,
+      };
       const shippingCost = Math.round(Number(orderData.shippingCost || 0));
-      const total = Math.round(calculatedSubtotal) + shippingCost;
+      const total = Math.max(0, Math.round(calculatedSubtotal) - discount) + shippingCost;
       const now = Timestamp.now();
 
       const persistedOrder = {
@@ -83,6 +119,11 @@ export async function POST(req: NextRequest) {
         total,
         items: verifiedItems,
         status: 'pending' as OrderStatus,
+        promoCode: promoCode || null,
+        discount,
+        addressSnapshot,
+        address: addressSnapshot.full_address,
+        phone: phoneDigits,
       };
 
       transaction.set(orderRef, {
@@ -93,6 +134,12 @@ export async function POST(req: NextRequest) {
         total,
         items: verifiedItems,
         status: 'pending' as OrderStatus,
+        promoCode: promoCode || null,
+        discount,
+        addressSnapshot,
+        address_snapshot: addressSnapshot,
+        address: addressSnapshot.full_address,
+        phone: phoneDigits,
         createdAt: now,
         updatedAt: now,
       });

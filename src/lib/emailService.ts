@@ -430,3 +430,26 @@ export async function sendPostDeliveryReviewInvitation(
     }),
   })
 }
+
+export async function sendContactMessageToAdmin(
+  name: string,
+  email: string,
+  message: string
+) {
+  await sendEmail({
+    to: ADMIN_EMAIL,
+    subject: `Холбоо барих зурвас: ${escapeHtml(name)}`,
+    html: emailShell({
+      eyebrow: 'Холбоо барих',
+      title: 'Хэрэглэгчийн зурвас',
+      subtitle: `${escapeHtml(name)} (${escapeHtml(email)}) хэрэглэгч UJ Beauty вэбсайтаар холбоо барих зурвас илгээлээ.`,
+      children: `
+        ${section('Зурвасын агуулга', `
+          <p style="margin:0;font-size:14px;line-height:1.8;color:${colors.text};white-space:pre-wrap;">
+            ${escapeHtml(message)}
+          </p>
+        `)}
+      `,
+    }),
+  })
+}

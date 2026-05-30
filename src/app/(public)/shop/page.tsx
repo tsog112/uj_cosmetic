@@ -23,6 +23,35 @@ const categoryMeta: Record<string, { label: string; emoji: string }> = {
   other:     { label: 'Бусад',      emoji: '💫' },
 };
 
+function getVisiblePages(currentPage: number, totalPages: number): (number | string)[] {
+  const pages: (number | string)[] = [];
+  if (totalPages <= 5) {
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(i);
+    }
+  } else {
+    pages.push(1);
+    let start = Math.max(2, currentPage - 1);
+    let end = Math.min(totalPages - 1, currentPage + 1);
+    if (currentPage <= 3) {
+      end = 4;
+    } else if (currentPage >= totalPages - 2) {
+      start = totalPages - 3;
+    }
+    if (start > 2) {
+      pages.push('...');
+    }
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    if (end < totalPages - 1) {
+      pages.push('...');
+    }
+    pages.push(totalPages);
+  }
+  return pages;
+}
+
 function EmptyState({ onReset }: { onReset: () => void }) {
   return (
     <motion.div
@@ -76,6 +105,8 @@ function ShopContent() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 0]);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 12;
 
   const displayCategories = [
     { id: 'all', name_mn: 'Бүгд', slug: 'all' },
@@ -110,6 +141,10 @@ function ShopContent() {
     if (maxProductPrice > 0) setPriceRange([0, maxProductPrice]);
   }, [maxProductPrice]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [activeCategory, activeSort, priceRange, search]);
+
   const filteredProducts = useMemo(() => {
     const upperPrice = priceRange[1] || maxProductPrice;
     const q = search.trim().toLowerCase();
@@ -131,6 +166,13 @@ function ShopContent() {
 
     return result;
   }, [activeCategory, activeSort, maxProductPrice, priceRange, products, search]);
+
+  const paginatedProducts = useMemo(() => {
+    const start = (page - 1) * itemsPerPage;
+    return filteredProducts.slice(start, start + itemsPerPage);
+  }, [filteredProducts, page, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage) || 1;
 
   const updateFilters = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -336,13 +378,74 @@ function ShopContent() {
             ))}
           </div>
         ) : filteredProducts.length > 0 ? (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-            {filteredProducts.map((product, i) => (
-              <ScrollReveal key={product.id} delay={Math.min(i * 40, 200)}>
-                <ProductCard product={product} />
-              </ScrollReveal>
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+              {paginatedProducts.map((product, i) => (
+                <ScrollReveal key={product.id} delay={Math.min(i * 40, 200)}>
+                  <ProductCard product={product} />
+                </ScrollReveal>
+              ))}
+            </div>
+
+            {/* Premium Pagination Control UI */}
+            {totalPages >= 1 && (
+              <div className="mt-12 flex items-center justify-center gap-1.5 py-4">
+                <button
+                  onClick={() => {
+                    if (page > 1) {
+                      setPage((prev) => prev - 1);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  }}
+                  disabled={page === 1}
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-[#f8dbe8] bg-white text-[13px] font-bold text-[var(--color-text-dark)] shadow-sm transition-all hover:bg-[var(--color-soft-pink)] disabled:opacity-40 active:scale-95"
+                >
+                  &lt;
+                </button>
+                
+                {getVisiblePages(page, totalPages).map((pageNum, idx) => {
+                  if (pageNum === '...') {
+                    return (
+                      <span key={`ellipsis-${idx}`} className="flex h-10 w-8 items-center justify-center text-[13px] font-bold text-[var(--color-brand-muted)]">
+                        ...
+                      </span>
+                    );
+                  }
+                  
+                  const isActive = pageNum === page;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => {
+                        setPage(pageNum as number);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className={`flex h-10 w-10 items-center justify-center rounded-full text-[13px] font-bold transition-all shadow-sm active:scale-95 ${
+                        isActive
+                          ? 'bg-gradient-to-r from-[#E91E8C] to-[#C2185B] text-white shadow-[0_3px_10px_rgba(233,30,140,0.25)]'
+                          : 'border border-[#f8dbe8] bg-white text-[var(--color-text-dark)] hover:bg-[var(--color-soft-pink)]'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+
+                <button
+                  onClick={() => {
+                    if (page < totalPages) {
+                      setPage((prev) => prev - 1 + 2); // robust way to add 1 to number or string
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  }}
+                  disabled={page === totalPages}
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-[#f8dbe8] bg-white text-[13px] font-bold text-[var(--color-text-dark)] shadow-sm transition-all hover:bg-[var(--color-soft-pink)] disabled:opacity-40 active:scale-95"
+                >
+                  &gt;
+                </button>
+              </div>
+            )}
+          </>
         ) : (
           <EmptyState
             onReset={() => {

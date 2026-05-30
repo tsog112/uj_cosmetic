@@ -165,9 +165,9 @@ function ChatBody({ scrollRef, messages, sending, input, setInput, onSubmit, onQ
 }
 
 // Shared chat panel component
-function ChatPanel({ onClose, scrollRef, messages, sending, input, setInput, onSubmit, onQuickQuestion, instagramHandle, settings }: ChatBodyProps & { onClose: () => void }) {
+function ChatPanel({ onClose, scrollRef, messages, sending, input, setInput, onSubmit, onQuickQuestion, instagramHandle, settings, isMobile = false }: ChatBodyProps & { onClose: () => void; isMobile?: boolean }) {
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-[24px] bg-white shadow-[0_20px_60px_rgba(166,66,112,0.22)]">
+    <div className={`flex h-full flex-col overflow-hidden bg-white ${isMobile ? 'rounded-none shadow-none' : 'rounded-[24px] shadow-[0_20px_60px_rgba(166,66,112,0.22)]'}`}>
       <div className="bg-[var(--color-brand-accent)] px-5 py-4 text-white">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -296,16 +296,16 @@ export default function ChatAssistant() {
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
                 transition={springTransition}
-                className="fixed bottom-0 left-0 right-0 z-[300] mx-auto max-w-[430px] h-[85dvh] pointer-events-auto"
-                style={{ left: '50%', transform: 'translateX(-50%)', width: '100%' }}
+                className="fixed bottom-0 left-0 right-0 z-[300] mx-auto w-full max-w-[430px] h-[82dvh] pointer-events-auto"
               >
-                <div className="mx-auto h-full max-w-[430px] px-0 pb-[env(safe-area-inset-bottom)]">
-                  <div className="h-full overflow-hidden rounded-t-[28px] bg-white shadow-[0_-8px_40px_rgba(166,66,112,0.22)]">
-                    {/* Drag handle */}
-                    <div className="flex justify-center pt-3 pb-1">
-                      <div className="h-1.5 w-12 rounded-full bg-gray-200" />
-                    </div>
-                    <ChatPanel onClose={() => setOpen(false)} {...chatProps} />
+                <div className="mx-auto h-full max-w-[430px] px-0 flex flex-col bg-white rounded-t-[28px] overflow-hidden shadow-[0_-8px_40px_rgba(166,66,112,0.22)] pb-[env(safe-area-inset-bottom)]">
+                  {/* Drag handle */}
+                  <div className="flex justify-center pt-3 pb-1.5 shrink-0 bg-white">
+                    <div className="h-1.5 w-12 rounded-full bg-gray-200" />
+                  </div>
+                  {/* Chat Panel Wrapper */}
+                  <div className="flex-1 min-h-0">
+                    <ChatPanel onClose={() => setOpen(false)} {...chatProps} isMobile={true} />
                   </div>
                 </div>
               </motion.div>

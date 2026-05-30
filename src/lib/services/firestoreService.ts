@@ -92,6 +92,37 @@ export async function getAllProducts(filters?: {
   } catch (e) { handleError(e, 'getAllProducts'); }
 }
 
+export async function getPaginatedProducts(filters?: {
+  category?: string;
+  page?: number;
+  limit?: number;
+}): Promise<{
+  products: Product[];
+  totalCount: number;
+  totalPages: number;
+  currentPage: number;
+}> {
+  try {
+    const searchParams: Record<string, string> = {};
+    if (filters?.category) searchParams.category = filters.category;
+    if (filters?.page) searchParams.page = String(filters.page);
+    if (filters?.limit) searchParams.limit = String(filters.limit);
+
+    const response = await fetch(`/api/products?${new URLSearchParams(searchParams)}`);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data?.error || 'Failed to fetch products');
+    
+    return {
+      products: (data.products || []).map(reviveProduct),
+      totalCount: data.totalCount || 0,
+      totalPages: data.totalPages || 1,
+      currentPage: data.currentPage || 1,
+    };
+  } catch (e) {
+    handleError(e, 'getPaginatedProducts');
+  }
+}
+
 export async function getFeaturedProducts(): Promise<Product[]> {
   try {
     return fetchPublicProducts({ featured: 'true' });

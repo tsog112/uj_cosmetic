@@ -52,6 +52,9 @@ model Order {
   status          String      @default("PENDING")
   total           Float
   shippingAddress String?
+  addressSnapshot String?     // JSON string of AddressSnapshot
+  archived        Boolean     @default(false)
+  archivedAt      DateTime?
   items           OrderItem[]
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
@@ -71,4 +74,46 @@ model Setting {
   id    String @id @default("MAIN")
   key   String @unique
   value String // JSON string
+}
+
+model MnRegion {
+  id        String       @id
+  type      String       // 'aimag' | 'city'
+  nameMn    String
+  nameShort String
+  sortOrder Int
+  districts MnDistrict[]
+}
+
+model MnDistrict {
+  id        String     @id
+  regionId  String
+  region    MnRegion   @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  type      String     // 'duureg' | 'sum'
+  nameMn    String
+  nameShort String
+  sortOrder Int
+  khoroos   MnKhoroo[]
+}
+
+model MnKhoroo {
+  id         String     @id
+  districtId String
+  district   MnDistrict @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  type       String     // 'khoroo' | 'bag'
+  nameMn     String
+  sortOrder  Int
+}
+
+model UserAddress {
+  id          String   @id @default(cuid())
+  userId      String
+  label       String   // "Гэр", "Ажил", "Бусад"
+  regionId    String
+  districtId  String
+  khorooId    String
+  detail      String
+  fullAddress String
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
 }

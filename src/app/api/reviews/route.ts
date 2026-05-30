@@ -7,6 +7,7 @@ export const runtime = 'nodejs';
 
 const VALID_SORTS = new Set(['newest', 'rating_desc', 'rating_asc']);
 const REVIEW_WINDOW_DAYS = 90;
+const EMPTY_STAR_BREAKDOWN = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
 
 function toDate(value: any): Date {
   if (!value) return new Date();
@@ -24,6 +25,20 @@ function containsProfanity(text: string) {
   const banned = ['хараал', 'novsh', 'lalr', 'pizda', 'fuck', 'shit'];
   const normalized = text.toLowerCase();
   return banned.some((word) => normalized.includes(word));
+}
+
+function buildEmptyReviewList(searchParams: URLSearchParams, warning?: string) {
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+
+  return {
+    reviews: [],
+    totalCount: 0,
+    totalPages: 1,
+    currentPage: page,
+    averageRating: 0,
+    starBreakdown: EMPTY_STAR_BREAKDOWN,
+    ...(warning ? { warning } : {}),
+  };
 }
 
 async function findEligibleOrder(db: FirebaseFirestore.Firestore, userId: string, productId: string, orderId?: string) {
@@ -45,8 +60,9 @@ async function findEligibleOrder(db: FirebaseFirestore.Firestore, userId: string
 }
 
 export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+
   try {
-    const { searchParams } = new URL(req.url);
     const productId = searchParams.get('productId');
     const featured = searchParams.get('featured') === 'true';
     const sort = VALID_SORTS.has(searchParams.get('sort') || '') ? searchParams.get('sort')! : 'newest';
@@ -105,7 +121,10 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     console.error('Public reviews API failed:', error);
-    return NextResponse.json({ error: 'Failed to fetch reviews' }, { status: 500 });
+    return NextResponse.json(
+      buildEmptyReviewList(searchParams, 'Reviews are temporarily unavailable.'),
+      { status: 200 },
+    );
   }
 }
 

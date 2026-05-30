@@ -40,7 +40,7 @@ export async function POST(request: Request) {
       }
       yearCounters[year]++;
       
-      const expectedNumber = `${year}-${String(yearCounters[year]).padStart(4, '0')}`;
+      const expectedNumber = `#${year}-${String(yearCounters[year]).padStart(4, '0')}`;
       
       if (!order.orderNumber || order.orderNumber !== expectedNumber) {
         batch.update(order.ref, { orderNumber: expectedNumber });

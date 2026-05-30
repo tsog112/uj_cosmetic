@@ -321,15 +321,26 @@ export async function setAdminProductVisibility(id: string, isVisible: boolean) 
 export function firestoreToAdminOrder(id: string, data: FirebaseFirestore.DocumentData) {
   const createdAt = toDate(data.createdAt);
   const items = Array.isArray(data.items) ? data.items : [];
+  const addressSnapshot = data.addressSnapshot || data.address_snapshot || null;
+  const parsedAddress = typeof addressSnapshot === 'string'
+    ? (() => { try { return JSON.parse(addressSnapshot); } catch { return null; } })()
+    : addressSnapshot;
+  const orderNumber = data.orderNumber || `#${createdAt.getFullYear()}-${id.slice(0, 4).toUpperCase()}`;
+  const hasLegacyOtherAddress = 
+    !parsedAddress || 
+    (!parsedAddress.districtId && !parsedAddress.district_id) ||
+    /Бусад| бусад |other/i.test(String(data.address || data.shippingAddress || parsedAddress?.district || parsedAddress?.district_name || ''));
 
   return {
     id,
-    orderNumber: data.orderNumber || `#${id.slice(0, 6).toUpperCase()}`,
+    orderNumber: String(orderNumber).startsWith('#') ? orderNumber : `#${orderNumber}`,
     userId: data.userId || null,
     customerName: data.customerName || '',
     customerPhone: data.phone || data.customerPhone || '',
     customerEmail: data.customerEmail || data.email || '',
-    shippingAddress: data.address || data.shippingAddress || '',
+    shippingAddress: data.address || data.shippingAddress || parsedAddress?.full_address || parsedAddress?.full || '',
+    addressSnapshot: parsedAddress,
+    addressWarning: hasLegacyOtherAddress ? 'Хаяг тодорхойгүй' : '',
     total: Number(data.total || 0),
     subtotal: Number(data.subtotal || 0),
     shippingCost: Number(data.shippingCost || 0),
@@ -349,48 +360,104 @@ export function firestoreToAdminOrder(id: string, data: FirebaseFirestore.Docume
     user: data.userId
       ? { name: data.customerName || '', phone: data.phone || '' }
       : null,
+    archived: Boolean(data.archived || false),
+    archivedAt: data.archivedAt ? toDate(data.archivedAt) : null,
     createdAt,
     updatedAt: toDate(data.updatedAt),
   };
 }
 
-export async function listAdminOrders(filters?: { status?: string; search?: string; page?: number; limit?: number }) {
-  const db = getAdminDb();
-  let baseQuery: any = db.collection('orders');
-  
-  const statusFilter = filters?.status && filters.status !== 'all' ? normalizeOrderStatus(filters.status) : null;
-  if (statusFilter) {
-    baseQuery = baseQuery.where('status', '==', statusFilter);
-  }
-
+export async function listAdminOrders(filters?: {
+  status?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+  dateFrom?: string;
+  dateTo?: string;
+  regionId?: string;
+  districtId?: string;
+  khorooId?: string;
+  priceMin?: number;
+  priceMax?: number;
+  city?: string;
+  archived?: boolean;
+}) {
   const page = filters?.page || 1;
   const limitCount = filters?.limit || 20;
   
-  // Clean counts in Firestore (index-free since there's no orderBy combined with where)
-  const [all, pen, pro, shi, del, can] = await Promise.all([
-    db.collection('orders').count().get(),
-    db.collection('orders').where('status', '==', 'pending').count().get(),
-    db.collection('orders').where('status', '==', 'processing').count().get(),
-    db.collection('orders').where('status', '==', 'shipping').count().get(),
-    db.collection('orders').where('status', '==', 'delivered').count().get(),
-    db.collection('orders').where('status', '==', 'cancelled').count().get(),
-  ]);
-
-  const statusCounts = {
-    all: all.data().count,
-    pending: pen.data().count,
-    processing: pro.data().count,
-    shipping: shi.data().count,
-    delivered: del.data().count,
-    cancelled: can.data().count,
-  };
-
-  let orders: any[] = [];
+  let allOrders: any[] = [];
   let totalCount = 0;
+  
+  try {
+    const db = getAdminDb();
+    const snap = await db.collection('orders').get();
+    allOrders = snap.docs.map((doc: any) => firestoreToAdminOrder(doc.id, doc.data()));
+  } catch (error: any) {
+    console.warn('Firestore orders query failed, falling back to SQLite:', error.message || error);
+    try {
+      const { PrismaClient } = await import('@prisma/client');
+      const prisma = new PrismaClient();
+      const dbOrders = await prisma.order.findMany({
+        include: {
+          items: {
+            include: {
+              product: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+      allOrders = dbOrders.map(o => {
+        let parsedAddress = null;
+        if (o.addressSnapshot) {
+          try { parsedAddress = JSON.parse(o.addressSnapshot); } catch {}
+        }
+        const hasLegacyOtherAddress = 
+          !parsedAddress || 
+          (!parsedAddress.districtId && !parsedAddress.district_id) ||
+          /Бусад| бусад |other/i.test(String(o.shippingAddress || parsedAddress?.district || parsedAddress?.district_name || ''));
+        return {
+          id: o.id,
+          orderNumber: `#${o.createdAt.getFullYear()}-${o.id.slice(0, 4).toUpperCase()}`,
+          userId: o.userId || null,
+          customerName: o.customerName || '',
+          customerPhone: o.customerPhone || '',
+          customerEmail: '',
+          shippingAddress: o.shippingAddress || parsedAddress?.full_address || parsedAddress?.full || '',
+          addressSnapshot: parsedAddress,
+          addressWarning: hasLegacyOtherAddress ? 'Хаяг тодорхойгүй' : '',
+          total: Number(o.total || 0),
+          subtotal: Number(o.total || 0),
+          shippingCost: 0,
+          status: o.status.toLowerCase(),
+          items: o.items.map((item, index) => ({
+            id: `${o.id}-item-${index}`,
+            productId: item.productId,
+            productSlug: '',
+            quantity: Number(item.quantity || 1),
+            price: Number(item.price || 0),
+            product: {
+              name: item.product.name,
+              images: item.product.images || '[]',
+              price: Number(item.product.price || 0)
+            }
+          })),
+          archived: o.archived || false,
+          archivedAt: o.archivedAt || null,
+          createdAt: o.createdAt,
+          updatedAt: o.updatedAt
+        };
+      });
+    } catch (dbErr: any) {
+      console.error('SQLite fallback query failed too:', dbErr);
+    }
+  }
 
-  // Fetch from database and sort/filter in-memory to prevent FAILED_PRECONDITION errors
-  const snap = await baseQuery.get();
-  let allOrders = snap.docs.map((doc: any) => firestoreToAdminOrder(doc.id, doc.data()));
+  // Filter by archived status BEFORE any other filters/counts
+  const showArchived = filters?.archived ?? false;
+  allOrders = allOrders.filter((o: any) => Boolean(o.archived) === showArchived);
 
   // Sort by date descending
   allOrders.sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime());
@@ -405,9 +472,58 @@ export async function listAdminOrders(filters?: { status?: string; search?: stri
     );
   }
 
-  totalCount = allOrders.length;
+  if (filters?.dateFrom) {
+    const fromTime = new Date(filters.dateFrom).getTime();
+    allOrders = allOrders.filter((o: any) => o.createdAt.getTime() >= fromTime);
+  }
+
+  if (filters?.dateTo) {
+    const toDateObj = new Date(filters.dateTo);
+    toDateObj.setHours(23, 59, 59, 999);
+    const toTime = toDateObj.getTime();
+    allOrders = allOrders.filter((o: any) => o.createdAt.getTime() <= toTime);
+  }
+
+  if (filters?.priceMin !== undefined) {
+    allOrders = allOrders.filter((o: any) => o.total >= filters.priceMin!);
+  }
+
+  if (filters?.priceMax !== undefined) {
+    allOrders = allOrders.filter((o: any) => o.total <= filters.priceMax!);
+  }
+
+  if (filters?.city) {
+    const cityTerm = filters.city.toLowerCase().trim();
+    allOrders = allOrders.filter((o: any) => String(o.shippingAddress || '').toLowerCase().includes(cityTerm));
+  }
+
+  if (filters?.regionId) {
+    allOrders = allOrders.filter((o: any) => o.addressSnapshot?.region_id === filters.regionId || o.addressSnapshot?.regionId === filters.regionId);
+  }
+  if (filters?.districtId) {
+    allOrders = allOrders.filter((o: any) => o.addressSnapshot?.district_id === filters.districtId || o.addressSnapshot?.districtId === filters.districtId);
+  }
+  if (filters?.khorooId) {
+    allOrders = allOrders.filter((o: any) => o.addressSnapshot?.khoroo_id === filters.khorooId || o.addressSnapshot?.khorooId === filters.khorooId);
+  }
+
+  // Calculate live counts BEFORE applying active status filter
+  const statusCounts = allOrders.reduce((acc: Record<string, number>, order: any) => {
+    acc.all = (acc.all || 0) + 1;
+    acc[order.status] = (acc[order.status] || 0) + 1;
+    return acc;
+  }, { all: 0, pending: 0, confirmed: 0, processing: 0, shipped: 0, delivered: 0, cancelled: 0 });
+
+  // Now apply status filter to get active orders
+  const statusFilter = filters?.status && filters.status !== 'all' ? normalizeOrderStatus(filters.status) : null;
+  let activeOrders = allOrders;
+  if (statusFilter) {
+    activeOrders = allOrders.filter((o: any) => o.status === statusFilter);
+  }
+
+  totalCount = activeOrders.length;
   const start = (page - 1) * limitCount;
-  orders = allOrders.slice(start, start + limitCount);
+  const orders = activeOrders.slice(start, start + limitCount);
 
   return {
     orders,
@@ -415,7 +531,13 @@ export async function listAdminOrders(filters?: { status?: string; search?: stri
     totalPages: Math.ceil(totalCount / limitCount) || 1,
     currentPage: page,
     statusCounts,
-    summary: { totalOrders: all.data().count, todayOrders: 0, pendingOrders: pen.data().count, confirmedRevenue: 0 },
+    summary: {
+      totalOrders: statusCounts.all,
+      todayOrders: 0,
+      pendingOrders: statusCounts.pending,
+      filteredAmount: activeOrders.reduce((sum: number, order: any) => sum + Number(order.total || 0), 0),
+      confirmedRevenue: activeOrders.filter((order: any) => order.status !== 'cancelled').reduce((sum: number, order: any) => sum + Number(order.total || 0), 0),
+    },
   };
 }
 
@@ -864,4 +986,31 @@ export async function getMonthlyReport(year: number, month: number) {
     .filter((order) => order.createdAt < end && order.status !== CANCELLED_STATUS);
 
   return orders;
+}
+
+export async function archiveAdminOrder(id: string, archive: boolean) {
+  const db = getAdminDb();
+  const archivedAt = archive ? new Date() : null;
+  
+  await db.collection('orders').doc(id).set(
+    { 
+      archived: archive, 
+      archivedAt: archivedAt ? FieldValue.serverTimestamp() : null,
+      updatedAt: FieldValue.serverTimestamp() 
+    },
+    { merge: true },
+  );
+
+  try {
+    const { PrismaClient } = await import('@prisma/client');
+    const prisma = new PrismaClient();
+    await prisma.order.update({
+      where: { id },
+      data: { archived: archive, archivedAt }
+    });
+  } catch (err) {
+    console.error('Failed to sync manual archive status to SQLite:', err);
+  }
+
+  return getAdminOrder(id);
 }
