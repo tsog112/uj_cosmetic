@@ -28,13 +28,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     try {
       const { PrismaClient } = await import('@prisma/client');
       const prisma = new PrismaClient();
-      await prisma.order.update({
-        where: { id },
-        data: {
-          addressSnapshot: typeof addressSnapshot === 'string' ? addressSnapshot : JSON.stringify(addressSnapshot),
-          shippingAddress
-        }
-      });
+      try {
+        const snapshotJson = typeof addressSnapshot === 'string' ? addressSnapshot : JSON.stringify(addressSnapshot);
+        await prisma.$executeRaw`
+          UPDATE "Order"
+          SET "addressSnapshot" = ${snapshotJson}, "shippingAddress" = ${shippingAddress}
+          WHERE "id" = ${id}
+        `;
+      } finally {
+        await prisma.$disconnect();
+      }
     } catch (dbErr) {
       console.error('Failed to sync updated address to SQLite:', dbErr);
     }
