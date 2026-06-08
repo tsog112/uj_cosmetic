@@ -17,12 +17,11 @@ export function validatePhoneNumber(countryCode: string, localNumber: string): {
 
   if (countryCode === '+976') {
     if (digits.length !== 8) {
-      return { isValid: false, error: 'Монгол дугаар 8 оронтой бөгөөд зөв угтвартай байх ёстой' };
+      return { isValid: false, error: 'Монгол дугаар 8 оронтой байх ёстой (ж: 8812-3456, 7011-2233)' };
     }
-    const prefixes = ['88', '99', '95', '91', '86', '85', '96', '94', '93', '89', '80', '77', '75', '72', '70', '76', '78', '79'];
-    const prefix = digits.slice(0, 2);
-    if (!prefixes.includes(prefix)) {
-      return { isValid: false, error: 'Монгол дугаар 8 оронтой бөгөөд зөв угтвартай байх ёстой' };
+    // Гар утас (88xx, 99xx …) болон суурин (70xx, 60xx гэх мэт) — 6–9-р эхэлсэн 8 орон
+    if (!/^[6-9]\d{7}$/.test(digits)) {
+      return { isValid: false, error: 'Монгол дугаар 6–9-р эхэлсэн 8 оронтой байх ёстой' };
     }
     return { isValid: true };
   }

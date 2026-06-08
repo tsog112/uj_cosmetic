@@ -1,43 +1,43 @@
 export interface PasswordRule {
   key: string;
   label: string;
-  test: (p: string) => boolean;
+  test: (password: string) => boolean;
 }
 
 export const PASSWORD_RULES: PasswordRule[] = [
-  { key: 'minLen', label: 'Хамгийн багадаа 8 тэмдэгт', test: (p) => p.length >= 8 },
-  { key: 'hasUpper', label: 'Том үсэг агуулсан (A–Z)', test: (p) => /[A-Z]/.test(p) },
-  { key: 'hasLower', label: 'Жижиг үсэг агуулсан (a–z)', test: (p) => /[a-z]/.test(p) },
-  { key: 'hasDigit', label: 'Тоо агуулсан (0–9)', test: (p) => /[0-9]/.test(p) },
-  { 
-    key: 'hasSpecial', 
-    label: 'Тусгай тэмдэгт агуулсан (!@#$%…)', 
-    test: (p) => /[!@#$%^&*()_+\-=\[\]{}|;':",./<>?]/.test(p) 
+  { key: 'minLen', label: 'Хамгийн багадаа 8 тэмдэгт', test: (password) => password.length >= 8 },
+  { key: 'hasUpper', label: 'Том үсэг агуулсан', test: (password) => /[A-Z]/.test(password) },
+  { key: 'hasLower', label: 'Жижиг үсэг агуулсан', test: (password) => /[a-z]/.test(password) },
+  { key: 'hasDigit', label: 'Тоо агуулсан', test: (password) => /[0-9]/.test(password) },
+  {
+    key: 'hasSpecial',
+    label: 'Тусгай тэмдэгт агуулсан',
+    test: (password) => /[!@#$%^&*()_+\-=[\]{}|;':",./<>?]/.test(password),
   },
 ] as const;
 
 export function getPasswordStrength(password: string) {
   let passedCount = 0;
-  
+
   const ruleStates = PASSWORD_RULES.map((rule) => {
     const passed = rule.test(password);
-    if (passed) passedCount++;
+    if (passed) passedCount += 1;
     return { key: rule.key, label: rule.label, passed };
   });
 
   let percent = 0;
-  let color = 'bg-[#A32D2D]'; // default red
+  let color = 'bg-[#A32D2D]';
 
   if (passedCount > 0) {
     if (passedCount <= 2) {
-      percent = passedCount * 15 + 10; // 25-40% width
-      color = 'bg-[#A32D2D]'; // red
+      percent = passedCount * 15 + 10;
+      color = 'bg-[#A32D2D]';
     } else if (passedCount <= 4) {
-      percent = (passedCount - 2) * 7.5 + 60; // 60-75% width
-      color = 'bg-[#854F0B]'; // amber
-    } else if (passedCount === 5) {
+      percent = (passedCount - 2) * 7.5 + 60;
+      color = 'bg-[#A56A16]';
+    } else {
       percent = 100;
-      color = 'bg-[#3B6D11]'; // green
+      color = 'bg-[#3B6D11]';
     }
   }
 

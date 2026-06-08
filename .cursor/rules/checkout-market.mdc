@@ -1,0 +1,14 @@
+---
+description: Checkout, MN/KR захиалга, төлбөр
+globs: src/app/(public)/checkout/**,src/app/api/orders/**,src/context/MarketContext.tsx,src/lib/currency.ts,src/lib/phoneUtils.ts
+alwaysApply: false
+---
+
+# Checkout & dual market
+
+- `deliveryMarket` / `displayCurrency`: `MarketContext.tsx` (MN=MNT, KR=KRW).
+- MN: `AddressSelector`, `PhoneInput`, QPay. KR: `KoreanAddressSelector`, Kakao auth, bank transfer settings.
+- Order create: `market`, `currency` on `Order`; validate by market in `api/orders/create/route.ts`.
+- Address snapshot KR: `{ type: 'kr', zonecode, roadAddress, detail, buildingName }`.
+
+Засвар: validation + UI field-ийг market-аар салга; нэг market-ийн логикийг нөгөөнд бүү холбо.

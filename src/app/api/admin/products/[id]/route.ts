@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { deleteAdminProduct, getAdminProduct, patchAdminProduct, updateAdminProduct } from '@/lib/services/firestoreAdminService';
+import { deletePostgresAdminProduct, getPostgresAdminProduct, patchPostgresAdminProduct, upsertPostgresAdminProduct } from '@/lib/services/postgresAdminService';
+import { authorizeAdminRequest } from '@/lib/auth/serverAuth';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const product = await getAdminProduct(id);
+    const product = (await getPostgresAdminProduct(id).catch(() => null)) || (await getAdminProduct(id));
 
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
@@ -18,6 +20,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await authorizeAdminRequest(req);
+  if (denied) return denied;
   try {
     const { id } = await params;
     const body = await req.json();
@@ -27,7 +31,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const updatedProduct = await updateAdminProduct(id, body);
+    const updatedProduct =
+      (await upsertPostgresAdminProduct(id, body).catch(() => null))
+      || (await updateAdminProduct(id, body));
     if (!updatedProduct) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
@@ -42,6 +48,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+    await deletePostgresAdminProduct(id).catch(() => null);
     await deleteAdminProduct(id);
     return NextResponse.json({ id });
   } catch (error) {
@@ -51,10 +58,14 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await authorizeAdminRequest(req);
+  if (denied) return denied;
   try {
     const { id } = await params;
     const body = await req.json();
-    const updatedProduct = await patchAdminProduct(id, body);
+    const updatedProduct =
+      (await patchPostgresAdminProduct(id, body).catch(() => null))
+      || (await patchAdminProduct(id, body));
     if (!updatedProduct) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }

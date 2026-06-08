@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
-import { listAdminOrders } from '@/lib/services/firestoreAdminService';
+import { listPostgresAdminOrders } from '@/lib/services/postgresAdminService';
 import { formatDateTimeMN } from '@/lib/utils/format';
+import { authorizeAdminRequest } from '@/lib/auth/serverAuth';
 
 export const runtime = 'nodejs';
 
@@ -106,6 +107,8 @@ function getOrderRegionInfo(order: any) {
 }
 
 export async function GET(req: NextRequest) {
+  const denied = await authorizeAdminRequest(req);
+  if (denied) return denied;
   try {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status') || undefined;
@@ -116,16 +119,25 @@ export async function GET(req: NextRequest) {
     const dateFrom = searchParams.get('date_from') || searchParams.get('dateFrom') || undefined;
     const dateTo = searchParams.get('date_to') || searchParams.get('dateTo') || undefined;
     const sheetMode = searchParams.get('sheet_mode') || searchParams.get('sheetMode') || 'single';
+    const market = searchParams.get('market') || undefined;
+    const krZonecode = searchParams.get('kr_zonecode') || searchParams.get('krZonecode') || undefined;
+    const krAddressQuery = searchParams.get('kr_address') || searchParams.get('krAddressQuery') || undefined;
 
     // Fetch matching orders (identical to listAdminOrders filtering)
-    const result = await listAdminOrders({
+    const archived = searchParams.get('archived') === 'true';
+
+    const result = await listPostgresAdminOrders({
       status,
       search,
-      regionId,
-      districtId,
-      khorooId,
+      regionId: market === 'KR' ? undefined : regionId,
+      districtId: market === 'KR' ? undefined : districtId,
+      khorooId: market === 'KR' ? undefined : khorooId,
       dateFrom,
       dateTo,
+      market,
+      krZonecode: market === 'MN' ? undefined : krZonecode,
+      krAddressQuery: market === 'MN' ? undefined : krAddressQuery,
+      archived,
       page: 1,
       limit: 10000,
     });

@@ -1,18 +1,22 @@
 'use client';
 
+import { authFetch } from '@/lib/auth/clientFetch';
+import AdminPageShell from '@/components/admin/AdminPageShell';
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Check, ChevronRight, Loader2, LogOut, Plus, Settings, Store, Tags, Trash2, Truck, X, Droplet, Sparkles, Sun, Moon, Flower2, Leaf, Waves, Wind, Beaker, FlaskConical, Feather, Heart, Gem, ShieldPlus, Edit2, CheckCircle2, MoreHorizontal, Syringe, Pill, Scale, Activity, Camera } from 'lucide-react';
+import { Check, ChevronRight, Loader2, LogOut, Plus, Settings, Store, Tags, Trash2, Truck, X, Droplet, Sparkles, Sun, Moon, Flower2, Leaf, Waves, Wind, Beaker, FlaskConical, Feather, Heart, Gem, ShieldPlus, Edit2, CheckCircle2, MoreHorizontal, Syringe, Pill, Scale, Activity, Camera, BookOpen } from 'lucide-react';
 import InstagramSettings from '@/components/admin/InstagramSettings';
 import { useAuth } from '@/context/AuthContext';
 import AdminConfirmSheet from '@/components/admin/AdminConfirmSheet';
-import { SETTINGS_FALLBACK_FREE_SHIPPING_THRESHOLD, SETTINGS_FALLBACK_SHIPPING_COST, SETTINGS_SECTIONS, SYSTEM_INFO_ITEMS } from '@/lib/constants/admin';
+import { DEFAULT_ABOUT_PAGE, DEFAULT_HOME_TRUST_ITEMS } from '@/lib/constants/homeDefaults';
+import { SETTINGS_FALLBACK_FREE_SHIPPING_THRESHOLD, SETTINGS_FALLBACK_SHIPPING_COST, SETTINGS_SECTIONS, SYSTEM_INFO_ITEMS, TRUST_ITEM_ICONS } from '@/lib/constants/admin';
 import { useAdminCategories, useAdminSettings } from '@/lib/hooks/useAdmin';
 import { formatMNT } from '@/lib/utils/format';
+import type { AboutPageSettings, HomePageSettings, HomeTrustItem } from '@/types';
 
 type Sheet = typeof SETTINGS_SECTIONS[number]['id'] | null;
 
-const sectionIcon: Record<string, React.ElementType> = { store: Store, shipping: Truck, categories: Tags, instagram: Camera, system: Settings };
+const sectionIcon: Record<string, React.ElementType> = { store: Store, home: Sparkles, about: BookOpen, shipping: Truck, categories: Tags, instagram: Camera, system: Settings };
 
 export default function AdminSettingsPage() {
   const { signOut } = useAuth();
@@ -34,6 +38,13 @@ export default function AdminSettingsPage() {
   const [bankName, setBankName] = useState('');
   const [bankAccount, setBankAccount] = useState('');
   const [bankAccountName, setBankAccountName] = useState('');
+  const [mntPerKrw, setMntPerKrw] = useState(2.75);
+  const [krShippingCost, setKrShippingCost] = useState(5000);
+  const [krFreeShippingThreshold, setKrFreeShippingThreshold] = useState(80000);
+  const [krBankName, setKrBankName] = useState('');
+  const [krBankAccount, setKrBankAccount] = useState('');
+  const [krBankAccountName, setKrBankAccountName] = useState('');
+  const [coupons, setCoupons] = useState<Array<{ code: string; type: 'percent' | 'fixed'; value: number; active: boolean; minSubtotal?: number; expiresAt?: string | null }>>([]);
   const [categoryName, setCategoryName] = useState('');
   const [categoryBusy, setCategoryBusy] = useState(false);
   const [pendingDeleteCategory, setPendingDeleteCategory] = useState<any>(null);
@@ -69,6 +80,29 @@ export default function AdminSettingsPage() {
   const [selectedIcon, setSelectedIcon] = useState(ICONS[0].id);
   const [selectedColor, setSelectedColor] = useState(COLORS[0]);
   const [showOnHome, setShowOnHome] = useState(true);
+  const [homeIntroTitle, setHomeIntroTitle] = useState('');
+  const [homeIntroBody, setHomeIntroBody] = useState('');
+  const [homePromiseTitle, setHomePromiseTitle] = useState('');
+  const [homeShowcaseFeatured, setHomeShowcaseFeatured] = useState('');
+  const [homeShowcaseNewest, setHomeShowcaseNewest] = useState('');
+  const [homeShowcaseSale, setHomeShowcaseSale] = useState('');
+  const [homeTrustItems, setHomeTrustItems] = useState<HomeTrustItem[]>(DEFAULT_HOME_TRUST_ITEMS);
+  const [aboutHeroTitle, setAboutHeroTitle] = useState('');
+  const [aboutHeroEyebrow, setAboutHeroEyebrow] = useState('');
+  const [aboutHeroImage, setAboutHeroImage] = useState('');
+  const [aboutStoryTitle, setAboutStoryTitle] = useState('');
+  const [aboutStoryEyebrow, setAboutStoryEyebrow] = useState('');
+  const [aboutStoryParagraphs, setAboutStoryParagraphs] = useState('');
+  const [aboutPhilosophyTitle, setAboutPhilosophyTitle] = useState('');
+  const [aboutPhilosophyEyebrow, setAboutPhilosophyEyebrow] = useState('');
+  const [aboutPhilosophyParagraphs, setAboutPhilosophyParagraphs] = useState('');
+  const [aboutStoryImage, setAboutStoryImage] = useState('');
+  const [aboutValuesTitle, setAboutValuesTitle] = useState('');
+  const [aboutValuesEyebrow, setAboutValuesEyebrow] = useState('');
+  const [aboutValuesJson, setAboutValuesJson] = useState('');
+  const [aboutContactTitle, setAboutContactTitle] = useState('');
+  const [aboutContactEyebrow, setAboutContactEyebrow] = useState('');
+  const [aboutShowContact, setAboutShowContact] = useState(true);
 
   useEffect(() => {
     if (!settings) return;
@@ -84,11 +118,74 @@ export default function AdminSettingsPage() {
     setBankName(settings.bankName || '');
     setBankAccount(settings.bankAccount || '');
     setBankAccountName(settings.bankAccountName || '');
+    setMntPerKrw(Number(settings.mntPerKrw) > 0 ? Number(settings.mntPerKrw) : 2.75);
+    setKrShippingCost(Number(settings.krShippingCost) >= 0 ? Number(settings.krShippingCost) : 5000);
+    setKrFreeShippingThreshold(Number(settings.krFreeShippingThreshold) >= 0 ? Number(settings.krFreeShippingThreshold) : 80000);
+    setKrBankName(settings.krBankName || '');
+    setKrBankAccount(settings.krBankAccount || '');
+    setKrBankAccountName(settings.krBankAccountName || '');
+    setCoupons(Array.isArray(settings.coupons) ? settings.coupons : []);
+    const home = (settings.homePage || {}) as HomePageSettings;
+    setHomeIntroTitle(home.introTitle || '');
+    setHomeIntroBody(home.introBody || '');
+    setHomePromiseTitle(home.promiseTitle || '');
+    setHomeShowcaseFeatured(home.showcaseFeaturedTitle || '');
+    setHomeShowcaseNewest(home.showcaseNewestTitle || '');
+    setHomeShowcaseSale(home.showcaseSaleTitle || '');
+    setHomeTrustItems(home.trustItems?.length ? home.trustItems : DEFAULT_HOME_TRUST_ITEMS);
+
+    const about = (settings.aboutPage || {}) as AboutPageSettings;
+    const aboutDefaults = DEFAULT_ABOUT_PAGE;
+    setAboutHeroTitle(about.heroTitle || aboutDefaults.heroTitle || '');
+    setAboutHeroEyebrow(about.heroEyebrow || aboutDefaults.heroEyebrow || '');
+    setAboutHeroImage(about.heroImage || aboutDefaults.heroImage || '');
+    setAboutStoryTitle(about.storyTitle || aboutDefaults.storyTitle || '');
+    setAboutStoryEyebrow(about.storyEyebrow || aboutDefaults.storyEyebrow || '');
+    setAboutStoryParagraphs((about.storyParagraphs || aboutDefaults.storyParagraphs || []).join('\n\n'));
+    setAboutPhilosophyTitle(about.philosophyTitle || aboutDefaults.philosophyTitle || '');
+    setAboutPhilosophyEyebrow(about.philosophyEyebrow || aboutDefaults.philosophyEyebrow || '');
+    setAboutPhilosophyParagraphs((about.philosophyParagraphs || aboutDefaults.philosophyParagraphs || []).join('\n\n'));
+    setAboutStoryImage(about.storyImage || aboutDefaults.storyImage || '');
+    setAboutValuesTitle(about.valuesTitle || aboutDefaults.valuesTitle || '');
+    setAboutValuesEyebrow(about.valuesEyebrow || aboutDefaults.valuesEyebrow || '');
+    setAboutValuesJson(JSON.stringify(about.values?.length ? about.values : aboutDefaults.values || [], null, 2));
+    setAboutContactTitle(about.contactTitle || aboutDefaults.contactTitle || '');
+    setAboutContactEyebrow(about.contactEyebrow || aboutDefaults.contactEyebrow || '');
+    setAboutShowContact(about.showContactForm !== false);
   }, [settings]);
 
   const showToast = (message: string) => {
     setToast(message);
     window.setTimeout(() => setToast(''), 2500);
+  };
+
+  const buildAboutPagePayload = (): AboutPageSettings => {
+    let values = DEFAULT_ABOUT_PAGE.values;
+    try {
+      const parsed = JSON.parse(aboutValuesJson || '[]');
+      if (Array.isArray(parsed) && parsed.length) values = parsed;
+    } catch {
+      // keep previous/default values
+    }
+
+    return {
+      heroImage: aboutHeroImage.trim() || undefined,
+      heroEyebrow: aboutHeroEyebrow.trim() || undefined,
+      heroTitle: aboutHeroTitle.trim() || undefined,
+      storyEyebrow: aboutStoryEyebrow.trim() || undefined,
+      storyTitle: aboutStoryTitle.trim() || undefined,
+      storyParagraphs: aboutStoryParagraphs.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean),
+      storyImage: aboutStoryImage.trim() || undefined,
+      philosophyEyebrow: aboutPhilosophyEyebrow.trim() || undefined,
+      philosophyTitle: aboutPhilosophyTitle.trim() || undefined,
+      philosophyParagraphs: aboutPhilosophyParagraphs.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean),
+      valuesEyebrow: aboutValuesEyebrow.trim() || undefined,
+      valuesTitle: aboutValuesTitle.trim() || undefined,
+      values,
+      showContactForm: aboutShowContact,
+      contactEyebrow: aboutContactEyebrow.trim() || undefined,
+      contactTitle: aboutContactTitle.trim() || undefined,
+    };
   };
 
   const saveSettings = async (event: React.FormEvent) => {
@@ -110,10 +207,37 @@ export default function AdminSettingsPage() {
       bankName,
       bankAccount,
       bankAccountName,
+      mntPerKrw: Number(mntPerKrw),
+      krShippingCost: Number(krShippingCost),
+      krFreeShippingThreshold: Number(krFreeShippingThreshold),
+      krBankName,
+      krBankAccount,
+      krBankAccountName,
+      coupons: coupons
+        .map((c) => ({
+          code: String(c.code || '').trim().toUpperCase(),
+          type: c.type === 'fixed' ? 'fixed' : 'percent',
+          value: Number(c.value || 0),
+          active: c.active !== false,
+          minSubtotal: Number(c.minSubtotal || 0),
+          expiresAt: c.expiresAt || null,
+        }))
+        .filter((c) => c.code && c.value > 0),
+      homePage: {
+        ...(settings?.homePage as HomePageSettings | undefined),
+        introTitle: homeIntroTitle.trim() || undefined,
+        introBody: homeIntroBody.trim() || undefined,
+        promiseTitle: homePromiseTitle.trim() || undefined,
+        showcaseFeaturedTitle: homeShowcaseFeatured.trim() || undefined,
+        showcaseNewestTitle: homeShowcaseNewest.trim() || undefined,
+        showcaseSaleTitle: homeShowcaseSale.trim() || undefined,
+        trustItems: homeTrustItems.filter((item) => item.title.trim()),
+      },
+      aboutPage: buildAboutPagePayload(),
     };
     mutateSettings(payload, false);
     try {
-      const response = await fetch('/api/admin/settings', {
+      const response = await authFetch('/api/admin/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -139,7 +263,7 @@ export default function AdminSettingsPage() {
       const url = isEditing ? `/api/admin/categories/${editingCategoryId}` : '/api/admin/categories';
       const method = isEditing ? 'PUT' : 'POST';
       
-      const response = await fetch(url, {
+      const response = await authFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: categoryName.trim(), icon: selectedIcon, color: selectedColor, showOnHome }),
@@ -176,7 +300,7 @@ export default function AdminSettingsPage() {
   const deleteCategory = async (id: string) => {
     setCategoryBusy(true);
     try {
-      const response = await fetch(`/api/admin/categories/${id}`, { method: 'DELETE' });
+      const response = await authFetch(`/api/admin/categories/${id}`, { method: 'DELETE' });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         throw new Error(data.error || 'Ангилал устгах боломжгүй');
@@ -194,6 +318,8 @@ export default function AdminSettingsPage() {
   const currentShippingCost = settings?.shippingCost ?? shippingCost;
   const sectionSubtitle = {
     store: settings?.storeName || 'Дэлгүүрийн мэдээлэл тохируулаагүй',
+    home: settings?.homePage?.introTitle || 'Нүүр хуудсын текст, trust bar',
+    about: settings?.aboutPage?.heroTitle || 'Бидний тухай хуудсын агуулга',
     shipping: threshold > 0 ? `${formatMNT(threshold)}-өөс дээш үнэгүй · Хүргэлт ${formatMNT(currentShippingCost)}` : `Үнэгүй хүргэлтийн босго тохируулаагүй · Хүргэлт ${formatMNT(currentShippingCost)}`,
     categories: `${categories?.length || 0} ангилал`,
     instagram: 'Нүүр хуудасны 6 зураг',
@@ -204,7 +330,7 @@ export default function AdminSettingsPage() {
   const inputClass = 'h-12 w-full rounded-[16px] bg-[var(--color-brand-bg)] px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-[#f3b8cf]';
 
   return (
-    <div className="space-y-6 p-4 pb-[104px]">
+    <AdminPageShell className="gap-6">
       <AnimatePresence>
         {toast && (
           <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="fixed left-4 right-4 top-16 z-[100] rounded-[18px] bg-white p-3 text-center text-[12px] font-extrabold text-[var(--color-brand-text)] shadow-lg">
@@ -214,16 +340,14 @@ export default function AdminSettingsPage() {
       </AnimatePresence>
 
       <section>
-        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--color-brand-accent)]">Settings</p>
-        <h1 className="mt-1 text-[24px] font-extrabold text-[var(--color-brand-text)]">Тохиргоо</h1>
-        <p className="mt-2 text-[13px] text-[var(--color-brand-muted)]">Дэлгүүрийн мэдээлэл, хүргэлт, ангилал, системийн төлвөө нэг дороос удирдана.</p>
+        <p className="text-[13px] text-[var(--color-text-muted)]">Дэлгүүрийн мэдээлэл, хүргэлт, ангилал, системийн төлвөө нэг дороос удирдана.</p>
       </section>
 
-      <section className="overflow-hidden rounded-[24px] bg-white shadow-[var(--shadow-mobile-card)]">
+      <section className="overflow-hidden admin-card">
         {SETTINGS_SECTIONS.map((row, index) => {
           const Icon = sectionIcon[row.id];
           return (
-            <button key={row.id} onClick={() => setActiveSheet(row.id)} className={`flex w-full items-center gap-3 p-4 text-left active:bg-[var(--color-brand-bg)] ${index ? 'border-t border-[#f8dbe8]' : ''}`}>
+            <button key={row.id} onClick={() => setActiveSheet(row.id)} className={`flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-[var(--color-brand-light)]/40 active:bg-[var(--color-brand-light)]/60 ${index ? 'border-t border-[var(--color-border)]' : ''}`}>
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-secondary)] text-[var(--color-brand-accent)]">
                 <Icon size={18} />
               </span>
@@ -295,6 +419,107 @@ export default function AdminSettingsPage() {
                   </form>
                 )}
 
+                {activeSheet === 'home' && (
+                  <form onSubmit={saveSettings} className="space-y-3">
+                    <p className="rounded-[18px] bg-[var(--color-brand-bg)] p-4 text-[12px] leading-relaxed text-[var(--color-brand-muted)]">
+                      Нүүр хуудсын текст, trust bar. Бүтээгдэхүүний «Эрхэмсэг / Шинэ / Хямдрал» хэсэг — бараа засах → Онцлох tab-аас сонгоно.
+                    </p>
+                    <label className="block">
+                      <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-[0.12em] text-[var(--color-brand-muted)]">Танилцуулга гарчиг</span>
+                      <input value={homeIntroTitle} onChange={(e) => setHomeIntroTitle(e.target.value)} className={inputClass} />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-[0.12em] text-[var(--color-brand-muted)]">Танилцуулга текст</span>
+                      <textarea value={homeIntroBody} onChange={(e) => setHomeIntroBody(e.target.value)} rows={3} className={`${inputClass} min-h-[88px] resize-y py-3`} />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-[0.12em] text-[var(--color-brand-muted)]">Promise баннер гарчиг</span>
+                      <input value={homePromiseTitle} onChange={(e) => setHomePromiseTitle(e.target.value)} className={inputClass} />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-[0.12em] text-[var(--color-brand-muted)]">Онцлох бүтээгдэхүүний гарчиг</span>
+                      <input value={homeShowcaseFeatured} onChange={(e) => setHomeShowcaseFeatured(e.target.value)} placeholder="Эрхэмсэг сонголтууд" className={inputClass} />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-[0.12em] text-[var(--color-brand-muted)]">Шинэ бүтээгдэхүүний гарчиг</span>
+                      <input value={homeShowcaseNewest} onChange={(e) => setHomeShowcaseNewest(e.target.value)} placeholder="Шинэхэн ирсэн" className={inputClass} />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-[0.12em] text-[var(--color-brand-muted)]">Хямдралын гарчиг</span>
+                      <input value={homeShowcaseSale} onChange={(e) => setHomeShowcaseSale(e.target.value)} placeholder="Зөөллөн үнэтэй санал" className={inputClass} />
+                    </label>
+
+                    <div className="space-y-3 rounded-[18px] bg-[var(--color-brand-bg)] p-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[12px] font-extrabold text-[var(--color-brand-text)]">4 баганат trust bar (Хүргэлт, Баталгаа…)</span>
+                        <button type="button" onClick={() => setHomeTrustItems([...DEFAULT_HOME_TRUST_ITEMS])} className="shrink-0 rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-[var(--color-brand-accent)]">Анхны утга</button>
+                      </div>
+                      {homeTrustItems.map((item, index) => (
+                        <div key={index} className="space-y-2 rounded-[16px] bg-white p-3">
+                          <input value={item.title} onChange={(e) => { const next = [...homeTrustItems]; next[index] = { ...next[index], title: e.target.value }; setHomeTrustItems(next); }} placeholder="Гарчиг" className={inputClass} />
+                          <input value={item.sub} onChange={(e) => { const next = [...homeTrustItems]; next[index] = { ...next[index], sub: e.target.value }; setHomeTrustItems(next); }} placeholder="Дэд текст" className={inputClass} />
+                          <select value={item.icon || 'Truck'} onChange={(e) => { const next = [...homeTrustItems]; next[index] = { ...next[index], icon: e.target.value }; setHomeTrustItems(next); }} className={inputClass}>
+                            {TRUST_ITEM_ICONS.map((icon) => <option key={icon} value={icon}>{icon}</option>)}
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button disabled={isSaving} className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--color-brand-accent)] text-sm font-extrabold text-white disabled:opacity-60">
+                      {isSaving ? <Loader2 size={17} className="animate-spin" /> : <Check size={17} />} Хадгалах
+                    </button>
+                  </form>
+                )}
+
+                {activeSheet === 'about' && (
+                  <form onSubmit={saveSettings} className="space-y-3">
+                    <p className="rounded-[18px] bg-[var(--color-brand-bg)] p-4 text-[12px] leading-relaxed text-[var(--color-brand-muted)]">
+                      /about хуудсын бүх текст, зураг. Values JSON: title, description, icon талбартай массив.
+                    </p>
+                    <button type="button" onClick={() => {
+                      const defaults = DEFAULT_ABOUT_PAGE;
+                      setAboutHeroTitle(defaults.heroTitle || '');
+                      setAboutHeroEyebrow(defaults.heroEyebrow || '');
+                      setAboutHeroImage(defaults.heroImage || '');
+                      setAboutStoryTitle(defaults.storyTitle || '');
+                      setAboutStoryEyebrow(defaults.storyEyebrow || '');
+                      setAboutStoryParagraphs((defaults.storyParagraphs || []).join('\n\n'));
+                      setAboutPhilosophyTitle(defaults.philosophyTitle || '');
+                      setAboutPhilosophyEyebrow(defaults.philosophyEyebrow || '');
+                      setAboutPhilosophyParagraphs((defaults.philosophyParagraphs || []).join('\n\n'));
+                      setAboutStoryImage(defaults.storyImage || '');
+                      setAboutValuesTitle(defaults.valuesTitle || '');
+                      setAboutValuesEyebrow(defaults.valuesEyebrow || '');
+                      setAboutValuesJson(JSON.stringify(defaults.values || [], null, 2));
+                      setAboutContactTitle(defaults.contactTitle || '');
+                      setAboutContactEyebrow(defaults.contactEyebrow || '');
+                      setAboutShowContact(true);
+                    }} className="h-10 w-full rounded-full bg-[var(--color-brand-secondary)] text-[12px] font-extrabold text-[var(--color-brand-accent)]">Анхны агуулга сэргээх</button>
+                    <input value={aboutHeroImage} onChange={(e) => setAboutHeroImage(e.target.value)} placeholder="Hero зураг URL" className={inputClass} />
+                    <input value={aboutHeroEyebrow} onChange={(e) => setAboutHeroEyebrow(e.target.value)} placeholder="Hero eyebrow" className={inputClass} />
+                    <input value={aboutHeroTitle} onChange={(e) => setAboutHeroTitle(e.target.value)} placeholder="Hero гарчиг" className={inputClass} />
+                    <input value={aboutStoryEyebrow} onChange={(e) => setAboutStoryEyebrow(e.target.value)} placeholder="Story eyebrow" className={inputClass} />
+                    <input value={aboutStoryTitle} onChange={(e) => setAboutStoryTitle(e.target.value)} placeholder="Story гарчиг" className={inputClass} />
+                    <textarea value={aboutStoryParagraphs} onChange={(e) => setAboutStoryParagraphs(e.target.value)} rows={5} placeholder="Story параграф (хоосон мөрөөр тусгаарлана)" className={`${inputClass} min-h-[120px] resize-y py-3`} />
+                    <input value={aboutStoryImage} onChange={(e) => setAboutStoryImage(e.target.value)} placeholder="Story зураг URL" className={inputClass} />
+                    <input value={aboutPhilosophyEyebrow} onChange={(e) => setAboutPhilosophyEyebrow(e.target.value)} placeholder="Philosophy eyebrow" className={inputClass} />
+                    <input value={aboutPhilosophyTitle} onChange={(e) => setAboutPhilosophyTitle(e.target.value)} placeholder="Philosophy гарчиг" className={inputClass} />
+                    <textarea value={aboutPhilosophyParagraphs} onChange={(e) => setAboutPhilosophyParagraphs(e.target.value)} rows={4} placeholder="Philosophy параграф" className={`${inputClass} min-h-[96px] resize-y py-3`} />
+                    <input value={aboutValuesEyebrow} onChange={(e) => setAboutValuesEyebrow(e.target.value)} placeholder="Values eyebrow" className={inputClass} />
+                    <input value={aboutValuesTitle} onChange={(e) => setAboutValuesTitle(e.target.value)} placeholder="Values гарчиг" className={inputClass} />
+                    <textarea value={aboutValuesJson} onChange={(e) => setAboutValuesJson(e.target.value)} rows={6} placeholder='[{"title":"...","description":"...","icon":"Heart"}]' className={`${inputClass} min-h-[140px] resize-y py-3 font-mono text-[12px]`} />
+                    <input value={aboutContactEyebrow} onChange={(e) => setAboutContactEyebrow(e.target.value)} placeholder="Contact eyebrow" className={inputClass} />
+                    <input value={aboutContactTitle} onChange={(e) => setAboutContactTitle(e.target.value)} placeholder="Contact гарчиг" className={inputClass} />
+                    <label className="flex cursor-pointer items-center gap-3 rounded-[16px] bg-[var(--color-brand-bg)] px-4 py-3">
+                      <input type="checkbox" checked={aboutShowContact} onChange={(e) => setAboutShowContact(e.target.checked)} className="h-4 w-4 accent-[var(--color-brand-accent)]" />
+                      <span className="text-sm font-bold text-[var(--color-brand-text)]">Холбоо барих форм харуулах</span>
+                    </label>
+                    <button disabled={isSaving} className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--color-brand-accent)] text-sm font-extrabold text-white disabled:opacity-60">
+                      {isSaving ? <Loader2 size={17} className="animate-spin" /> : <Check size={17} />} Хадгалах
+                    </button>
+                  </form>
+                )}
+
                 {activeSheet === 'shipping' && (
                   <form onSubmit={saveSettings} className="space-y-4">
                     <p className="rounded-[18px] bg-[var(--color-brand-bg)] p-4 text-[12px] leading-relaxed text-[var(--color-brand-muted)]">Checkout дээр ашиглагдах үнэгүй хүргэлтийн босго болон хүргэлтийн үндсэн төлбөр.</p>
@@ -309,7 +534,35 @@ export default function AdminSettingsPage() {
                       <div className="mt-2 rounded-[18px] bg-[var(--color-brand-secondary)] p-3 text-center text-sm font-extrabold text-[var(--color-brand-text)]">Хүргэлт: {formatMNT(shippingCost)}</div>
                     </label>
                     
-                    <div className="border-t border-[#f8dbe8] pt-4 mt-2 space-y-4">
+                    <div className="border-t border-[var(--color-border)] pt-4 mt-2 space-y-4">
+                      <h4 className="text-[12px] font-extrabold text-[var(--color-brand-text)] uppercase tracking-wider">🇰🇷 Солонгос захиалга</h4>
+                      <label className="block">
+                        <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-[0.12em] text-[var(--color-brand-muted)]">1 KRW = хэдэн ₮ (ханш)</span>
+                        <input required type="number" min="0.01" step="0.01" value={mntPerKrw} onChange={(e) => setMntPerKrw(Number(e.target.value))} className={inputClass} />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-[0.12em] text-[var(--color-brand-muted)]">Солонгос үнэгүй хүргэлтийн босго (₮)</span>
+                        <input required type="number" min="0" step="1000" value={krFreeShippingThreshold} onChange={(e) => setKrFreeShippingThreshold(Number(e.target.value))} className={inputClass} />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-[0.12em] text-[var(--color-brand-muted)]">Солонгос хүргэлтийн төлбөр (₮)</span>
+                        <input required type="number" min="0" step="500" value={krShippingCost} onChange={(e) => setKrShippingCost(Number(e.target.value))} className={inputClass} />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-[0.12em] text-[var(--color-brand-muted)]">Солонгос банкны нэр</span>
+                        <input value={krBankName} onChange={(e) => setKrBankName(e.target.value)} className={inputClass} placeholder="KB국민은행" />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-[0.12em] text-[var(--color-brand-muted)]">Солонгос дансны дугаар</span>
+                        <input value={krBankAccount} onChange={(e) => setKrBankAccount(e.target.value)} className={inputClass} />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-[0.12em] text-[var(--color-brand-muted)]">Дансны эзэмшигч</span>
+                        <input value={krBankAccountName} onChange={(e) => setKrBankAccountName(e.target.value)} className={inputClass} />
+                      </label>
+                    </div>
+
+                    <div className="border-t border-[var(--color-border)] pt-4 mt-2 space-y-4">
                       <h4 className="text-[12px] font-extrabold text-[var(--color-brand-text)] uppercase tracking-wider">🛵 Жолоочийн хандах линк тохиргоо</h4>
                       <label className="block">
                         <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-[0.12em] text-[var(--color-brand-muted)]">Жолоочийн хандах нууц түлхүүр (Token)</span>
@@ -333,6 +586,70 @@ export default function AdminSettingsPage() {
                       )}
                     </div>
 
+                    <div className="border-t border-[var(--color-border)] pt-4 mt-2 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-[12px] font-extrabold text-[var(--color-brand-text)] uppercase tracking-wider">🎟️ Урамшууллын код</h4>
+                        <button
+                          type="button"
+                          onClick={() => setCoupons((prev) => [...prev, { code: '', type: 'percent', value: 10, active: true, minSubtotal: 0, expiresAt: null }])}
+                          className="flex h-9 items-center gap-1.5 rounded-full bg-[var(--color-brand-secondary)] px-3 text-[12px] font-extrabold text-[var(--color-brand-accent)]"
+                        >
+                          <Plus size={14} /> Нэмэх
+                        </button>
+                      </div>
+                      {coupons.length === 0 && (
+                        <p className="rounded-[14px] bg-[var(--color-brand-bg)] p-3 text-[12px] text-[var(--color-brand-muted)]">Идэвхтэй код алга. «Нэмэх» дарж WELCOME10 мэт код үүсгэнэ үү. (Хоосон бол анхдагч WELCOME10 ажиллана.)</p>
+                      )}
+                      {coupons.map((coupon, index) => (
+                        <div key={index} className="rounded-[16px] border border-[var(--color-border)] bg-white p-3 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <input
+                              value={coupon.code}
+                              onChange={(e) => setCoupons((prev) => prev.map((c, i) => (i === index ? { ...c, code: e.target.value.toUpperCase() } : c)))}
+                              placeholder="КОД (ж: WELCOME10)"
+                              className="h-10 min-w-0 flex-1 rounded-[12px] bg-[var(--color-brand-bg)] px-3 text-sm font-extrabold uppercase outline-none"
+                            />
+                            <button type="button" onClick={() => setCoupons((prev) => prev.filter((_, i) => i !== index))} className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-[var(--color-brand-bg)] text-[var(--color-brand-muted)]" aria-label="Устгах">
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                          <div className="flex gap-2">
+                            <select
+                              value={coupon.type}
+                              onChange={(e) => setCoupons((prev) => prev.map((c, i) => (i === index ? { ...c, type: e.target.value as 'percent' | 'fixed' } : c)))}
+                              className="h-10 flex-1 rounded-[12px] bg-[var(--color-brand-bg)] px-2 text-[13px] font-bold outline-none"
+                            >
+                              <option value="percent">Хувь (%)</option>
+                              <option value="fixed">Тогтмол (₮)</option>
+                            </select>
+                            <input
+                              type="number"
+                              min="0"
+                              value={coupon.value}
+                              onChange={(e) => setCoupons((prev) => prev.map((c, i) => (i === index ? { ...c, value: Number(e.target.value) } : c)))}
+                              placeholder={coupon.type === 'percent' ? '10' : '5000'}
+                              className="h-10 w-24 rounded-[12px] bg-[var(--color-brand-bg)] px-3 text-sm font-bold outline-none"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              min="0"
+                              step="1000"
+                              value={coupon.minSubtotal || 0}
+                              onChange={(e) => setCoupons((prev) => prev.map((c, i) => (i === index ? { ...c, minSubtotal: Number(e.target.value) } : c)))}
+                              placeholder="Доод дүн ₮"
+                              className="h-10 min-w-0 flex-1 rounded-[12px] bg-[var(--color-brand-bg)] px-3 text-[13px] font-bold outline-none"
+                            />
+                            <label className="flex h-10 items-center gap-2 rounded-[12px] bg-[var(--color-brand-bg)] px-3 text-[12px] font-bold text-[var(--color-brand-text)]">
+                              <input type="checkbox" checked={coupon.active !== false} onChange={(e) => setCoupons((prev) => prev.map((c, i) => (i === index ? { ...c, active: e.target.checked } : c)))} className="h-4 w-4 accent-[var(--color-brand-accent)]" />
+                              Идэвхтэй
+                            </label>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
                     <button disabled={isSaving} className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--color-brand-accent)] text-sm font-extrabold text-white disabled:opacity-60">
                       {isSaving ? <Loader2 size={17} className="animate-spin" /> : <Check size={17} />} Хадгалах
                     </button>
@@ -341,7 +658,7 @@ export default function AdminSettingsPage() {
 
                 {activeSheet === 'categories' && (
                   <div className="space-y-4">
-                    <form onSubmit={addCategory} className="flex flex-col gap-3 rounded-[20px] bg-white p-4 shadow-sm border border-[#f8dbe8]">
+                    <form onSubmit={addCategory} className="flex flex-col gap-3 rounded-[20px] bg-white p-4 shadow-sm border border-[var(--color-border)]">
                       <div className="flex gap-2">
                         <input value={categoryName} onChange={(e) => setCategoryName(e.target.value)} placeholder="Ангиллын нэр" className="h-12 min-w-0 flex-1 rounded-[16px] bg-[var(--color-brand-bg)] px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-[#f3b8cf]" />
                         <button disabled={categoryBusy || !categoryName.trim()} className="flex h-12 shrink-0 items-center justify-center gap-2 rounded-[16px] bg-[var(--color-brand-accent)] px-4 text-sm font-bold text-white disabled:opacity-60" aria-label="Хадгалах">
@@ -467,6 +784,6 @@ export default function AdminSettingsPage() {
           if (pendingDeleteCategory) void deleteCategory(pendingDeleteCategory.id).then(() => setPendingDeleteCategory(null));
         }}
       />
-    </div>
+    </AdminPageShell>
   );
 }

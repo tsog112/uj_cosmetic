@@ -1,0 +1,92 @@
+{
+  "nav": {
+    "home": "Home",
+    "shop": "Shop",
+    "brands": "Brands",
+    "sale": "Sale",
+    "search": "Search",
+    "wishlist": "Saved",
+    "cart": "Cart",
+    "profile": "Profile",
+    "admin": "Admin",
+    "backToStore": "Back to store",
+    "notifications": "Notifications"
+  },
+  "announcement": {
+    "items": [
+      "Free delivery on orders over 50,000₮",
+      "Delivery in Ulaanbaatar and nationwide",
+      "Authentic Korean beauty products",
+      "Ships within 24h after payment confirmation",
+      "7-day return and exchange policy"
+    ]
+  },
+  "trust": {
+    "shipping": { "title": "Delivery", "sub": "UB & nationwide" },
+    "verified": { "title": "Authentic", "sub": "Curated brands" },
+    "returns": { "title": "7 days", "sub": "Returns & exchange" },
+    "support": { "title": "Care advice", "sub": "Skin-fit picks" }
+  },
+  "product": {
+    "badgeNew": "NEW",
+    "badgeSale": "SALE",
+    "badgeSoldOut": "Sold out",
+    "addToCart": "Add to cart",
+    "addedToCart": "Added",
+    "addToWishlist": "Save",
+    "removeFromWishlist": "Remove",
+    "wishlistAdded": "Saved to wishlist",
+    "wishlistRemoved": "Removed from wishlist",
+    "cartAdded": "Added to cart",
+    "outOfStock": "Out of stock",
+    "viewAll": "View all",
+    "noResults": "No products found",
+    "buyNow": "Buy now",
+    "addToCartShort": "Cart"
+  },
+  "cart": {
+    "title": "My cart",
+    "empty": "Your cart is empty",
+    "emptyDesc": "Browse the shop and add products you love.",
+    "checkout": "Checkout",
+    "continueShopping": "Continue shopping",
+    "remove": "Remove",
+    "quantity": "Qty",
+    "buyNow": "Buy now"
+  },
+  "profile": {
+    "title": "Profile",
+    "orders": "My orders",
+    "orderHistory": "Order history",
+    "activeOrders": "Active",
+    "wishlist": "Saved items",
+    "reviews": "My reviews",
+    "settings": "Settings",
+    "notifications": "Notifications",
+    "admin": "Admin panel",
+    "logout": "Sign out",
+    "stats": { "orders": "Orders", "reviews": "Reviews" }
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "save": "Save",
+    "deleteAccount": "Delete account",
+    "deleteConfirm": "This cannot be undone. Continue?"
+  },
+  "reviews": {
+    "title": "Customer reviews",
+    "like": "Helpful",
+    "liked": "Thanks",
+    "adminReply": "UJ reply",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "common": {
+    "loading": "Loading",
+    "verified": "Verified",
+    "close": "Close"
+  }
+}

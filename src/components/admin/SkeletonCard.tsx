@@ -8,7 +8,7 @@ export default function SkeletonCard({
   className?: string 
 }) {
   return (
-    <div className={`rounded-[20px] animate-shimmer ${height} ${className}`}>
+    <div className={`admin-card animate-shimmer ${height} ${className}`}>
       <span className="sr-only">Уншиж байна...</span>
     </div>
   );

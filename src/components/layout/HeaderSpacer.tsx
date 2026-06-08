@@ -13,16 +13,22 @@ export default function HeaderSpacer() {
     return () => window.removeEventListener('announcement-visibility-change', handleAnnouncementVisibility);
   }, []);
 
+  const mobileHeight = hasAnnouncement ? 94 : 58;
+  const desktopHeight = hasAnnouncement ? 98 : 62;
+
   return (
     <>
-      {/* Mobile spacer: 36px (Announcement) + 58px (Header) = 94px. Without announcement = 58px. */}
+      {/* Mobile: 36px announcement + 58px header = 94px */}
       <div
         className="w-full transition-all duration-300 md:hidden"
-        style={{ height: hasAnnouncement ? 94 : 58 }}
+        style={{ height: mobileHeight }}
       />
-      
-      {/* Desktop spacer: DesktopNav is 68px, plus some padding = 72px */}
-      <div className="hidden w-full md:block h-[72px]" />
+
+      {/* Desktop: 36px announcement + 62px nav = 98px */}
+      <div
+        className="hidden w-full transition-all duration-300 md:block"
+        style={{ height: desktopHeight }}
+      />
     </>
   );
 }

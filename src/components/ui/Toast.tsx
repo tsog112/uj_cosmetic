@@ -40,9 +40,24 @@ function ToastItem({ toast: t, onDismiss }: { toast: Toast; onDismiss: (id: stri
   };
 
   const colors = {
-    success: { bg: '#E8F8EC', border: 'rgba(46,160,75,0.25)', text: '#2D7040', icon: '#2EA04B' },
-    error:   { bg: '#FEEAED', border: 'rgba(179,41,64,0.25)', text: '#B32940', icon: '#D93F55' },
-    info:    { bg: '#FFF0F7', border: 'rgba(233,30,140,0.20)', text: '#6B3A52', icon: '#E91E8C' },
+    success: {
+      bg: 'var(--color-status-done-bg)',
+      border: 'var(--color-status-done-text)',
+      text: 'var(--color-status-done-text)',
+      icon: 'var(--color-status-done-text)',
+    },
+    error: {
+      bg: 'var(--color-status-cancel-bg)',
+      border: 'var(--color-status-cancel-text)',
+      text: 'var(--color-status-cancel-text)',
+      icon: 'var(--color-status-cancel-text)',
+    },
+    info: {
+      bg: 'var(--color-brand-light)',
+      border: 'var(--color-brand)',
+      text: 'var(--color-brand-dark)',
+      icon: 'var(--color-brand)',
+    },
   };
 
   const c = colors[t.type];
@@ -52,12 +67,11 @@ function ToastItem({ toast: t, onDismiss }: { toast: Toast; onDismiss: (id: stri
       style={{
         background: c.bg,
         border: `1.5px solid ${c.border}`,
-        borderRadius: 16,
-        padding: '12px 16px',
+        borderRadius: 'var(--radius-lg)',
+        padding: 'var(--space-3) var(--space-4)',
         display: 'flex',
         alignItems: 'center',
         gap: 10,
-        boxShadow: '0 8px 32px rgba(233,30,140,0.12)',
         transform: visible ? 'translateY(0)' : 'translateY(-24px)',
         opacity: visible ? 1 : 0,
         transition: 'transform 0.35s cubic-bezier(0.16,1,0.3,1), opacity 0.35s ease',

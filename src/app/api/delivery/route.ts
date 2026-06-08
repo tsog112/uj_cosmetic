@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebaseAdmin';
 import { firestoreToAdminOrder } from '@/lib/services/firestoreAdminService';
+import { listPostgresShippedOrders, markPostgresOrderDelivered } from '@/lib/services/postgresAdminService';
+import { enforceRateLimit } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
+
+function resolveDeliveryToken(settings: Record<string, unknown>): string | null {
+  const fromSettings = String(settings.deliveryToken || '').trim();
+  if (fromSettings) return fromSettings;
+  const fromEnv = String(process.env.DELIVERY_API_TOKEN || '').trim();
+  if (fromEnv) return fromEnv;
+  return null;
+}
 
 // Grouping and Address Helper
 function getOrderRegionInfo(order: any) {
@@ -75,6 +85,8 @@ function getOrderRegionInfo(order: any) {
 }
 
 export async function GET(req: NextRequest) {
+  const limited = await enforceRateLimit(req, { key: 'delivery-get', limit: 30, windowMs: 60_000 });
+  if (limited) return limited;
   try {
     const { searchParams } = new URL(req.url);
     const dateParam = searchParams.get('date');
@@ -87,15 +99,32 @@ export async function GET(req: NextRequest) {
     const db = getAdminDb();
     const settingsDoc = await db.collection('settings').doc('main').get();
     const settings = settingsDoc.data() || {};
-    const validToken = settings.deliveryToken || 'uj-rider-secure-2026';
-
+    const validToken = resolveDeliveryToken(settings);
+    if (!validToken) {
+      return NextResponse.json({ error: 'Хүргэлтийн API тохируулагдаагүй байна' }, { status: 503 });
+    }
     if (tokenParam !== validToken) {
       return NextResponse.json({ error: 'Зөвшөөрөлгүй хандалт' }, { status: 401 });
     }
 
-    // Query all orders with status 'shipped'
-    const snap = await db.collection('orders').where('status', '==', 'shipped').get();
-    let shippedOrders = snap.docs.map(doc => firestoreToAdminOrder(doc.id, doc.data()));
+    // Postgres-first: шинэ захиалгууд Postgres-д, хуучин нь Firestore-д байж болно.
+    // Хоёуланг нь нэгтгэж (Postgres давуу эрхтэй) id-аар давхцлыг арилгана.
+    const merged = new Map<string, any>();
+    try {
+      const pgOrders = await listPostgresShippedOrders();
+      pgOrders.forEach((order) => merged.set(order.id, order));
+    } catch (error) {
+      console.warn('Postgres shipped orders failed, using Firestore only:', error);
+    }
+    try {
+      const snap = await db.collection('orders').where('status', '==', 'shipped').get();
+      snap.docs.forEach((doc) => {
+        if (!merged.has(doc.id)) merged.set(doc.id, firestoreToAdminOrder(doc.id, doc.data()));
+      });
+    } catch (error) {
+      console.warn('Firestore shipped orders failed:', error);
+    }
+    let shippedOrders = Array.from(merged.values());
 
     // Filter by date if provided
     if (dateParam) {
@@ -133,6 +162,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const limited = await enforceRateLimit(req, { key: 'delivery-patch', limit: 30, windowMs: 60_000 });
+  if (limited) return limited;
   try {
     const { orderId, token, status } = await req.json();
 
@@ -143,8 +174,10 @@ export async function PATCH(req: NextRequest) {
     const db = getAdminDb();
     const settingsDoc = await db.collection('settings').doc('main').get();
     const settings = settingsDoc.data() || {};
-    const validToken = settings.deliveryToken || 'uj-rider-secure-2026';
-
+    const validToken = resolveDeliveryToken(settings);
+    if (!validToken) {
+      return NextResponse.json({ error: 'Хүргэлтийн API тохируулагдаагүй байна' }, { status: 503 });
+    }
     if (token !== validToken) {
       return NextResponse.json({ error: 'Зөвшөөрөлгүй' }, { status: 401 });
     }
@@ -153,20 +186,50 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Буруу төлөв' }, { status: 400 });
     }
 
-    const orderRef = db.collection('orders').doc(orderId);
-    const orderSnap = await orderRef.get();
-    if (!orderSnap.exists) {
-      return NextResponse.json({ error: 'Захиалга олдсонгүй' }, { status: 404 });
+    // Postgres-first: захиалга Postgres-д байвал тэндээ, эс бөгөөс Firestore-д шинэчилнэ.
+    let orderData: any = null;
+    const pgOrder = await markPostgresOrderDelivered(orderId).catch((error) => {
+      console.warn('Postgres deliver failed:', error);
+      return null;
+    });
+
+    if (pgOrder) {
+      orderData = {
+        customerName: pgOrder.customerName,
+        customerEmail: pgOrder.customerEmail,
+        total: pgOrder.total,
+        shippingCost: pgOrder.shippingCost,
+        shippingAddress: pgOrder.shippingAddress,
+        items: pgOrder.items.map((item) => ({ name: item.name, name_mn: item.name })),
+        userId: pgOrder.userId,
+      };
+    } else {
+      const orderRef = db.collection('orders').doc(orderId);
+      const orderSnap = await orderRef.get();
+      if (!orderSnap.exists) {
+        return NextResponse.json({ error: 'Захиалга олдсонгүй' }, { status: 404 });
+      }
+      await orderRef.update({ status: 'delivered', updatedAt: new Date() });
+      orderData = orderSnap.data();
     }
 
-    await orderRef.update({
-      status: 'delivered',
-      updatedAt: new Date()
-    });
+    // Хэрэглэгчид Postgres мэдэгдэл (нэвтэрсэн хэрэглэгчийн захиалга бол)
+    if (orderData?.userId) {
+      try {
+        const { notifyPostgresUsers } = await import('@/lib/services/postgresAdminService');
+        await notifyPostgresUsers([orderData.userId], {
+          title: 'Захиалга хүргэгдлээ',
+          message: 'Таны захиалга амжилттай хүргэгдлээ. Сэтгэгдлээ үлдээгээрэй!',
+          type: 'ORDER',
+          href: '/profile/orders',
+        });
+      } catch (err) {
+        console.error('Postgres delivery notification failed:', err);
+      }
+    }
 
     // Send notifications in parallel
     try {
-      const orderData = orderSnap.data();
       const customerEmail = orderData?.customerEmail || orderData?.email;
       if (customerEmail) {
         const { sendOrderStatusNotification, sendPostDeliveryReviewInvitation } = await import('@/lib/emailService');

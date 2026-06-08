@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import AnnouncementBar from '@/components/layout/AnnouncementBar';
 import Header from '@/components/layout/Header';
 import ShopShell from '@/components/layout/ShopShell';
@@ -19,9 +20,11 @@ export default function PublicLayout({
         <Header />
       </div>
       {/* Desktop nav (hidden on mobile) */}
-      <DesktopNav />
+      <Suspense fallback={null}>
+        <DesktopNav />
+      </Suspense>
       <HeaderSpacer />
-      <main className="min-h-screen flex-1 pb-[85px] md:pb-0">
+      <main className="uj-page min-h-screen flex-1 pb-[85px] md:pb-0">
         {children}
       </main>
       <ChatAssistant />

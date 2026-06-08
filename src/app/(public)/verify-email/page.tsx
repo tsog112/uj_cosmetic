@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { Check, Loader2, X } from 'lucide-react';
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
@@ -16,36 +17,40 @@ function VerifyEmailContent() {
         return;
       }
       try {
-        const res = await fetch('/api/auth/verify-email', {
+        const response = await fetch('/api/auth/verify-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token }),
         });
-        setState(res.ok ? 'success' : 'error');
+        setState(response.ok ? 'success' : 'error');
       } catch {
         setState('error');
       }
     }
+
     void verify();
   }, [token]);
 
+  const icon = state === 'loading' ? <Loader2 className="animate-spin" size={26} /> : state === 'success' ? <Check size={28} /> : <X size={28} />;
+
   return (
-    <main className="min-h-screen bg-[#FFF8FB] px-4 py-16">
-      <section className="mx-auto max-w-md rounded-2xl border border-[#F4C0D1] bg-white p-8 text-center">
-        <div className={`mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full text-2xl ${state === 'success' ? 'bg-[#EAF3DE] text-[#3B6D11]' : 'bg-[#FBEAF0] text-[#993556]'}`}>
-          {state === 'loading' ? '...' : state === 'success' ? '✓' : '!'}
+    <main className="luxury-shell flex min-h-[calc(100svh-140px)] items-center pb-[104px]">
+      <section className="luxury-card w-full px-6 py-10 text-center">
+        <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full ${state === 'success' ? 'bg-[#EAF3DE] text-[#3B6D11]' : 'bg-[#FCEBEB] text-[#A32D2D]'}`}>
+          {icon}
         </div>
-        <h1 className="text-2xl font-semibold text-[#993556]">
+        <p className="luxury-eyebrow mt-6">Email verification</p>
+        <h1 className="luxury-title mt-2">
           {state === 'success' ? 'И-мэйл баталгаажлаа' : state === 'error' ? 'Линк хүчингүй байна' : 'Шалгаж байна'}
         </h1>
-        <p className="mt-3 text-sm leading-6 text-gray-600">
+        <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-[var(--color-text-muted)]">
           {state === 'success'
-            ? 'И-мэйл амжилттай баталгаажлаа. Нэвтэрнэ үү.'
+            ? 'Таны и-мэйл амжилттай баталгаажлаа. Одоо нэвтэрч захиалгаа үргэлжлүүлэх боломжтой.'
             : state === 'error'
-              ? 'Баталгаажуулах линк хугацаа дууссан эсвэл буруу байна.'
-              : 'Түр хүлээнэ үү.'}
+              ? 'Баталгаажуулах линк хугацаа дууссан эсвэл буруу байна. Нэвтрэх хуудсаас линкээ дахин илгээнэ үү.'
+              : 'Түр хүлээнэ үү, таны баталгаажуулах линкийг шалгаж байна.'}
         </p>
-        <Link href="/auth" className="mt-6 inline-flex rounded-[30px] bg-[#D4537E] px-6 py-3 text-sm font-semibold text-white">
+        <Link href="/auth" className="mt-7 inline-flex h-12 items-center justify-center rounded-full bg-[var(--color-brand)] px-7 text-sm font-semibold text-white">
           Нэвтрэх
         </Link>
       </section>
@@ -55,7 +60,7 @@ function VerifyEmailContent() {
 
 export default function VerifyEmailPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#FFF8FB]" />}>
+    <Suspense fallback={<main className="luxury-shell min-h-[60svh]" />}>
       <VerifyEmailContent />
     </Suspense>
   );

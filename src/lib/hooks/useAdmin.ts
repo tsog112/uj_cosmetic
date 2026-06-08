@@ -1,8 +1,9 @@
 import useSWR from 'swr';
+import { authFetch } from '@/lib/auth/clientFetch';
 import { ADMIN_ALL_FILTER_VALUE } from '@/lib/constants/admin';
 
 const fetcher = async (url: string) => {
-  const res = await fetch(url);
+  const res = await authFetch(url);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || 'API error');
@@ -26,10 +27,6 @@ export function useAdminRevenueChart(range: 'today' | '7d' | '30d' | 'month' | '
   return useSWR(`/api/admin/revenue-chart?range=${range}`, fetcher, adminSWRConfig);
 }
 
-export function useAdminProductStats() {
-  return useSWR('/api/admin/stats/products', fetcher, adminSWRConfig);
-}
-
 export function useAdminOrders(params: {
   status?: string;
   page?: number;
@@ -37,13 +34,13 @@ export function useAdminOrders(params: {
   search?: string;
   dateFrom?: string;
   dateTo?: string;
-  priceMin?: string;
-  priceMax?: string;
-  city?: string;
   regionId?: string;
   districtId?: string;
   khorooId?: string;
   archived?: boolean;
+  market?: string;
+  krZonecode?: string;
+  krAddressQuery?: string;
 } = {}) {
   const query = new URLSearchParams();
   if (params.status && params.status !== ADMIN_ALL_FILTER_VALUE) query.append('status', params.status);
@@ -52,23 +49,24 @@ export function useAdminOrders(params: {
   if (params.search) query.append('search', params.search);
   if (params.dateFrom) query.append('dateFrom', params.dateFrom);
   if (params.dateTo) query.append('dateTo', params.dateTo);
-  if (params.priceMin) query.append('priceMin', params.priceMin);
-  if (params.priceMax) query.append('priceMax', params.priceMax);
-  if (params.city) query.append('city', params.city);
-  if (params.regionId) query.append('region_id', params.regionId);
-  if (params.districtId) query.append('district_id', params.districtId);
-  if (params.khorooId) query.append('khoroo_id', params.khorooId);
+  if (params.market !== 'KR') {
+    if (params.regionId) query.append('region_id', params.regionId);
+    if (params.districtId) query.append('district_id', params.districtId);
+    if (params.khorooId) query.append('khoroo_id', params.khorooId);
+  }
+  if (params.market !== 'MN') {
+    if (params.krZonecode) query.append('kr_zonecode', params.krZonecode);
+    if (params.krAddressQuery) query.append('kr_address', params.krAddressQuery);
+  }
+  if (params.market && params.market !== 'all') query.append('market', params.market);
   if (params.archived !== undefined) query.append('archived', params.archived.toString());
   return useSWR(`/api/admin/orders?${query.toString()}`, fetcher, adminSWRConfig);
-}
-
-export function useAdminOrderDetail(id: string | null) {
-  return useSWR(id ? `/api/admin/orders/${id}` : null, fetcher, adminSWRConfig);
 }
 
 export function useAdminProducts(filters?: {
   category?: string;
   inStock?: string;
+  visibility?: string;
   search?: string;
   page?: number;
   limit?: number;
@@ -78,6 +76,7 @@ export function useAdminProducts(filters?: {
   const query = new URLSearchParams();
   if (filters?.category) query.append('category', filters.category);
   if (filters?.inStock) query.append('inStock', filters.inStock);
+  if (filters?.visibility) query.append('visibility', filters.visibility);
   if (filters?.search) query.append('search', filters.search);
   if (filters?.page) query.append('page', filters.page.toString());
   if (filters?.limit) query.append('limit', filters.limit.toString());
@@ -106,16 +105,6 @@ export function useAdminCustomers(params: {
   return useSWR(`/api/admin/customers?${query.toString()}`, fetcher, adminSWRConfig);
 }
 
-export function useAdminCustomerDetail(id?: string) {
-  return useSWR(id ? `/api/admin/customers/${id}` : null, fetcher, adminSWRConfig);
-}
-
-export function useAdminUsers(search = '') {
-  const query = new URLSearchParams();
-  if (search) query.append('search', search);
-  return useSWR(`/api/admin/users?${query.toString()}`, fetcher, adminSWRConfig);
-}
-
 export function useAdminCategories() {
   return useSWR('/api/admin/categories', fetcher, adminSWRConfig);
 }
@@ -126,10 +115,6 @@ export function useAdminSettings() {
 
 export function useAdminAnalytics() {
   return useSWR('/api/admin/analytics', fetcher, adminSWRConfig);
-}
-
-export function useAdminNotifications() {
-  return useSWR('/api/admin/notifications', fetcher, adminSWRConfig);
 }
 
 export function useAdminReviews(params: {

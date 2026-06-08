@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { addAdminExpense } from '@/lib/services/firestoreAdminService';
+import { authorizeAdminRequest } from '@/lib/auth/serverAuth';
 
 export async function POST(req: NextRequest) {
+  const denied = await authorizeAdminRequest(req);
+  if (denied) return denied;
   try {
     const body = await req.json();
     const { title, amount, category, date } = body;

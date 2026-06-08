@@ -4,237 +4,237 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { MessageCircle, ShoppingBag, Star, X } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { useLocale } from '@/context/LocaleContext';
 import type { Review } from '@/types';
+import ReviewLikeButton from '@/components/ui/ReviewLikeButton';
 
 function Stars({ rating }: { rating: number }) {
   return (
-    <div className="flex gap-0.5 text-[#E6A0BE]">
-      {Array.from({ length: 5 }).map((_, index) => <Star key={index} size={14} fill={index < rating ? 'currentColor' : 'none'} />)}
+    <div className="flex gap-0.5 text-[#D4537E]" aria-label={`${rating} од`}>
+      {Array.from({ length: 5 }).map((_, index) => (
+        <Star key={index} size={14} fill={index < rating ? 'currentColor' : 'none'} strokeWidth={1.8} />
+      ))}
     </div>
   );
 }
 
 function getVisiblePages(currentPage: number, totalPages: number): (number | string)[] {
-  const pages: (number | string)[] = [];
-  if (totalPages <= 5) {
-    for (let i = 1; i <= totalPages; i++) {
-      pages.push(i);
-    }
-  } else {
-    pages.push(1);
-    let start = Math.max(2, currentPage - 1);
-    let end = Math.min(totalPages - 1, currentPage + 1);
-    if (currentPage <= 3) {
-      end = 4;
-    } else if (currentPage >= totalPages - 2) {
-      start = totalPages - 3;
-    }
-    if (start > 2) {
-      pages.push('...');
-    }
-    for (let i = start; i <= end; i++) {
-      pages.push(i);
-    }
-    if (end < totalPages - 1) {
-      pages.push('...');
-    }
-    pages.push(totalPages);
-  }
+  if (totalPages <= 5) return Array.from({ length: totalPages }, (_, index) => index + 1);
+
+  const pages: (number | string)[] = [1];
+  let start = Math.max(2, currentPage - 1);
+  let end = Math.min(totalPages - 1, currentPage + 1);
+
+  if (currentPage <= 3) end = 4;
+  if (currentPage >= totalPages - 2) start = totalPages - 3;
+  if (start > 2) pages.push('...');
+  for (let page = start; page <= end; page += 1) pages.push(page);
+  if (end < totalPages - 1) pages.push('...');
+  pages.push(totalPages);
+
   return pages;
 }
 
-
 export default function ReviewsPage() {
+  const { user } = useAuth();
+  const { t } = useLocale();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [query, setQuery] = useState('');
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [averageRating, setAverageRating] = useState(0);
   const [activePhoto, setActivePhoto] = useState<string | null>(null);
 
-  const fetchReviews = async (pageNumber: number) => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/reviews?page=${pageNumber}&limit=6`);
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      setReviews(data.reviews || []);
-      setTotalPages(data.totalPages || 1);
-      setTotalCount(data.totalCount || 0);
-      setAverageRating(data.averageRating || 0);
-    } catch (err) {
-      console.error('Failed to fetch reviews:', err);
-      setReviews([]);
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    async function fetchReviews() {
+      setLoading(true);
+      try {
+        const { authFetch } = await import('@/lib/auth/clientFetch');
+        const response = await authFetch(`/api/reviews?page=${page}&limit=8`);
+        if (!response.ok) throw new Error('Failed to fetch reviews');
+        const data = await response.json();
+        setReviews(data.reviews || []);
+        setTotalPages(data.totalPages || 1);
+        setTotalCount(data.totalCount || 0);
+        setAverageRating(data.averageRating || 0);
+      } catch (error) {
+        console.error('Failed to fetch reviews:', error);
+        setReviews([]);
+      } finally {
+        setLoading(false);
+      }
     }
+
+    void fetchReviews();
+  }, [page, user?.uid]);
+
+  const goToPage = (nextPage: number) => {
+    setPage(nextPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  useEffect(() => {
-    void fetchReviews(page);
-  }, [page]);
+  const filteredReviews = reviews.filter((review) => {
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    return [
+      review.productName,
+      review.userName,
+      review.content,
+      review.body,
+    ]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(q));
+  });
 
   return (
-    <main className="space-y-5 px-4 pb-[104px] md:max-w-xl lg:max-w-2xl mx-auto md:mt-6">
-      <section className="rounded-[28px] bg-white p-5 shadow-[var(--shadow-mobile-card)]">
-        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--color-brand-accent)]">Reviews</p>
-        <h1 className="mt-1 text-[25px] font-extrabold text-[var(--color-brand-text)]">Хэрэглэгчдийн сэтгэгдэл</h1>
-        <p className="mt-2 text-[13px] leading-relaxed text-[var(--color-brand-muted)]">Бүтээгдэхүүн хэрэглэсэн бодит үнэлгээ, зурагтай сэтгэгдлүүд.</p>
+    <main className="luxury-shell space-y-5 pb-[104px]">
+      <section className="luxury-card p-5">
+        <p className="luxury-eyebrow">Real reviews</p>
+        <h1 className="luxury-title mt-2">Хэрэглэгчдийн бодит сэтгэгдэл</h1>
+        <p className="mt-3 text-sm leading-6 text-[var(--color-text-muted)]">
+          Баталгаат худалдан авалтаас ирсэн үнэлгээ, туршлага, бүтээгдэхүүний бодит мэдрэмжүүд.
+        </p>
         <div className="mt-5 grid grid-cols-2 gap-3">
-          <div className="rounded-[20px] bg-[var(--color-brand-bg)] p-4 text-center border border-[#fdf2f7]">
-            <p className="text-[10px] font-bold text-[var(--color-brand-muted)]">Нийт сэтгэгдэл</p>
-            <p className="mt-1 text-2xl font-extrabold text-[var(--color-brand-text)]">{totalCount}</p>
-          </div>
-          <div className="rounded-[20px] bg-[var(--color-brand-bg)] p-4 text-center border border-[#fdf2f7]">
-            <p className="text-[10px] font-bold text-[var(--color-brand-muted)]">Дундаж үнэлгээ</p>
-            <p className="mt-1 text-2xl font-extrabold text-[var(--color-brand-accent)]">{averageRating ? averageRating.toFixed(1) : '-'}</p>
-          </div>
+          <Stat label="Нийт сэтгэгдэл" value={String(totalCount)} />
+          <Stat label="Дундаж үнэлгээ" value={averageRating ? averageRating.toFixed(1) : '-'} accent />
         </div>
+        <label className="luxury-input mt-4 flex h-12 px-4" style={{ boxShadow: 'var(--shadow-xs)' }}>
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Сэтгэгдэл, хэрэглэгч, бүтээгдэхүүнээр хайх..."
+            className="min-w-0 flex-1 bg-transparent text-[13px] font-medium outline-none"
+          />
+        </label>
       </section>
 
       {loading ? (
         <section className="space-y-3">
           {Array.from({ length: 3 }).map((_, index) => (
-            <div key={index} className="h-48 rounded-[24px] bg-white p-4 shadow-[var(--shadow-mobile-card)] flex flex-col justify-between">
-              <div className="space-y-3">
-                <div className="h-4 w-32 rounded-full animate-shimmer" />
-                <div className="h-3 w-48 rounded-full animate-shimmer" />
-              </div>
-              <div className="h-10 w-full rounded-[14px] animate-shimmer" />
+            <div key={index} className="luxury-card h-48 p-5">
+              <div className="h-4 w-32 rounded-full animate-shimmer" />
+              <div className="mt-4 h-3 w-full rounded-full animate-shimmer" />
+              <div className="mt-2 h-3 w-4/5 rounded-full animate-shimmer" />
+              <div className="mt-8 h-16 rounded-[18px] animate-shimmer" />
             </div>
           ))}
         </section>
-      ) : reviews.length === 0 ? (
-        <section className="rounded-[28px] bg-white px-6 py-14 text-center shadow-[var(--shadow-mobile-card)]">
-          <MessageCircle className="mx-auto text-[var(--color-brand-accent)]" size={44} />
-          <h2 className="mt-5 text-xl font-extrabold text-[var(--color-brand-text)]">Одоогоор нийтлэгдсэн сэтгэгдэл алга</h2>
-          <p className="mt-2 text-[13px] leading-relaxed text-[var(--color-brand-muted)]">Бүтээгдэхүүн хэрэглэсний дараа анхны сэтгэгдлээ үлдээгээрэй.</p>
-          <Link href="/shop" className="mt-6 inline-flex h-12 items-center gap-2 rounded-full bg-[var(--color-brand-accent)] px-6 text-sm font-extrabold text-white">
-            <ShoppingBag size={17} /> Бүтээгдэхүүн үзэх
+      ) : filteredReviews.length === 0 ? (
+        <section className="luxury-card px-6 py-14 text-center">
+          <MessageCircle className="mx-auto text-[var(--color-brand)]" size={42} strokeWidth={1.8} />
+          <h2 className="mt-5 font-serif text-2xl font-semibold text-[var(--color-text-primary)]">Одоогоор нийтлэгдсэн сэтгэгдэл алга</h2>
+          <p className="mt-3 text-sm leading-6 text-[var(--color-text-muted)]">
+            Бүтээгдэхүүн хүлээн авсны дараа анхны сэтгэгдлээ үлдээгээрэй.
+          </p>
+          <Link href="/shop" className="mt-6 inline-flex h-12 items-center gap-2 rounded-full bg-[var(--color-brand)] px-7 text-sm font-semibold text-white">
+            <ShoppingBag size={16} />
+            Дэлгүүр үзэх
           </Link>
         </section>
       ) : (
         <section className="space-y-4">
-          {reviews.map((review) => (
-            <article key={review.id} className="overflow-hidden rounded-[24px] bg-white p-5 shadow-[var(--shadow-mobile-card)] border border-[#fdf2f7] transition-all duration-300 hover:shadow-brand-md">
+          {filteredReviews.map((review) => (
+            <article key={review.id} className="luxury-card p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <Link href={`/shop/${review.productSlug}`} className="block hover:text-[var(--color-brand-accent)] truncate text-[15px] font-extrabold text-[var(--color-brand-text)] transition-colors">
+                  <Link href={`/shop/${review.productSlug}`} className="block truncate text-[15px] font-semibold text-[var(--color-text-primary)] transition hover:text-[var(--color-brand)]">
                     {review.productName}
                   </Link>
-                  <p className="mt-0.5 text-[11px] text-[var(--color-brand-muted)]">{review.userName || 'UJ хэрэглэгч'}</p>
+                  <p className="mt-1 text-xs text-[var(--color-text-muted)]">{review.userName || 'UJ хэрэглэгч'}</p>
                 </div>
                 <Stars rating={review.rating} />
               </div>
-              
-              <p className="mt-3 text-[13px] leading-relaxed text-[var(--color-brand-text)]">{review.content}</p>
-              
-              {/* Premium review thumbnails at bottom of review cards */}
-              {review.imageUrls.length > 0 && (
-                <div className="mt-4 flex gap-2 overflow-x-auto hide-scrollbar py-0.5">
-                  {review.imageUrls.map((imageUrl, idx) => (
-                    <button 
-                      key={`${imageUrl}-${idx}`} 
-                      onClick={() => setActivePhoto(imageUrl)} 
-                      className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[16px] bg-[var(--color-brand-secondary)] border border-[#fbe1ed] shadow-sm transition-all duration-200 hover:scale-[1.04] active:scale-[0.96] hover:border-[var(--color-brand-accent)]"
+
+              <p className="mt-4 text-sm leading-6 text-[var(--color-text-primary)]">{review.content || review.body}</p>
+
+              {review.adminReply ? (
+                <div className="mt-4 rounded-[16px] border border-[#F0E8ED] bg-[#FBF7F9] px-4 py-3">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-brand)]">{t('reviews.adminReply')}</p>
+                  <p className="mt-1.5 text-sm leading-6 text-[var(--color-text-primary)]">{review.adminReply}</p>
+                </div>
+              ) : null}
+
+              {(review.imageUrls || []).length > 0 && (
+                <div className="hide-scrollbar mt-4 flex gap-2 overflow-x-auto py-0.5">
+                  {(review.imageUrls || []).map((imageUrl, index) => (
+                    <button
+                      type="button"
+                      key={`${imageUrl}-${index}`}
+                      onClick={() => setActivePhoto(imageUrl)}
+                      className="relative h-[74px] w-[74px] shrink-0 overflow-hidden rounded-[18px] border border-[#F0E8ED] bg-[#F7F3F5] transition active:scale-[0.96]"
                     >
-                      <Image src={imageUrl} alt={review.productName} fill className="object-cover" sizes="72px" />
+                      <Image src={imageUrl} alt={review.productName} fill className="object-cover" sizes="74px" />
                     </button>
                   ))}
                 </div>
               )}
+
+              <div className="mt-4">
+                <ReviewLikeButton
+                  reviewId={review.id}
+                  initialCount={(review as Review & { likeCount?: number }).likeCount || 0}
+                  initialLiked={(review as Review & { likedByUser?: boolean }).likedByUser || false}
+                />
+              </div>
             </article>
           ))}
 
-          {/* Premium Pill Pagination UI */}
-          {totalPages >= 1 && (
-            <div className="mt-8 flex items-center justify-center gap-1.5 py-4">
-              <button
-                onClick={() => {
-                  if (page > 1) {
-                    setPage(prev => prev - 1);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }
-                }}
-                disabled={page === 1}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-[#f8dbe8] bg-white text-[13px] font-bold text-[var(--color-brand-text)] shadow-sm transition-all hover:bg-[var(--color-brand-secondary)] disabled:opacity-40 active:scale-95"
-              >
-                &lt;
-              </button>
-              
-              {getVisiblePages(page, totalPages).map((pageNum, idx) => {
-                if (pageNum === '...') {
-                  return (
-                    <span key={`ellipsis-${idx}`} className="flex h-10 w-8 items-center justify-center text-[13px] font-bold text-[var(--color-brand-muted)]">
-                      ...
-                    </span>
-                  );
-                }
-
-                const isActive = pageNum === page;
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => {
-                      setPage(pageNum as number);
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                    className={`flex h-10 w-10 items-center justify-center rounded-full text-[13px] font-bold transition-all shadow-sm active:scale-95 ${
-                      isActive
-                        ? 'bg-gradient-to-r from-[var(--color-brand-accent)] to-[#d81b60] text-white shadow-[0_3px_10px_rgba(233,30,140,0.25)]'
-                        : 'border border-[#f8dbe8] bg-white text-[var(--color-brand-text)] hover:bg-[var(--color-brand-secondary)]'
-                    }`}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
-
-              <button
-                onClick={() => {
-                  if (page < totalPages) {
-                    setPage(prev => prev - 1 + 2);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }
-                }}
-                disabled={page === totalPages}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-[#f8dbe8] bg-white text-[13px] font-bold text-[var(--color-brand-text)] shadow-sm transition-all hover:bg-[var(--color-brand-secondary)] disabled:opacity-40 active:scale-95"
-              >
-                &gt;
-              </button>
+          {totalPages > 1 && (
+            <div className="flex flex-wrap items-center justify-center gap-1.5 py-3">
+              <PageButton disabled={page === 1} onClick={() => goToPage(page - 1)} label="<" />
+              {getVisiblePages(page, totalPages).map((pageNumber, index) =>
+                pageNumber === '...' ? (
+                  <span key={`ellipsis-${index}`} className="flex h-10 w-8 items-center justify-center text-sm font-semibold text-[var(--color-text-muted)]">...</span>
+                ) : (
+                  <PageButton key={pageNumber} active={pageNumber === page} onClick={() => goToPage(pageNumber as number)} label={String(pageNumber)} />
+                )
+              )}
+              <PageButton disabled={page === totalPages} onClick={() => goToPage(page + 1)} label=">" />
+              <span className="ml-2 text-xs text-[var(--color-text-muted)]">{page} / {totalPages}</span>
             </div>
           )}
         </section>
       )}
 
-      {/* Glassmorphic Lightbox Overlay */}
       {activePhoto && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 transition-all duration-300 animate-fadeIn"
-          onClick={() => setActivePhoto(null)}
-        >
-          <div className="relative max-h-[85vh] max-w-[90vw] overflow-hidden rounded-[24px] bg-white/10 p-2 shadow-[0_24px_50px_rgba(0,0,0,0.5)] border border-white/20" onClick={e => e.stopPropagation()}>
-            <button 
-              onClick={() => setActivePhoto(null)} 
-              className="absolute right-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-white/80 backdrop-blur-sm text-charcoal shadow-md hover:bg-white active:scale-90 transition-all duration-200"
-              aria-label="Хаах"
-            >
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4 backdrop-blur-md" onClick={() => setActivePhoto(null)}>
+          <div className="relative w-full max-w-[420px] overflow-hidden rounded-[24px] bg-white p-2" onClick={(event) => event.stopPropagation()}>
+            <button type="button" onClick={() => setActivePhoto(null)} className="absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-[var(--color-text-primary)]">
               <X size={18} />
             </button>
-            <div className="relative aspect-[4/5] w-[80vw] max-w-[400px]">
-              <Image 
-                src={activePhoto} 
-                alt="Сэтгэгдлийн зураг" 
-                fill 
-                className="object-cover rounded-[18px]" 
-                sizes="(max-width: 768px) 80vw, 400px"
-                priority
-              />
+            <div className="relative aspect-[4/5] w-full overflow-hidden rounded-[20px] bg-[#F7F3F5]">
+              <Image src={activePhoto} alt="Сэтгэгдлийн зураг" fill className="object-cover" sizes="(max-width: 768px) 90vw, 420px" priority />
             </div>
           </div>
         </div>
       )}
     </main>
+  );
+}
+
+function Stat({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div className="rounded-[20px] border border-[#F0E8ED] bg-[#F7F3F5] p-4 text-center">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--color-text-muted)]">{label}</p>
+      <p className={`mt-2 text-2xl font-semibold ${accent ? 'text-[var(--color-brand)]' : 'text-[var(--color-text-primary)]'}`}>{value}</p>
+    </div>
+  );
+}
+
+function PageButton({ label, active = false, disabled = false, onClick }: { label: string; active?: boolean; disabled?: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold transition active:scale-[0.95] disabled:opacity-35 ${
+        active ? 'bg-[var(--color-brand)] text-white' : 'border border-[#F0E8ED] bg-white text-[var(--color-text-primary)]'
+      }`}
+    >
+      {label}
+    </button>
   );
 }

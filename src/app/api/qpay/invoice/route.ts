@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createQPayInvoice } from '@/lib/qpay';
 import { getAdminDb } from '@/lib/firebaseAdmin';
+import { getPostgresOrderPayment, savePostgresQPayInvoice } from '@/lib/services/postgresAdminService';
 
 export const runtime = 'nodejs';
 
@@ -9,6 +10,41 @@ export async function POST(request: Request) {
     const { orderId } = await request.json();
     if (!orderId || typeof orderId !== 'string') {
       return NextResponse.json({ error: 'orderId is required' }, { status: 400 });
+    }
+
+    const pgOrder = await getPostgresOrderPayment(orderId);
+    if (pgOrder) {
+      // Idempotent: төлбөр төлөгдөөгүй захиалгад invoice аль хэдийн үүссэн бол
+      // дахин үүсгэхгүй, хадгалсан QR/нэхэмжлэхийг буцаана (давхар дарахаас хамгаална).
+      const existingMeta = (pgOrder.paymentMeta && typeof pgOrder.paymentMeta === 'object'
+        ? pgOrder.paymentMeta
+        : {}) as Record<string, any>;
+      if (pgOrder.qpayInvoiceId && pgOrder.paymentStatus !== 'paid') {
+        return NextResponse.json({
+          invoiceId: pgOrder.qpayInvoiceId,
+          qrText: existingMeta.qpayQrText || '',
+          qrImage: existingMeta.qpayQrImage || '',
+          shortUrl: existingMeta.qpayShortUrl || '',
+          urls: existingMeta.qpayUrls || [],
+        });
+      }
+
+      const invoice = await createQPayInvoice({
+        orderId,
+        customerCode: pgOrder.userId || pgOrder.customerPhone || pgOrder.phone || 'customer',
+        description: `UJ Cosmetic захиалга #${orderId.slice(0, 8)}`,
+        amount: Number(pgOrder.total || 0),
+      });
+
+      await savePostgresQPayInvoice(orderId, invoice);
+
+      return NextResponse.json({
+        invoiceId: invoice.invoice_id,
+        qrText: invoice.qr_text || '',
+        qrImage: invoice.qr_image || '',
+        shortUrl: invoice.qPay_shortUrl || '',
+        urls: invoice.urls || [],
+      });
     }
 
     const adminDb = getAdminDb();

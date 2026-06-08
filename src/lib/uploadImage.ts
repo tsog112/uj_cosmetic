@@ -6,18 +6,31 @@ export function uploadProductImage(
   return uploadImage(file, `products/${productSlug}`, onProgress);
 }
 
+async function getUploadToken(): Promise<string | null> {
+  try {
+    const { auth } = await import('./firebase');
+    const user = auth?.currentUser;
+    if (!user) return null;
+    return await user.getIdToken();
+  } catch {
+    return null;
+  }
+}
+
 export function uploadImage(
   file: File,
   folder = 'misc',
   onProgress?: (progress: number) => void
 ): Promise<string> {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
+    const token = await getUploadToken();
     const formData = new FormData();
     formData.append('file', file);
     formData.append('folder', folder);
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', '/api/upload', true);
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
 
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) {

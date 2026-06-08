@@ -1,4 +1,7 @@
+import { NextRequest, NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
+import { authorizeUserRequest } from "@/lib/auth/serverAuth";
+import { enforceRateLimit } from "@/lib/rateLimit";
 
 // Validate env vars at module load time — errors show in Vercel Function logs
 const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
@@ -13,7 +16,18 @@ cloudinary.config({
 
 export const runtime = "nodejs";
 
-export async function POST(req: Request) {
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10MB
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"];
+
+export async function POST(req: NextRequest) {
+  // Нэвтрэлт шаардана — Cloudinary зардал/abuse-аас хамгаална
+  const auth = await authorizeUserRequest(req);
+  if (auth instanceof NextResponse) return auth;
+
+  // Rate limit (хэрэглэгч бүрээр)
+  const limited = await enforceRateLimit(req, { key: "upload", limit: 30, windowMs: 60_000, identifier: auth.uid });
+  if (limited) return limited;
+
   // Guard: if env vars missing, return a clear error instead of a cryptic 500
   if (!CLOUD_NAME || !API_KEY || !API_SECRET) {
     console.error("[upload] Missing Cloudinary env vars:", {
@@ -37,6 +51,13 @@ export async function POST(req: Request) {
 
     if (!file) {
       return Response.json({ error: "No file provided" }, { status: 400 });
+    }
+
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return Response.json({ error: "Зураг хэт том байна (10MB-аас бага байх ёстой)" }, { status: 413 });
+    }
+    if (file.type && !ALLOWED_TYPES.includes(file.type)) {
+      return Response.json({ error: "Зөвхөн зураг файл оруулна уу" }, { status: 415 });
     }
 
     const bytes = await file.arrayBuffer();

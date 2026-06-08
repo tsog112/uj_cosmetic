@@ -1,0 +1,37 @@
+---
+description: Token хэмнэлт — agent ажиллах арга, товч prompt
+alwaysApply: true
+---
+
+# Token хэмнэлт
+
+## Agent (заавал мөрдөнө)
+
+1. **Эхлээд хайлт, дараа нь уншилт** — `Grep` / `Glob` → зөвхөн таарсан 1–3 файл `Read`. Бүх `src/` эсвэл том файл бүтнээр уншихгүй.
+2. **Давхар ажил бүү хий** — нэг turn-д ижил файл/функцийг дахин уншихгүй; өмнөх chat-ийн дүгнэлтийг дахин судлахгүй.
+3. **Scope барих** — хэрэглэгчийн асуултаас гадуур refactor, comment, test, docs нэмэхгүй.
+4. **Task tool зөвхөн том судалгаанд** — 1–2 файл олох бол шууд Grep; explore agent-ийг бүх repo-д ажиллуулахгүй.
+5. **Build/test** — зөвхөн логик/API/schema өөрчлөгдсөн үед; UI-only засвар дээр build заавал биш.
+6. **Тайлбар богино** — урт архитектурын тайлан, file list dump хэрэггүй; юу өөрчилсөн + яагаад л хангалттай.
+
+## Хэрэглэгчийн товч prompt (жишээ)
+
+```
+# Сайн (бага token)
+admin/orders: KR шүүлтүүр дээр MN dropdown харагдаж байна — зас.
+checkout/page.tsx: MN утас 88xxxx validation алдаа гарч байна.
+
+# Муу (их token)
+"бүх project шалгаад сайжруул", "security audit хий", "refactor хий"
+```
+
+Prompt-д **файл/хэсэг + алдааны төрөл + хүлээгдэж буй үр дүн** заавал бич.
+
+## Энэ repo-д дахин судлах шаардлагагүй
+
+- Зах зээл MN/KR: `src/context/MarketContext.tsx`, `src/lib/orderAddress.ts`, `src/lib/currency.ts`
+- Admin orders filter: `src/app/admin/orders/page.tsx`, `src/lib/hooks/useAdmin.ts`, `src/lib/services/postgresAdminService.ts`
+- Checkout: `src/app/(public)/checkout/page.tsx`, `src/app/api/orders/create/route.ts`
+- Auth admin: `src/lib/auth/serverAuth.ts`
+
+Дэлгэрэнгүй газрын зураг: `AGENTS.md`.

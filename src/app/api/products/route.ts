@@ -1,32 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { Query } from 'firebase-admin/firestore';
+import { assertFirestoreCircuitClosed, recordFirestoreError } from '@/lib/firestoreCircuitBreaker';
 import { getAdminDb } from '@/lib/firebaseAdmin';
 import { toPublicProduct } from '@/lib/publicDto';
-import catalog from '@/data/pdf-products.json';
-
+import { listPostgresPublicProducts } from '@/lib/services/postgresAdminService';
 export const runtime = 'nodejs';
 
-function fallbackProducts(filters: { slug?: string | null; category?: string | null; featured?: string | null }) {
-  let products = (catalog.products || [])
-    .map((product: any) => toPublicProduct(product.id || product.slug, product))
-    .filter((product) => product.published !== false);
-
-  if (filters.slug) products = products.filter((product) => product.slug === filters.slug);
-  if (filters.category) products = products.filter((product) => product.category === filters.category);
-  if (filters.featured === 'true') products = products.filter((product) => product.featured === true);
-
-  return products;
+function emptyProductsResponse(filters: { slug?: string | null; page?: string | null; limit?: string | null }) {
+  if (filters.slug) return { product: null };
+  const page = parseInt(filters.page || '1', 10);
+  const limit = parseInt(filters.limit || '12', 10);
+  return { products: [], totalCount: 0, totalPages: 1, currentPage: page, limit };
 }
 
 let cachedProducts: any[] = [];
 let cacheTime = 0;
+
+function withTimeout<T>(promise: Promise<T>, label: string, ms = 1000): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    }),
+  ]);
+}
 
 async function getCachedProducts(db: any) {
   const now = Date.now();
   if (cachedProducts.length > 0 && now - cacheTime < 60 * 1000) {
     return cachedProducts;
   }
-  const snap = await db.collection('products').where('published', '==', true).get();
+  const snap: any = await withTimeout(db.collection('products').where('published', '==', true).get(), 'public products');
   cachedProducts = snap.docs.map((doc: any) => toPublicProduct(doc.id, doc.data()));
   cacheTime = now;
   return cachedProducts;
@@ -41,11 +45,20 @@ export async function GET(req: NextRequest) {
   const limitParam = searchParams.get('limit');
 
   try {
+    const postgresResult = await listPostgresPublicProducts({ slug, category, featured, page: pageParam, limit: limitParam });
+    if (slug) return NextResponse.json({ product: postgresResult.products[0] ?? null });
+    return NextResponse.json(postgresResult);
+  } catch (postgresError) {
+    console.warn('Postgres public products failed, using Firestore/local fallback:', postgresError);
+  }
+
+  try {
+    assertFirestoreCircuitClosed();
     const db = getAdminDb();
 
     if (slug) {
-      const snap = await db.collection('products').where('slug', '==', slug).limit(1).get();
-      const products = snap.docs.map((doc) => toPublicProduct(doc.id, doc.data()));
+      const snap: any = await withTimeout(db.collection('products').where('slug', '==', slug).limit(1).get(), 'public product by slug');
+      const products = snap.docs.map((doc: any) => toPublicProduct(doc.id, doc.data()));
       return NextResponse.json({ product: products[0] ?? null });
     }
 
@@ -77,33 +90,12 @@ export async function GET(req: NextRequest) {
       currentPage,
     });
   } catch (error) {
+    recordFirestoreError(error);
     console.error('Public products API failed:', error);
-    let products = fallbackProducts({ slug, category, featured });
-    if (slug) {
-      return NextResponse.json({
-        product: products[0] ?? null,
-        warning: 'Firestore products are temporarily unavailable; using local catalog fallback.',
-      });
-    }
-
-    const totalCount = products.length;
-    let totalPages = 1;
-    let currentPage = 1;
-
-    if (pageParam || limitParam) {
-      const page = parseInt(pageParam || '1', 10);
-      const limit = parseInt(limitParam || '12', 10);
-      currentPage = page;
-      totalPages = Math.ceil(totalCount / limit) || 1;
-      products = products.slice((page - 1) * limit, page * limit);
-    }
-
+    const empty = emptyProductsResponse({ slug, page: pageParam, limit: limitParam });
     return NextResponse.json({
-      products,
-      totalCount,
-      totalPages,
-      currentPage,
-      warning: 'Firestore products are temporarily unavailable; using local catalog fallback.',
+      ...empty,
+      warning: 'Products are temporarily unavailable.',
     });
   }
 }

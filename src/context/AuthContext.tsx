@@ -14,6 +14,7 @@ interface AuthContextType {
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name: string, phone?: any) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  signInWithKakao: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -52,6 +53,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setIsAdmin(false);
           }
           setCustomLoading(false);
+        }, (error) => {
+          console.error('Admin role listener failed:', error);
+          setIsAdmin(false);
+          setCustomLoading(false);
         });
 
       } else {
@@ -65,6 +70,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, [firebaseUser, authLoading]);
 
+  useEffect(() => {
+    if (typeof document === 'undefined' || authLoading || customLoading) return;
+    const value = isAdmin ? 'true' : 'false';
+    document.cookie = `is_admin=${value}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+  }, [isAdmin, authLoading, customLoading]);
+
   const signInWithEmail = async (email: string, password: string) => {
     await authService.loginWithEmail(email, password);
   };
@@ -75,6 +86,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = async () => {
     await authService.loginWithGoogle();
+  };
+
+  const signInWithKakao = async () => {
+    await authService.loginWithKakao();
   };
 
   const signOut = async () => {
@@ -90,6 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signInWithEmail,
       signUp,
       signInWithGoogle,
+      signInWithKakao,
       signOut
     }}>
       {children}

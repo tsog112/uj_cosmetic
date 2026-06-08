@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Bell, Package, ReceiptText, UserRound, X, CheckCheck } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import useSWR from 'swr';
+import { authFetch } from '@/lib/auth/clientFetch';
 import { formatRelativeMN } from '@/lib/utils/format';
 
 type NotificationItem = {
@@ -23,7 +24,7 @@ export default function NotificationBell() {
   const [mounted, setMounted] = useState(false);
 
   const { data } = useSWR('/api/admin/notifications', async (url) => {
-    const res = await fetch(url);
+    const res = await authFetch(url);
     if (!res.ok) throw new Error('Failed to fetch');
     return res.json();
   }, { refreshInterval: 60000 }); // refresh every minute

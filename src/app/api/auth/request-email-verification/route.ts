@@ -4,6 +4,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getAdminDb } from '@/lib/firebaseAdmin';
 import { sendEmailVerification } from '@/lib/emailService';
+import { enforceRateLimit } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
 
@@ -15,6 +16,8 @@ function appUrl(path: string) {
 }
 
 export async function POST(request: Request) {
+  const limited = await enforceRateLimit(request, { key: 'email-verification', limit: 5, windowMs: 10 * 60_000 });
+  if (limited) return limited;
   try {
     const { uid, email } = await request.json();
     const db = getAdminDb();

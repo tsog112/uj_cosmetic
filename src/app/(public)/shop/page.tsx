@@ -1,123 +1,55 @@
 'use client';
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
-import { collection, getDocs, orderBy, query } from 'firebase/firestore';
-import { Search, SlidersHorizontal, X, ChevronDown } from 'lucide-react';
+import { Search, SlidersHorizontal, Sparkles, X } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
 import ProductCard from '@/components/ui/ProductCard';
-import ScrollReveal from '@/components/ui/ScrollReveal';
-import { db } from '@/lib/firebase';
 import { getAllProducts, getCategories } from '@/lib/services/firestoreService';
 import { formatPrice, type Product } from '@/types';
 
-const categoryMeta: Record<string, { label: string; emoji: string }> = {
-  all:       { label: 'Бүгд',       emoji: '✦' },
-  serum:     { label: 'Серум',      emoji: '💧' },
-  toner:     { label: 'Тонер',      emoji: '🌊' },
-  oil:       { label: 'Тос',        emoji: '✨' },
-  cream:     { label: 'Крем',       emoji: '🌸' },
-  sunscreen: { label: 'Нарны тос',  emoji: '☀️' },
-  cleanser:  { label: 'Цэвэрлэгч', emoji: '🫧' },
-  mask:      { label: 'Маск',       emoji: '🌿' },
-  other:     { label: 'Бусад',      emoji: '💫' },
-};
+type Category = { id: string; name_mn: string; name?: string; slug: string };
 
-function getVisiblePages(currentPage: number, totalPages: number): (number | string)[] {
-  const pages: (number | string)[] = [];
-  if (totalPages <= 5) {
-    for (let i = 1; i <= totalPages; i++) {
-      pages.push(i);
-    }
-  } else {
-    pages.push(1);
-    let start = Math.max(2, currentPage - 1);
-    let end = Math.min(totalPages - 1, currentPage + 1);
-    if (currentPage <= 3) {
-      end = 4;
-    } else if (currentPage >= totalPages - 2) {
-      start = totalPages - 3;
-    }
-    if (start > 2) {
-      pages.push('...');
-    }
-    for (let i = start; i <= end; i++) {
-      pages.push(i);
-    }
-    if (end < totalPages - 1) {
-      pages.push('...');
-    }
-    pages.push(totalPages);
-  }
-  return pages;
+const SORT_OPTIONS = [
+  { value: 'newest', label: '\u0428\u0438\u043d\u044d \u044d\u0445\u044d\u043d\u0434\u044d\u044d' },
+  { value: 'price_asc', label: '\u04ae\u043d\u044d \u2191 \u04e9\u0441\u04e9\u0445' },
+  { value: 'price_desc', label: '\u04ae\u043d\u044d \u2193 \u0431\u0443\u0443\u0440\u0430\u0445' },
+];
+
+function displayCategoryName(category: Category) {
+  return category.name_mn || category.name || category.slug;
 }
 
-function EmptyState({ onReset }: { onReset: () => void }) {
+function ShopEmptyState({ onReset }: { onReset: () => void }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.92 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
-      className="rounded-[28px] px-6 py-16 text-center"
-      style={{ background: '#FFFFFF', boxShadow: '0 4px 24px rgba(233,30,140,0.06)' }}
-    >
-      {/* SVG illustration */}
-      <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full" style={{ background: 'var(--color-soft-pink)' }}>
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" strokeWidth="1.5" strokeLinecap="round">
-          <circle cx="11" cy="11" r="8"/>
-          <path d="M21 21l-4.35-4.35"/>
-          <path d="M8 11h6M11 8v6" opacity="0.5"/>
-        </svg>
+    <div className="rounded-[24px] border border-[#F0E8ED] bg-white px-6 py-14 text-center">
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-brand-light)] text-[var(--color-brand)]">
+        <Search size={24} strokeWidth={1.6} />
       </div>
-      <p className="text-[18px] font-bold" style={{ color: 'var(--color-text-dark)', fontFamily: '"Playfair Display", serif' }}>
-        Бүтээгдэхүүн олдсонгүй
+      <h2 className="mt-5 font-serif text-2xl font-semibold text-[var(--color-text-primary)]">{'\u0411\u04af\u0442\u044d\u044d\u0433\u0434\u044d\u0445\u04af\u04af\u043d \u043e\u043b\u0434\u0441\u043e\u043d\u0433\u04af\u0439'}</h2>
+      <p className="mx-auto mt-2 max-w-[260px] text-sm leading-6 text-[var(--color-text-muted)]">
+        {'\u0425\u0430\u0439\u043b\u0442, \u0430\u043d\u0433\u0438\u043b\u0430\u043b \u044d\u0441\u0432\u044d\u043b \u04af\u043d\u0438\u0439\u043d \u0448\u04af\u04af\u043b\u0442\u04af\u04af\u0440\u044d\u044d \u04e9\u04e9\u0440\u0447\u043b\u04e9\u04e9\u0434 \u0434\u0430\u0445\u0438\u043d \u04af\u0437\u044d\u044d\u0440\u044d\u0439.'}
       </p>
-      <p className="mt-2 text-[13px] leading-relaxed" style={{ color: 'var(--color-text-medium)' }}>
-        Хайлт, ангилал эсвэл үнийн шүүлтүүрээ өөрчлөөд дахин үзээрэй.
-      </p>
-      <button
-        onClick={onReset}
-        className="mt-6 h-11 rounded-full px-7 text-[13px] font-bold text-white transition-all hover:scale-105"
-        style={{
-          background: 'linear-gradient(135deg, #E91E8C 0%, #C2185B 100%)',
-          boxShadow: '0 8px 24px rgba(233,30,140,0.28)',
-          fontFamily: '"Montserrat", sans-serif',
-          letterSpacing: '0.04em',
-        }}
-      >
-        Шүүлтүүр цэвэрлэх
+      <button type="button" onClick={onReset} className="mt-6 h-11 rounded-full bg-[var(--color-brand)] px-7 text-sm font-semibold text-white uj-pressable">
+        {'\u0428\u04af\u04af\u043b\u0442\u04af\u04af\u0440 \u0446\u044d\u0432\u044d\u0440\u043b\u044d\u0445'}
       </button>
-    </motion.div>
+    </div>
   );
 }
 
 function ShopContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-
   const activeCategory = searchParams.get('category') || 'all';
   const activeSort = searchParams.get('sort') || 'newest';
+  const onSaleOnly = searchParams.get('onSale') === 'true';
 
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 0]);
   const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const itemsPerPage = 12;
-
-  const displayCategories = [
-    { id: 'all', name_mn: 'Бүгд', slug: 'all' },
-    ...categories,
-  ];
-
-  const sortOptions = [
-    { value: 'newest',     label: 'Шинэ эхэндээ' },
-    { value: 'price_asc',  label: 'Үнэ ↑ өсөх' },
-    { value: 'price_desc', label: 'Үнэ ↓ буурах' },
-  ];
+  const [priceMax, setPriceMax] = useState(0);
 
   useEffect(() => {
     setLoading(true);
@@ -129,351 +61,214 @@ function ShopContent() {
   }, []);
 
   useEffect(() => {
-    getCategories().then(setCategories);
+    getCategories().then((data) => setCategories(data || [])).catch(() => setCategories([]));
   }, []);
 
-  const maxProductPrice = useMemo(
-    () => products.reduce((max, p) => Math.max(max, p.salePrice ?? p.price ?? 0), 0),
-    [products]
-  );
+  const maxProductPrice = useMemo(() => products.reduce((max, product) => Math.max(max, product.salePrice ?? product.price ?? 0), 0), [products]);
 
   useEffect(() => {
-    if (maxProductPrice > 0) setPriceRange([0, maxProductPrice]);
+    if (maxProductPrice > 0) setPriceMax(maxProductPrice);
   }, [maxProductPrice]);
 
-  useEffect(() => {
-    setPage(1);
-  }, [activeCategory, activeSort, priceRange, search]);
+  const displayCategories = useMemo(() => [{ id: 'all', name_mn: '\u0411\u04af\u0433\u0434', slug: 'all' }, ...categories], [categories]);
 
   const filteredProducts = useMemo(() => {
-    const upperPrice = priceRange[1] || maxProductPrice;
-    const q = search.trim().toLowerCase();
+    const keyword = search.trim().toLowerCase();
+    const upperPrice = priceMax || maxProductPrice;
     const result = products
-      .filter((p) => activeCategory === 'all' || p.category === activeCategory)
-      .filter((p) => {
-        if (!q) return true;
-        return [p.name_mn, p.name_en, p.slug, p.description_mn]
-          .filter(Boolean)
-          .some((v) => String(v).toLowerCase().includes(q));
+      .filter((product) => activeCategory === 'all' || product.category === activeCategory || product.category === (activeCategory as Product['category']))
+      .filter((product) => {
+        if (!onSaleOnly) return true;
+        return product.salePrice !== null && product.salePrice !== undefined && product.salePrice < (product.price ?? 0);
       })
-      .filter((p) => {
-        const price = p.salePrice ?? p.price ?? 0;
-        return upperPrice <= 0 || (price >= priceRange[0] && price <= upperPrice);
+      .filter((product) => {
+        if (!keyword) return true;
+        return [product.name_mn, product.name_en, product.slug, product.description_mn]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(keyword));
+      })
+      .filter((product) => {
+        const price = product.salePrice ?? product.price ?? 0;
+        return !upperPrice || price <= upperPrice;
       });
 
     if (activeSort === 'price_asc') result.sort((a, b) => (a.salePrice ?? a.price ?? 0) - (b.salePrice ?? b.price ?? 0));
     if (activeSort === 'price_desc') result.sort((a, b) => (b.salePrice ?? b.price ?? 0) - (a.salePrice ?? a.price ?? 0));
+    if (activeSort === 'newest') result.sort((a, b) => new Date(b.createdAt as any).getTime() - new Date(a.createdAt as any).getTime());
 
     return result;
-  }, [activeCategory, activeSort, maxProductPrice, priceRange, products, search]);
+  }, [activeCategory, activeSort, maxProductPrice, onSaleOnly, priceMax, products, search]);
 
-  const paginatedProducts = useMemo(() => {
-    const start = (page - 1) * itemsPerPage;
-    return filteredProducts.slice(start, start + itemsPerPage);
-  }, [filteredProducts, page, itemsPerPage]);
+  const activeFilterCount = [
+    activeCategory !== 'all',
+    activeSort !== 'newest',
+    onSaleOnly,
+    search.trim().length > 0,
+    Boolean(priceMax && priceMax < maxProductPrice),
+  ].filter(Boolean).length;
 
-  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage) || 1;
-
-  const updateFilters = (key: string, value: string) => {
+  const updateFilter = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
     if (value === 'all' || value === 'newest') params.delete(key);
     else params.set(key, value);
     router.push(`/shop${params.toString() ? `?${params.toString()}` : ''}`, { scroll: false });
   };
 
+  const resetFilters = () => {
+    setSearch('');
+    setPriceMax(maxProductPrice);
+    router.push('/shop', { scroll: false });
+  };
   if (error) {
     return (
-      <div className="px-4 py-20 text-center">
-        <p className="text-[14px] font-medium" style={{ color: 'var(--color-brand-danger)' }}>
-          Бүтээгдэхүүн ачаалахад алдаа гарлаа.
-        </p>
-        <button
-          onClick={() => window.location.reload()}
-          className="mt-5 h-11 rounded-full px-7 text-[13px] font-bold text-white transition-all"
-          style={{ background: 'linear-gradient(135deg, #E91E8C 0%, #C2185B 100%)' }}
-        >
-          Дахин оролдох
+      <main className="mx-auto max-w-[1180px] px-5 py-20 text-center">
+        <p className="text-sm font-semibold text-[#A32D2D]">{'\u0411\u04af\u0442\u044d\u044d\u0433\u0434\u044d\u0445\u04af\u04af\u043d \u0430\u0447\u0430\u0430\u043b\u0430\u0445\u0430\u0434 \u0430\u043b\u0434\u0430\u0430 \u0433\u0430\u0440\u043b\u0430\u0430.'}</p>
+        <button type="button" onClick={() => window.location.reload()} className="mt-5 h-11 rounded-full bg-[var(--color-brand)] px-7 text-sm font-semibold text-white">
+          {'\u0414\u0430\u0445\u0438\u043d \u043e\u0440\u043e\u043b\u0434\u043e\u0445'}
         </button>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="mx-auto max-w-7xl pb-[96px] md:pb-16">
-      {/* ── Page header ──────────────────────────────────────────────── */}
-      <div className="px-4 pb-4 md:px-8">
-        <p
-          className="text-label"
-          style={{ color: 'var(--color-primary)', fontFamily: '"Montserrat", sans-serif' }}
-        >
-          Shop
-        </p>
-        <h1
-          className="mt-1 leading-tight"
-          style={{
-            fontFamily: '"Playfair Display", "Cormorant Garamond", Georgia, serif',
-            fontSize: 34,
-            fontWeight: 500,
-            color: 'var(--color-text-dark)',
-            letterSpacing: '-0.01em',
-          }}
-        >
-          Бүтээгдэхүүн
-        </h1>
-        <p className="mt-1 text-[12.5px]" style={{ color: 'var(--color-text-medium)' }}>
-          {loading ? 'Ачаалж байна…' : `${filteredProducts.length} бүтээгдэхүүн`}
-        </p>
+    <main className="luxury-shell min-h-screen pb-[104px]">
+      <div className="mx-auto w-full max-w-[1180px] px-5 pt-8 md:px-8">
+        <section className="mb-6">
+          <h1 className="luxury-title text-[40px] text-[#2a1d24] md:text-[52px]">
+            {onSaleOnly ? '\u0425\u044f\u043c\u0434\u0440\u0430\u043b\u0442\u0430\u0439 \u0431\u04af\u0442\u044d\u044d\u0433\u0434\u044d\u0445\u04af\u04af\u043d' : '\u0411\u04af\u0442\u044d\u044d\u0433\u0434\u044d\u0445\u04af\u04af\u043d'}
+          </h1>
+          <p className="mt-2 text-sm text-[#7d6070]">
+            {loading ? '\u0410\u0447\u0430\u0430\u043b\u0436 \u0431\u0430\u0439\u043d\u0430...' : `${filteredProducts.length} \u0431\u04af\u0442\u044d\u044d\u0433\u0434\u044d\u0445\u04af\u04af\u043d`}
+          </p>
+        </section>
 
-        {/* Search bar & Filter toggle */}
-        <div className="mt-4 flex items-center gap-2.5">
-          <div
-            className="flex h-[50px] flex-1 items-center gap-2.5 rounded-[16px] px-4 transition-all"
-            style={{
-              background: '#FFFFFF',
-              border: '1.5px solid rgba(233,30,140,0.12)',
-              boxShadow: '0 2px 12px rgba(233,30,140,0.05)',
-            }}
-            onFocusCapture={(e) => {
-              (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--color-primary)';
-              (e.currentTarget as HTMLDivElement).style.boxShadow = '0 0 0 3px rgba(233,30,140,0.10)';
-            }}
-            onBlurCapture={(e) => {
-              (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(233,30,140,0.12)';
-              (e.currentTarget as HTMLDivElement).style.boxShadow = '0 2px 12px rgba(233,30,140,0.05)';
-            }}
-          >
-            <Search size={17} style={{ color: 'var(--color-primary)', flexShrink: 0 }} strokeWidth={2} />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Нэр, брэнд, хэрэгцээгээр хайх…"
-              className="min-w-0 flex-1 bg-transparent text-[13px] font-medium outline-none"
-              style={{ color: 'var(--color-text-dark)' }}
-            />
-            {search && (
-              <button onClick={() => setSearch('')} aria-label="Хайлт цэвэрлэх">
-                <X size={15} style={{ color: 'var(--color-text-medium)' }} />
-              </button>
-            )}
+        <section className="space-y-5">
+          <div className="flex items-center gap-2">
+            <label className="luxury-input flex h-13 flex-1 px-4" style={{ boxShadow: 'var(--shadow-xs)' }}>
+              <Search size={18} className="shrink-0 text-[#e91e8c]" strokeWidth={1.9} />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={'\u041d\u044d\u0440, \u0431\u0440\u044d\u043d\u0434, \u0445\u044d\u0440\u044d\u0433\u043b\u044d\u0433\u0447\u044d\u044d\u0440 \u0445\u0430\u0439\u0445...'}
+                className="min-w-0 flex-1 bg-transparent px-3 text-[13px] font-medium outline-none"
+                inputMode="search"
+              />
+              {search && (
+                <button type="button" onClick={() => setSearch('')} aria-label={'\u0425\u0430\u0439\u043b\u0442 \u0446\u044d\u0432\u044d\u0440\u043b\u044d\u0445'} className="flex h-9 w-9 items-center justify-center rounded-full">
+                  <X size={15} />
+                </button>
+              )}
+            </label>
+            <button
+              type="button"
+              onClick={() => setIsFilterOpen((current) => !current)}
+              className="flex h-13 shrink-0 items-center justify-center gap-2 rounded-[14px] bg-[var(--color-brand)] px-4 text-[13px] font-semibold text-white transition-all duration-200 hover:bg-[var(--color-brand-dark)] active:scale-[0.98]"
+              style={{ boxShadow: 'var(--shadow-glow)' }}
+              aria-expanded={isFilterOpen}
+            >
+              <SlidersHorizontal size={17} strokeWidth={2} />
+              <span className="hidden sm:inline">{'\u0428\u04af\u04af\u043b\u0442\u04af\u04af\u0440'}</span>
+              {activeFilterCount > 0 && <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">{activeFilterCount}</span>}
+            </button>
           </div>
 
-          <button
-            onClick={() => setIsFilterOpen((prev) => !prev)}
-            className="flex h-[50px] shrink-0 items-center justify-center gap-2 rounded-[16px] px-4 transition-all"
-            style={{
-              background: isFilterOpen ? 'var(--color-primary)' : '#FFFFFF',
-              border: isFilterOpen ? '1.5px solid var(--color-primary)' : '1.5px solid rgba(233,30,140,0.12)',
-              color: isFilterOpen ? '#FFFFFF' : 'var(--color-text-dark)',
-              boxShadow: isFilterOpen ? '0 4px 16px rgba(233,30,140,0.25)' : '0 2px 12px rgba(233,30,140,0.05)',
-            }}
-          >
-            <SlidersHorizontal size={18} strokeWidth={2.5} />
-            <span className="hidden text-[13px] font-bold md:block" style={{ fontFamily: '"Montserrat", sans-serif' }}>
-              Шүүлтүүр
-            </span>
-          </button>
-        </div>
-      </div>
-
-      {/* ── Filter panel ─────────────────────────────────────── */}
-      <div className="px-4 md:px-8">
-        <AnimatePresence>
           {isFilterOpen && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              className="overflow-hidden"
-            >
-              <div className="mt-2 rounded-[20px] p-5" style={{ background: '#FFFFFF', boxShadow: '0 4px 24px rgba(233,30,140,0.08)' }}>
-                
-                {/* Categories */}
-                <div className="mb-5">
-                  <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--color-text-medium)', fontFamily: '"Montserrat", sans-serif' }}>
-                    Ангилал
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {displayCategories.map((cat) => {
-                      const isActive = activeCategory === cat.slug;
-                      const meta = categoryMeta[cat.slug];
-                      return (
-                        <button
-                          key={cat.id}
-                          onClick={() => updateFilters('category', cat.slug)}
-                          className="flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12.5px] font-bold transition-all duration-200"
-                          style={{
-                            background: isActive ? 'linear-gradient(135deg, #E91E8C 0%, #C2185B 100%)' : 'var(--color-soft-pink)',
-                            color: isActive ? '#ffffff' : 'var(--color-text-dark)',
-                            boxShadow: isActive ? '0 4px 16px rgba(233,30,140,0.30)' : 'none',
-                          }}
-                        >
-                          {meta?.emoji && <span style={{ fontSize: 14 }}>{meta.emoji}</span>}
-                          {meta?.label ?? cat.name_mn}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Sort */}
-                <div className="mb-5">
-                  <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--color-text-medium)', fontFamily: '"Montserrat", sans-serif' }}>
-                    Эрэмбэлэх
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {sortOptions.map((opt) => (
+            <div className="luxury-card rounded-[24px] p-5 md:p-6">
+              <div>
+                <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-[#7d405a]">{'\u0410\u043d\u0433\u0438\u043b\u0430\u043b'}</p>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  {displayCategories.map((category) => {
+                    const isActive = activeCategory === category.slug;
+                    return (
                       <button
-                        key={opt.value}
-                        onClick={() => updateFilters('sort', opt.value)}
-                        className="rounded-full px-3.5 py-2 text-[12.5px] font-bold transition-all"
-                        style={{
-                          background: activeSort === opt.value
-                            ? 'linear-gradient(135deg, #E91E8C 0%, #C2185B 100%)'
-                            : 'var(--color-soft-pink)',
-                          color: activeSort === opt.value ? 'white' : 'var(--color-text-dark)',
-                          boxShadow: activeSort === opt.value ? '0 4px 12px rgba(233,30,140,0.25)' : 'none',
-                        }}
+                        key={category.id}
+                        type="button"
+                        onClick={() => updateFilter('category', category.slug)}
+                        className={`inline-flex h-12 items-center rounded-full px-5 text-sm font-semibold transition ${
+                          isActive ? 'bg-[#e91e8c] text-white' : 'bg-[#fde8f1] text-[#2a1d24]'
+                        }`}
+                        aria-pressed={isActive}
                       >
-                        {opt.label}
+                        {category.slug === 'all' && <Sparkles size={15} className="mr-2" fill="currentColor" />}
+                        {displayCategoryName(category)}
                       </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Price range */}
-                <div>
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--color-text-medium)', fontFamily: '"Montserrat", sans-serif' }}>
-                      Дээд үнэ
-                    </p>
-                    <span className="text-[13px] font-bold tabular-nums" style={{ color: 'var(--color-primary)' }}>
-                      {formatPrice(priceRange[1] || maxProductPrice)}
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={Math.max(maxProductPrice, 1)}
-                    step={5000}
-                    value={priceRange[1] || maxProductPrice || 1}
-                    onChange={(e) => setPriceRange([0, Number(e.target.value)])}
-                    className="w-full"
-                    style={{ accentColor: 'var(--color-primary)' }}
-                    disabled={maxProductPrice <= 0}
-                  />
+                    );
+                  })}
                 </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
 
-      {/* ── Product grid ──────────────────────────────────────────────── */}
-      <div className="px-4 pt-5 md:px-8">
-        {loading ? (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="animate-shimmer rounded-[24px]" style={{ height: 300 }} />
-            ))}
-          </div>
-        ) : filteredProducts.length > 0 ? (
-          <>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-              {paginatedProducts.map((product, i) => (
-                <ScrollReveal key={product.id} delay={Math.min(i * 40, 200)}>
-                  <ProductCard product={product} />
-                </ScrollReveal>
+              <div className="mt-7">
+                <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-[#7d405a]">{'\u042d\u0440\u044d\u043c\u0431\u044d\u043b\u044d\u0445'}</p>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  {SORT_OPTIONS.map((option) => {
+                    const isActive = activeSort === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => updateFilter('sort', option.value)}
+                        className={`inline-flex h-12 items-center rounded-full px-5 text-sm font-semibold transition ${
+                          isActive ? 'bg-[#e91e8c] text-white' : 'bg-[#fde8f1] text-[#2a1d24]'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="mt-7">
+                <div className="flex items-center justify-between">
+                  <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-[#7d405a]">{'\u0414\u044d\u044d\u0434 \u04af\u043d\u044d'}</p>
+                  <span className="text-sm font-semibold text-[#e91e8c]">{formatPrice(priceMax || maxProductPrice)}</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={Math.max(maxProductPrice, 1)}
+                  step={5000}
+                  value={priceMax || maxProductPrice || 1}
+                  onChange={(event) => setPriceMax(Number(event.target.value))}
+                  className="mt-4 w-full"
+                  style={{ accentColor: '#e91e8c' }}
+                />
+              </div>
+
+              <button type="button" onClick={resetFilters} className="mt-6 h-11 rounded-full border border-[#f5b6ce] px-6 text-sm font-semibold text-[#e91e8c]">
+                {'\u0411\u04af\u0433\u0434\u0438\u0439\u0433 \u0446\u044d\u0432\u044d\u0440\u043b\u044d\u0445'}
+              </button>
+            </div>
+          )}
+        </section>
+
+        <section className="pt-7">
+          {loading ? (
+            <div className="grid grid-cols-2 gap-x-3 gap-y-8 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {Array.from({ length: 10 }).map((_, index) => (
+                <div key={index} className="space-y-3">
+                  <div className="aspect-[3/4] rounded-[22px] uj-shimmer" />
+                  <div className="h-4 w-4/5 rounded-full uj-shimmer" />
+                  <div className="h-4 w-1/2 rounded-full uj-shimmer" />
+                </div>
               ))}
             </div>
-
-            {/* Premium Pagination Control UI */}
-            {totalPages >= 1 && (
-              <div className="mt-12 flex items-center justify-center gap-1.5 py-4">
-                <button
-                  onClick={() => {
-                    if (page > 1) {
-                      setPage((prev) => prev - 1);
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }
-                  }}
-                  disabled={page === 1}
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-[#f8dbe8] bg-white text-[13px] font-bold text-[var(--color-text-dark)] shadow-sm transition-all hover:bg-[var(--color-soft-pink)] disabled:opacity-40 active:scale-95"
-                >
-                  &lt;
-                </button>
-                
-                {getVisiblePages(page, totalPages).map((pageNum, idx) => {
-                  if (pageNum === '...') {
-                    return (
-                      <span key={`ellipsis-${idx}`} className="flex h-10 w-8 items-center justify-center text-[13px] font-bold text-[var(--color-brand-muted)]">
-                        ...
-                      </span>
-                    );
-                  }
-                  
-                  const isActive = pageNum === page;
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => {
-                        setPage(pageNum as number);
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                      }}
-                      className={`flex h-10 w-10 items-center justify-center rounded-full text-[13px] font-bold transition-all shadow-sm active:scale-95 ${
-                        isActive
-                          ? 'bg-gradient-to-r from-[#E91E8C] to-[#C2185B] text-white shadow-[0_3px_10px_rgba(233,30,140,0.25)]'
-                          : 'border border-[#f8dbe8] bg-white text-[var(--color-text-dark)] hover:bg-[var(--color-soft-pink)]'
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
-
-                <button
-                  onClick={() => {
-                    if (page < totalPages) {
-                      setPage((prev) => prev - 1 + 2); // robust way to add 1 to number or string
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }
-                  }}
-                  disabled={page === totalPages}
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-[#f8dbe8] bg-white text-[13px] font-bold text-[var(--color-text-dark)] shadow-sm transition-all hover:bg-[var(--color-soft-pink)] disabled:opacity-40 active:scale-95"
-                >
-                  &gt;
-                </button>
-              </div>
-            )}
-          </>
-        ) : (
-          <EmptyState
-            onReset={() => {
-              setSearch('');
-              setPriceRange([0, maxProductPrice]);
-              updateFilters('category', 'all');
-            }}
-          />
-        )}
+          ) : filteredProducts.length ? (
+            <div className="grid grid-cols-2 items-start gap-x-3 gap-y-9 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {filteredProducts.map((product) => <ProductCard key={product.id} product={product} />)}
+            </div>
+          ) : (
+            <ShopEmptyState onReset={resetFilters} />
+          )}
+        </section>
       </div>
-    </div>
+    </main>
   );
 }
 
 export default function ShopPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="px-4 pt-4">
-          <div className="animate-shimmer h-20 rounded-[18px]" />
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="animate-shimmer rounded-[24px]" style={{ height: 280 }} />
-            ))}
-          </div>
-        </div>
-      }
-    >
+    <Suspense fallback={<main className="px-4 py-12"><div className="h-80 rounded-[24px] uj-shimmer" /></main>}>
       <ShopContent />
     </Suspense>
   );

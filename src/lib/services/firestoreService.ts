@@ -1,13 +1,20 @@
 import {
-  collection, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc,
-  doc, query, where, orderBy, serverTimestamp,
-  Timestamp
+  collection, getDocs, getDoc,
+  doc, query, where, orderBy,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Product, Order, OrderStatus, Review, SiteSettings, WishlistItem } from '@/types';
+import type { Product, Order, Review, SiteSettings, WishlistItem } from '@/types';
 import { maskDisplayName } from '@/lib/publicDto';
 
 // ??? Error Handler ???????????????????????????????????????????????
+async function apiFetch(input: RequestInfo | URL, init?: RequestInit) {
+  if (typeof window !== 'undefined') {
+    const { authFetch } = await import('@/lib/auth/clientFetch');
+    return authFetch(input, init);
+  }
+  return fetch(input, init);
+}
+
 function handleError(error: any, context: string): never {
   console.error(`[Firestore Error ??${context}]:`, error);
   if (error.code === 'permission-denied') {
@@ -21,24 +28,15 @@ function handleError(error: any, context: string): never {
 // ??? CATEGORIES ??????????????????????????????????????????????????
 export async function getCategories(): Promise<any[]> {
   try {
-    const snap = await getDocs(collection(db, 'categories'));
-    return snap.docs.map(d => ({ 
-      id: d.id, 
-      slug: d.id, 
-      name_mn: d.data().name_mn || d.data().name || d.id,
-      image: d.data().image || '/placeholder-product.svg',
-      icon: d.data().icon || 'Tags',
-      color: d.data().color || '#E91E8C',
-      showOnHome: d.data().showOnHome === true,
-    }));
+    const response = await fetch('/api/categories', { cache: 'no-store' });
+    const data = await response.json().catch(() => []);
+    if (!response.ok) throw new Error('Failed to fetch categories');
+    return Array.isArray(data) ? data : [];
   } catch (e) {
-    handleError(e, 'getCategories');
+    console.error('[getCategories]:', e);
     return [];
   }
 }
-
-// ??? PRODUCTS ????????????????????????????????????????????????????
-const PRODUCTS = 'products';
 
 function reviveProduct(product: any): Product {
   return {
@@ -92,43 +90,6 @@ export async function getAllProducts(filters?: {
   } catch (e) { handleError(e, 'getAllProducts'); }
 }
 
-export async function getPaginatedProducts(filters?: {
-  category?: string;
-  page?: number;
-  limit?: number;
-}): Promise<{
-  products: Product[];
-  totalCount: number;
-  totalPages: number;
-  currentPage: number;
-}> {
-  try {
-    const searchParams: Record<string, string> = {};
-    if (filters?.category) searchParams.category = filters.category;
-    if (filters?.page) searchParams.page = String(filters.page);
-    if (filters?.limit) searchParams.limit = String(filters.limit);
-
-    const response = await fetch(`/api/products?${new URLSearchParams(searchParams)}`);
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data?.error || 'Failed to fetch products');
-    
-    return {
-      products: (data.products || []).map(reviveProduct),
-      totalCount: data.totalCount || 0,
-      totalPages: data.totalPages || 1,
-      currentPage: data.currentPage || 1,
-    };
-  } catch (e) {
-    handleError(e, 'getPaginatedProducts');
-  }
-}
-
-export async function getFeaturedProducts(): Promise<Product[]> {
-  try {
-    return fetchPublicProducts({ featured: 'true' });
-  } catch (e) { handleError(e, 'getFeaturedProducts'); }
-}
-
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   try {
     const response = await fetch(`/api/products?slug=${encodeURIComponent(slug)}`);
@@ -157,35 +118,13 @@ export async function searchProducts(searchQuery: string): Promise<Product[]> {
 }
 
 export async function incrementProductViews(productId: string): Promise<void> {
+  if (typeof window !== 'undefined') {
+    const { sessionOnce } = await import('@/lib/client/sessionOnce');
+    if (!sessionOnce(`product-view:${productId}`)) return;
+  }
   try {
     await fetch(`/api/products/${encodeURIComponent(productId)}/view`, { method: 'POST' });
   } catch (e) { handleError(e, 'incrementProductViews'); }
-}
-
-// Admin CRUD
-export async function createProduct(data: Omit<Product, 'id'>): Promise<string> {
-  try {
-    const ref = await addDoc(collection(db, PRODUCTS), {
-      ...data,
-      views: 0,
-      orderCount: 0,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-    return ref.id;
-  } catch (e) { handleError(e, 'createProduct'); }
-}
-
-export async function updateProduct(productId: string, data: Partial<Product>): Promise<void> {
-  try {
-    await updateDoc(doc(db, PRODUCTS, productId), { ...data, updatedAt: serverTimestamp() });
-  } catch (e) { handleError(e, 'updateProduct'); }
-}
-
-export async function deleteProduct(productId: string): Promise<void> {
-  try {
-    await deleteDoc(doc(db, PRODUCTS, productId));
-  } catch (e) { handleError(e, 'deleteProduct'); }
 }
 
 // Reviews
@@ -219,20 +158,32 @@ function normalizeReview(docId: string, data: any): Review {
   };
 }
 
-export async function getProductReviews(productId: string): Promise<Review[]> {
-  try {
-    return fetchPublicReviews({ productId });
-  } catch (e) { handleError(e, `getProductReviews(${productId})`); }
-}
-
 export async function getUserReviews(userId: string): Promise<Review[]> {
+  const merged = new Map<string, Review>();
+
+  try {
+    const response = await apiFetch('/api/reviews/mine', { cache: 'no-store' });
+    const data = await response.json().catch(() => ({}));
+    if (response.ok && Array.isArray(data.reviews)) {
+      data.reviews.forEach((review: Review) => merged.set(review.id, reviveReview(review)));
+    }
+  } catch (e) {
+    console.warn('[getUserReviews] API failed:', e);
+  }
+
   try {
     const q = query(collection(db, REVIEWS), where('userId', '==', userId));
     const snap = await getDocs(q);
-    return snap.docs
-      .map(d => normalizeReview(d.id, d.data()))
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-  } catch (e) { handleError(e, `getUserReviews(${userId})`); }
+    snap.docs.forEach((docSnap) => {
+      if (!merged.has(docSnap.id)) {
+        merged.set(docSnap.id, normalizeReview(docSnap.id, docSnap.data()));
+      }
+    });
+  } catch (e) {
+    if (!merged.size) handleError(e, `getUserReviews(${userId})`);
+  }
+
+  return Array.from(merged.values()).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
 export async function getLatestReviews(count = 6): Promise<Review[]> {
@@ -241,17 +192,11 @@ export async function getLatestReviews(count = 6): Promise<Review[]> {
   } catch (e) { handleError(e, 'getLatestReviews'); }
 }
 
-export async function getAllReviews(): Promise<Review[]> {
-  try {
-    return fetchPublicReviews();
-  } catch (e) { handleError(e, 'getAllReviews'); }
-}
-
 export async function createProductReview(
   data: Omit<Review, 'id' | 'approved' | 'createdAt' | 'updatedAt' | 'status' | 'featured' | 'editCount' | 'body'>
 ): Promise<string> {
   try {
-    const response = await fetch('/api/reviews', {
+    const response = await apiFetch('/api/reviews', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -262,24 +207,12 @@ export async function createProductReview(
   } catch (e) { handleError(e, 'createProductReview'); }
 }
 
-export async function updateReviewApproval(reviewId: string, approved: boolean): Promise<void> {
-  try {
-    await updateDoc(doc(db, REVIEWS, reviewId), { approved, updatedAt: serverTimestamp() });
-  } catch (e) { handleError(e, 'updateReviewApproval'); }
-}
-
-export async function deleteReview(reviewId: string): Promise<void> {
-  try {
-    await deleteDoc(doc(db, REVIEWS, reviewId));
-  } catch (e) { handleError(e, 'deleteReview'); }
-}
-
 export async function updateUserReview(
   reviewId: string,
   data: Pick<Review, 'rating' | 'content' | 'imageUrls'>
 ): Promise<void> {
   try {
-    const response = await fetch(`/api/reviews/${encodeURIComponent(reviewId)}`, {
+    const response = await apiFetch(`/api/reviews/${encodeURIComponent(reviewId)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -290,67 +223,54 @@ export async function updateUserReview(
 }
 
 // Wishlist
-function normalizeWishlistItem(docId: string, data: any): WishlistItem {
-  const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt ?? new Date();
-  return {
-    id: docId,
-    userId: data.userId ?? '',
-    productId: data.productId ?? docId,
-    productSlug: data.productSlug ?? '',
-    productName: data.productName ?? '',
-    productImage: data.productImage ?? '/placeholder-product.svg',
-    price: Number(data.price ?? 0),
-    salePrice: data.salePrice ?? null,
-    inStock: data.inStock !== false,
-    createdAt,
-  };
+
+export async function getWishlistStatus(_userId: string, productId: string): Promise<boolean> {
+  try {
+    const response = await apiFetch(`/api/wishlist?productId=${encodeURIComponent(productId)}`, { cache: 'no-store' });
+    if (!response.ok) return false;
+    const data = await response.json();
+    return Boolean(data?.inWishlist);
+  } catch {
+    return false;
+  }
 }
 
-export async function getWishlistStatus(userId: string, productId: string): Promise<boolean> {
+export async function getUserWishlist(_userId: string): Promise<WishlistItem[]> {
   try {
-    const snap = await getDoc(doc(db, 'users', userId, 'wishlist', productId));
-    return snap.exists();
-  } catch (e) { handleError(e, 'getWishlistStatus'); }
-}
-
-export async function getUserWishlist(userId: string): Promise<WishlistItem[]> {
-  try {
-    const snap = await getDocs(collection(db, 'users', userId, 'wishlist'));
-    return snap.docs
-      .map(d => normalizeWishlistItem(d.id, d.data()))
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-  } catch (e) { handleError(e, 'getUserWishlist'); }
+    const response = await apiFetch('/api/wishlist', { cache: 'no-store' });
+    if (!response.ok) return [];
+    const data = await response.json();
+    const items: any[] = Array.isArray(data?.items) ? data.items : [];
+    return items.map((item) => ({
+      ...item,
+      createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
+    })) as WishlistItem[];
+  } catch {
+    return [];
+  }
 }
 
 export async function addToWishlist(userId: string, product: Product): Promise<void> {
   try {
-    await setDoc(doc(db, 'users', userId, 'wishlist', product.id), {
-      userId,
-      productId: product.id,
-      productSlug: product.slug,
-      productName: product.name_mn,
-      productImage: product.images?.[0] || '/placeholder-product.svg',
-      price: product.price,
-      salePrice: product.salePrice ?? null,
-      inStock: product.inStock !== false && Number(product.stockQuantity ?? 1) > 0,
-      createdAt: serverTimestamp(),
+    const response = await apiFetch('/api/wishlist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productId: product.id }),
     });
+    if (!response.ok) throw new Error('addToWishlist failed');
   } catch (e) { handleError(e, 'addToWishlist'); }
 }
 
-export async function removeFromWishlist(userId: string, productId: string): Promise<void> {
+export async function removeFromWishlist(_userId: string, productId: string): Promise<void> {
   try {
-    await deleteDoc(doc(db, 'users', userId, 'wishlist', productId));
+    const response = await apiFetch(`/api/wishlist?productId=${encodeURIComponent(productId)}`, { method: 'DELETE' });
+    if (!response.ok) throw new Error('removeFromWishlist failed');
   } catch (e) { handleError(e, 'removeFromWishlist'); }
 }
 
-// ??? ORDERS ??????????????????????????????????????????????????????
-const ORDERS = 'orders';
-export const PAID_ORDER_STATUSES: OrderStatus[] = ['confirmed', 'shipped', 'delivered'];
-
 export async function createOrder(orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
   try {
-    const response = await fetch('/api/orders/create', {
+    const response = await apiFetch('/api/orders/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(orderData),
@@ -358,97 +278,12 @@ export async function createOrder(orderData: Omit<Order, 'id' | 'createdAt' | 'u
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.id) throw new Error(data?.error || 'Failed to create order');
     return data.id;
-  } catch (e) { handleError(e, 'createOrder'); }
-}
-function getPeriodStart(period: 'today' | '7days' | '30days' | 'month'): Date {
-  const now = new Date();
-  if (period === 'today') return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if (period === '7days') return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  if (period === '30days') return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  return new Date(now.getFullYear(), now.getMonth(), 1);
+  } catch (e) {
+    handleError(e, 'createOrder');
+  }
 }
 
-export async function getRevenueStats(period: 'today' | '7days' | '30days' | 'month'): Promise<{ total: number; count: number }> {
-  try {
-    const ordersRef = collection(db, ORDERS);
-    const q = query(
-      ordersRef,
-      where('status', 'in', PAID_ORDER_STATUSES),
-      where('createdAt', '>=', Timestamp.fromDate(getPeriodStart(period)))
-    );
-    const snapshot = await getDocs(q);
-    const total = snapshot.docs.reduce((sum, docSnap) => sum + Number(docSnap.data().total || 0), 0);
-    return { total, count: snapshot.size };
-  } catch (e) { handleError(e, `getRevenueStats(${period})`); }
-}
-
-export async function getDashboardStats(): Promise<{
-  totalRevenue: number;
-  totalOrders: number;
-  pendingOrders: number;
-  todayOrders: number;
-}> {
-  try {
-    const ordersRef = collection(db, ORDERS);
-    const todayStart = Timestamp.fromDate(getPeriodStart('today'));
-    const [allOrdersSnap, paidOrdersSnap, pendingOrdersSnap, todayOrdersSnap] = await Promise.all([
-      getDocs(ordersRef),
-      getDocs(query(ordersRef, where('status', 'in', PAID_ORDER_STATUSES))),
-      getDocs(query(ordersRef, where('status', '==', 'pending'))),
-      getDocs(query(ordersRef, where('createdAt', '>=', todayStart))),
-    ]);
-
-    return {
-      totalRevenue: paidOrdersSnap.docs.reduce((sum, docSnap) => sum + Number(docSnap.data().total || 0), 0),
-      totalOrders: allOrdersSnap.size,
-      pendingOrders: pendingOrdersSnap.size,
-      todayOrders: todayOrdersSnap.size,
-    };
-  } catch (e) { handleError(e, 'getDashboardStats'); }
-}
-
-export async function getOrderById(orderId: string): Promise<Order | null> {
-  try {
-    const snap = await getDoc(doc(db, ORDERS, orderId));
-    if (!snap.exists()) return null;
-    return { id: snap.id, ...snap.data() } as Order;
-  } catch (e) { handleError(e, 'getOrderById'); }
-}
-
-export async function getUserOrders(userId: string): Promise<Order[]> {
-  try {
-    const q = query(collection(db, ORDERS), where('userId', '==', userId), orderBy('createdAt', 'desc'));
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Order));
-  } catch (e) { handleError(e, 'getUserOrders'); }
-}
-
-export async function getAllOrders(filters?: { status?: OrderStatus }): Promise<Order[]> {
-  try {
-    const constraints: any[] = [orderBy('createdAt', 'desc')];
-    if (filters?.status) constraints.unshift(where('status', '==', filters.status));
-    const q = query(collection(db, ORDERS), ...constraints);
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Order));
-  } catch (e) { handleError(e, 'getAllOrders'); }
-}
-
-export async function updateOrderStatus(orderId: string, status: OrderStatus): Promise<void> {
-  try {
-    await updateDoc(doc(db, ORDERS, orderId), { status, updatedAt: serverTimestamp() });
-  } catch (e) { handleError(e, 'updateOrderStatus'); }
-}
-
-export async function getUserById(userId: string): Promise<{ email: string | null; displayName: string | null } | null> {
-  try {
-    const snap = await getDoc(doc(db, 'users', userId));
-    if (!snap.exists()) return null;
-    const data = snap.data();
-    return { email: data.email ?? null, displayName: data.displayName ?? null };
-  } catch (e) { handleError(e, `getUserById(${userId})`); }
-}
-
-// ??? SETTINGS (singleton: settings/main) ?????????????????????????
+// Settings (singleton: settings/main)
 const SETTINGS_DOC = doc(db, 'settings', 'main');
 
 export async function getSiteSettings(): Promise<SiteSettings | null> {
@@ -472,10 +307,4 @@ export async function getSiteSettings(): Promise<SiteSettings | null> {
       email: '',
     };
   }
-}
-
-export async function updateSiteSettings(data: Partial<SiteSettings>): Promise<void> {
-  try {
-    await setDoc(SETTINGS_DOC, data, { merge: true });
-  } catch (e) { handleError(e, 'updateSiteSettings'); }
 }

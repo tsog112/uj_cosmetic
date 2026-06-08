@@ -1,4 +1,5 @@
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 
 function cleanEnvValue(value?: string) {
@@ -34,9 +35,12 @@ function getPrivateKey() {
   return key ? key.replace(/\\n/g, '\n') : undefined;
 }
 
-export function getAdminDb() {
+function ensureAdminApp() {
   const serviceAccount = getServiceAccountFromJson();
-  const projectId = serviceAccount?.projectId || cleanEnvValue(process.env.FIREBASE_ADMIN_PROJECT_ID) || cleanEnvValue(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
+  const projectId =
+    serviceAccount?.projectId ||
+    cleanEnvValue(process.env.FIREBASE_ADMIN_PROJECT_ID) ||
+    cleanEnvValue(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
   const clientEmail = serviceAccount?.clientEmail || cleanEnvValue(process.env.FIREBASE_CLIENT_EMAIL);
   const privateKey = serviceAccount?.privateKey?.replace(/\\n/g, '\n') || getPrivateKey();
 
@@ -45,11 +49,15 @@ export function getAdminDb() {
       !projectId && 'project id',
       !clientEmail && 'client email',
       !privateKey && 'private key',
-    ].filter(Boolean).join(', ');
-    throw new Error(`Firebase Admin credentials are missing: ${missing}. Set FIREBASE_SERVICE_ACCOUNT_KEY or FIREBASE_ADMIN_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY.`);
+    ]
+      .filter(Boolean)
+      .join(', ');
+    throw new Error(
+      `Firebase Admin credentials are missing: ${missing}. Set FIREBASE_SERVICE_ACCOUNT_KEY or FIREBASE_ADMIN_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY.`,
+    );
   }
 
-  const app = getApps().length
+  return getApps().length
     ? getApps()[0]
     : initializeApp({
         credential: cert({
@@ -58,6 +66,12 @@ export function getAdminDb() {
           privateKey,
         }),
       });
+}
 
-  return getFirestore(app);
+export function getAdminDb() {
+  return getFirestore(ensureAdminApp());
+}
+
+export function getFirebaseAdminAuth() {
+  return getAuth(ensureAdminApp());
 }

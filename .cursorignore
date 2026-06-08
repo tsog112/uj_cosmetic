@@ -1,0 +1,25 @@
+﻿# Dependencies & build output
+node_modules/
+.next/
+out/
+build/
+coverage/
+.turbo/
+.cache/
+
+# Env, secrets, local DB
+.env*
+*.pem
+prisma/dev.db
+
+# Logs & TS cache
+*.log
+*.tsbuildinfo
+next-env.d.ts
+
+# Vercel / misc
+.vercel/
+.DS_Store
+
+# Local agent history
+agent-transcripts/

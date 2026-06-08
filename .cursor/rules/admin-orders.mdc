@@ -1,0 +1,14 @@
+---
+description: Admin захиалга — MN/KR filter, export, grouping
+globs: src/app/admin/orders/**,src/app/api/admin/orders/**,src/lib/orderAddress.ts,src/lib/hooks/useAdmin.ts
+alwaysApply: false
+---
+
+# Admin orders
+
+- **Market filter:** `marketFilter` = `all` | `MN` | `KR`. KR үед MN region/district/khoroo илгээхгүй; MN үед `kr_zonecode`/`kr_address` илгээхгүй.
+- **Region info:** локал duplicate бүү үүсгэ — `getOrderRegionInfo`, `formatOrderAddressLine` (`src/lib/orderAddress.ts`).
+- **API query:** `useAdmin.ts` → `market`, `kr_zonecode`, `kr_address`; backend `postgresAdminService.ts` (`buildKrAddressWhere`).
+- **Export:** `api/admin/orders/export/route.ts` — list-тэй ижил filter params.
+
+Grouped view: KR = хот + 우편; MN = УБ/орон нутаг.

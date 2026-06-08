@@ -1,12 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { emptyRevenueChart } from '@/lib/adminFallbacks';
-import { getAdminDb } from '@/lib/firebaseAdmin';
 import { CANCELLED_ORDER_STATUS } from '@/lib/constants/admin';
+import { recordFirestoreError } from '@/lib/firestoreCircuitBreaker';
+import { getAdminDb } from '@/lib/firebaseAdmin';
+import { getAdminMetricsSnapshot, getRevenueChartFromMetrics } from '@/lib/services/adminMetricsService';
+import { getPostgresRevenueChart } from '@/lib/services/postgresAdminService';
+import { authorizeAdminRequest } from '@/lib/auth/serverAuth';
+
+function withTimeout<T>(promise: Promise<T>, label: string, ms = 1500): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    }),
+  ]);
+}
 
 export async function GET(req: NextRequest) {
+  const denied = await authorizeAdminRequest(req);
+  if (denied) return denied;
+  const { searchParams } = new URL(req.url);
+  const range = searchParams.get('range') || '7d';
+
   try {
-    const { searchParams } = new URL(req.url);
-    const range = searchParams.get('range') || '7d';
+    const postgresChart = await getPostgresRevenueChart(range).catch(() => null);
+    if (postgresChart) return NextResponse.json(postgresChart);
+
+    const metricsChart = getRevenueChartFromMetrics(await getAdminMetricsSnapshot(), range);
+    if (metricsChart) return NextResponse.json(metricsChart);
+
+    if (process.env.ADMIN_ALLOW_LIVE_STATS_FALLBACK !== 'true') {
+      return NextResponse.json(emptyRevenueChart());
+    }
 
     const db = getAdminDb();
     const now = new Date();
@@ -23,73 +48,52 @@ export async function GET(req: NextRequest) {
     } else if (range === '3m') {
       startDate.setMonth(now.getMonth() - 2);
       startDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
-    } else if (range === 'month') {
+    } else {
       startDate = new Date(now.getFullYear(), now.getMonth(), 1);
     }
 
-    const snap = await db.collection('orders')
-      .where('createdAt', '>=', startDate)
-      .get();
-
-    const orders = snap.docs.map(doc => {
+    const snap = await withTimeout(
+      db.collection('orders').where('createdAt', '>=', startDate).limit(2000).get(),
+      'revenue chart',
+    );
+    const orders = snap.docs.map((doc) => {
       const data = doc.data();
       return {
         createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
         total: Number(data.total || 0),
         status: data.status,
       };
-    }).filter(o => o.status !== CANCELLED_ORDER_STATUS);
+    }).filter((order) => order.status !== CANCELLED_ORDER_STATUS);
 
     const labels: string[] = [];
     const revenue: number[] = [];
     const orderCounts: number[] = [];
 
     if (range === 'today') {
-      // Group by hour
-      for (let i = 0; i <= now.getHours(); i++) {
-        const hourOrders = orders.filter(o => o.createdAt.getHours() === i);
-        labels.push(`${i}:00`);
-        revenue.push(hourOrders.reduce((sum, o) => sum + o.total, 0));
+      for (let hour = 0; hour <= now.getHours(); hour += 1) {
+        const hourOrders = orders.filter((order) => order.createdAt.getHours() === hour);
+        labels.push(`${hour}:00`);
+        revenue.push(hourOrders.reduce((sum, order) => sum + order.total, 0));
         orderCounts.push(hourOrders.length);
       }
     } else {
-      // Group by day
       const days = range === '7d' ? 7 : (range === '30d' || range === '1m') ? 30 : range === '3m' ? 92 : now.getDate();
-      const tempStart = new Date(startDate);
-      
-      if (range === '3m') {
-        for (let i = 0; i < 3; i++) {
-          const month = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
-          const nextMonth = new Date(month.getFullYear(), month.getMonth() + 1, 1);
-          const monthOrders = orders.filter(o => o.createdAt >= month && o.createdAt < nextMonth);
-          labels.push(`${month.getMonth() + 1} сар`);
-          revenue.push(monthOrders.reduce((sum, o) => sum + o.total, 0));
-          orderCounts.push(monthOrders.length);
-        }
-      } else {
-      for (let i = 0; i < days; i++) {
-        if (tempStart > now) break;
-        
-        const nextDay = new Date(tempStart);
-        nextDay.setDate(tempStart.getDate() + 1);
-        
-        const dayOrders = orders.filter(o => o.createdAt >= tempStart && o.createdAt < nextDay);
-        
-        labels.push(`${tempStart.getMonth() + 1}/${tempStart.getDate()}`);
-        revenue.push(dayOrders.reduce((sum, o) => sum + o.total, 0));
+      const cursor = new Date(startDate);
+      for (let index = 0; index < days; index += 1) {
+        if (cursor > now) break;
+        const nextDay = new Date(cursor);
+        nextDay.setDate(cursor.getDate() + 1);
+        const dayOrders = orders.filter((order) => order.createdAt >= cursor && order.createdAt < nextDay);
+        labels.push(`${cursor.getMonth() + 1}/${cursor.getDate()}`);
+        revenue.push(dayOrders.reduce((sum, order) => sum + order.total, 0));
         orderCounts.push(dayOrders.length);
-        
-        tempStart.setDate(tempStart.getDate() + 1);
-      }
+        cursor.setDate(cursor.getDate() + 1);
       }
     }
 
-    return NextResponse.json({
-      labels,
-      revenue,
-      orders: orderCounts
-    });
+    return NextResponse.json({ labels, revenue, orders: orderCounts });
   } catch (error) {
+    recordFirestoreError(error);
     console.error('Error fetching revenue chart data:', error);
     return NextResponse.json(emptyRevenueChart());
   }

@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ORDER_STATUS_VALUES, normalizeAdminOrderStatus } from '@/lib/constants/admin';
-import { getAdminDb } from '@/lib/firebaseAdmin';
-import { updateAdminOrderStatus } from '@/lib/services/firestoreAdminService';
+import { prisma } from '@/lib/prisma';
+import { updatePostgresAdminOrderStatus } from '@/lib/services/postgresAdminService';
 import { sendOrderStatusNotification, sendPostDeliveryReviewInvitation } from '@/lib/emailService';
+import { orderStatusNotificationContent } from '@/lib/userOrderNotifications';
+import { authorizeAdminRequest } from '@/lib/auth/serverAuth';
 
 export const runtime = 'nodejs';
 
@@ -14,6 +16,8 @@ function appUrl(path: string) {
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await authorizeAdminRequest(req);
+  if (denied) return denied;
   try {
     const { id } = await params;
     const { status } = await req.json();
@@ -23,9 +27,29 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
     }
 
-    const order = await updateAdminOrderStatus(id, normalized);
+    const order = await updatePostgresAdminOrderStatus(id, normalized);
     if (!order) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+
+    if (order.userId) {
+      try {
+        const copy = orderStatusNotificationContent(normalized, order.orderNumber || order.id);
+        await prisma.notification.create({
+          data: {
+            type: 'ORDER_STATUS',
+            userId: order.userId,
+            orderId: order.id,
+            title: copy.title,
+            body: copy.body,
+            href: copy.href,
+            channel: 'in_app',
+            status: 'unread',
+          },
+        });
+      } catch (notificationError) {
+        console.error('In-app order notification failed:', notificationError);
+      }
     }
 
     if (normalized === 'delivered') {
@@ -33,7 +57,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         const firstItem: any = order.items?.[0];
         const productSlug = firstItem?.productSlug || '';
         const href = productSlug ? `/shop/${productSlug}?reviewOrderId=${order.id}` : '/account';
-        await getAdminDb().collection('notifications').add({
+        await prisma.notification.create({ data: {
           type: 'REVIEW_REQUEST',
           userId: order.userId || '',
           orderId: order.id,
@@ -41,10 +65,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           body: 'Таны захиалга хүргэгдсэн тул худалдан авсан бүтээгдэхүүндээ сэтгэгдэл үлдээгээрэй.',
           href,
           channel: 'email',
-          status: 'scheduled',
-          createdAt: new Date(),
-          scheduledFor: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        });
+          status: 'unread',
+        }});
 
         if (order.customerEmail && firstItem) {
           await sendPostDeliveryReviewInvitation(order.customerEmail, {

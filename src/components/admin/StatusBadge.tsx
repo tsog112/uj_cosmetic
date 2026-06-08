@@ -12,10 +12,11 @@ export default function StatusBadge({ status, size = 'sm' }: StatusBadgeProps) {
   if (!s) return null;
   return (
     <span
-      className={`inline-block rounded-full font-extrabold uppercase whitespace-nowrap ${
+      className={`inline-block max-w-full truncate rounded-full font-extrabold uppercase ${
         size === 'sm' ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-[11px]'
       }`}
       style={{ backgroundColor: s.bg, color: s.color }}
+      title={s.label}
     >
       {s.label}
     </span>

@@ -1,5 +1,6 @@
 'use client';
 
+import { authFetch } from '@/lib/auth/clientFetch';
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -27,6 +28,9 @@ type ProductInitialData = {
   isVisible?: boolean;
   isFeatured?: boolean;
   showOnHome?: boolean;
+  showcaseFeatured?: boolean;
+  showcaseNewest?: boolean;
+  showcaseSale?: boolean;
   showInSearch?: boolean;
   slug?: string;
   images?: string[] | string;
@@ -49,6 +53,9 @@ type FormState = {
   isVisible: boolean;
   isFeatured: boolean;
   showOnHome: boolean;
+  showcaseFeatured: boolean;
+  showcaseNewest: boolean;
+  showcaseSale: boolean;
   showInSearch: boolean;
   slug: string;
   images: string[];
@@ -59,7 +66,7 @@ const tabs: Array<{ id: EditorTab; label: string }> = [
   { id: 'basic', label: 'Үндсэн мэдээлэл' },
   { id: 'stock', label: 'Нөөц & Үнэ' },
   { id: 'specs', label: 'Дэлгэрэнгүй' },
-  { id: 'visibility', label: 'Promote' },
+  { id: 'visibility', label: 'Онцлох' },
 ];
 
 const specSuggestions = ['Брэнд', 'Хэмжээ', 'Хугацаа', 'Гүйцэтгэл', 'Найрлага', 'Орон', 'Батлагдсан'];
@@ -98,6 +105,9 @@ function makeForm(initialData?: ProductInitialData): FormState {
     isVisible: initialData?.isVisible ?? true,
     isFeatured: Boolean(initialData?.isFeatured),
     showOnHome: initialData?.showOnHome ?? true,
+    showcaseFeatured: Boolean(initialData?.showcaseFeatured ?? initialData?.isFeatured),
+    showcaseNewest: Boolean(initialData?.showcaseNewest),
+    showcaseSale: Boolean(initialData?.showcaseSale),
     showInSearch: initialData?.showInSearch ?? true,
     slug: initialData?.slug || '',
     images: parseImages(initialData?.images),
@@ -137,7 +147,7 @@ export default function ProductForm({ initialData }: { initialData?: ProductInit
         const body = new FormData();
         body.append('file', file);
         body.append('folder', 'products');
-        const response = await fetch('/api/admin/upload', { method: 'POST', body });
+        const response = await authFetch('/api/admin/upload', { method: 'POST', body });
         if (!response.ok) throw new Error();
         const data = await response.json() as { url?: string };
         if (data.url) uploaded.push(data.url);
@@ -180,7 +190,7 @@ export default function ProductForm({ initialData }: { initialData?: ProductInit
     if (!initialData?.id) return;
     setIsSaving(true);
     try {
-      const response = await fetch(`/api/admin/products/${initialData.id}`, { method: 'DELETE' });
+      const response = await authFetch(`/api/admin/products/${initialData.id}`, { method: 'DELETE' });
       if (!response.ok) throw new Error();
       router.push('/admin/products');
       router.refresh();
@@ -222,7 +232,7 @@ export default function ProductForm({ initialData }: { initialData?: ProductInit
           <div>
             <p className={labelClass}>Зураг</p>
             <div className="grid grid-cols-3 gap-3">
-              <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading || formData.images.length >= 8} className="flex aspect-square min-h-28 flex-col items-center justify-center rounded-[22px] border-2 border-dashed border-[#f3b8cf] bg-white text-[var(--color-brand-accent)] disabled:opacity-50">
+              <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading || formData.images.length >= 8} className="flex aspect-square min-h-28 flex-col items-center justify-center rounded-[22px] border-2 border-dashed border-[var(--color-border)] bg-white text-[var(--color-brand-accent)] disabled:opacity-50">
                 {isUploading ? <Loader2 className="animate-spin" size={24} /> : <Camera size={24} />}
                 <span className="mt-2 text-[10px] font-extrabold">{isUploading ? 'Оруулж байна' : 'Зураг нэмэх'}</span>
               </button>
@@ -293,7 +303,10 @@ export default function ProductForm({ initialData }: { initialData?: ProductInit
       {activeTab === 'visibility' && (
         <section className="space-y-4">
           {[
-            ['isFeatured', 'Featured / Promote хийх'],
+            ['isFeatured', 'Hero слайд (онцлох)'],
+            ['showcaseFeatured', '«Эрхэмсэг сонголтууд» хэсэг'],
+            ['showcaseNewest', '«Шинэхэн ирсэн» хэсэг'],
+            ['showcaseSale', '«Хямдрал / зөөллөн үнэ» хэсэг'],
             ['showOnHome', 'Нүүр хуудсанд харуулах'],
             ['showInSearch', 'Хайлтад харуулах'],
           ].map(([key, label]) => <label key={key} className="flex min-h-12 items-center justify-between rounded-[18px] bg-white px-4 shadow-[var(--shadow-mobile-card)]"><span className="text-sm font-extrabold">{label}</span><input type="checkbox" checked={Boolean(formData[key as keyof FormState])} onChange={(event) => updateField(key as keyof FormState, event.target.checked as never)} className="accent-[var(--color-brand-accent)]" /></label>)}
@@ -303,7 +316,7 @@ export default function ProductForm({ initialData }: { initialData?: ProductInit
         </section>
       )}
 
-      <section className="fixed inset-x-0 bottom-0 z-40 mx-auto grid max-w-[430px] grid-cols-[112px_1fr] gap-2 border-t border-[#f8dbe8] bg-white/95 p-3 pb-[calc(env(safe-area-inset-bottom)+12px)] backdrop-blur">
+      <section className="fixed inset-x-0 bottom-0 z-40 mx-auto grid max-w-[430px] grid-cols-[112px_1fr] gap-2 border-t border-[var(--color-border)] bg-white/95 p-3 pb-[calc(env(safe-area-inset-bottom)+12px)] backdrop-blur">
         <button disabled={!initialData?.id || isSaving || isUploading} type="button" onClick={() => setConfirmDelete(true)} className="flex h-12 items-center justify-center gap-2 rounded-full border border-[var(--status-error)] bg-white text-sm font-extrabold text-[var(--status-error)] disabled:opacity-40"><Trash2 size={16} /> Устгах</button>
         <button disabled={isSaving || isUploading} type="submit" className="flex h-12 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-accent)] text-sm font-extrabold text-white shadow-lg disabled:opacity-60">{isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={17} />} Хадгалах</button>
       </section>

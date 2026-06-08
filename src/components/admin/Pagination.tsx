@@ -21,7 +21,7 @@ export default function Pagination({ page, totalItems, pageSize = 10, onPageChan
           type="button" 
           onClick={() => onPageChange(Math.max(1, page - 1))} 
           disabled={page <= 1} 
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-[#f8dbe8] bg-white text-[13px] font-bold text-[var(--color-brand-text)] shadow-sm transition-all hover:bg-[var(--color-brand-secondary)] disabled:cursor-not-allowed disabled:opacity-35 active:scale-95" 
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--color-border)] bg-white text-[13px] font-bold text-[var(--color-brand-text)] shadow-sm transition-all hover:bg-[var(--color-brand-secondary)] disabled:cursor-not-allowed disabled:opacity-35 active:scale-95" 
           aria-label="Өмнөх хуудас"
         >
           &lt;
@@ -38,7 +38,7 @@ export default function Pagination({ page, totalItems, pageSize = 10, onPageChan
                 className={`flex h-10 min-w-10 items-center justify-center rounded-full px-3 text-[13px] font-bold transition-all shadow-sm active:scale-95 ${
                   page === item 
                     ? 'bg-gradient-to-r from-[var(--color-brand-accent)] to-[#d81b60] text-white shadow-[0_3px_10px_rgba(233,30,140,0.2)]' 
-                    : 'border border-[#f8dbe8] bg-white text-[var(--color-brand-text)] hover:bg-[var(--color-brand-secondary)]'
+                    : 'border border-[var(--color-border)] bg-white text-[var(--color-brand-text)] hover:bg-[var(--color-brand-secondary)]'
                 }`} 
                 aria-current={page === item ? 'page' : undefined}
               >
@@ -51,7 +51,7 @@ export default function Pagination({ page, totalItems, pageSize = 10, onPageChan
           type="button" 
           onClick={() => onPageChange(Math.min(pageCount, page + 1))} 
           disabled={page >= pageCount} 
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-[#f8dbe8] bg-white text-[13px] font-bold text-[var(--color-brand-text)] shadow-sm transition-all hover:bg-[var(--color-brand-secondary)] disabled:cursor-not-allowed disabled:opacity-35 active:scale-95" 
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--color-border)] bg-white text-[13px] font-bold text-[var(--color-brand-text)] shadow-sm transition-all hover:bg-[var(--color-brand-secondary)] disabled:cursor-not-allowed disabled:opacity-35 active:scale-95" 
           aria-label="Дараах хуудас"
         >
           &gt;

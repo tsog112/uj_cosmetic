@@ -17,6 +17,11 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
     
+    match /user_addresses/{addressId} {
+      allow read, update, delete: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if request.auth != null && (request.resource.data.userId == request.auth.uid || isAdmin());
+    }
+    
     match /orders/{orderId} {
       // Validate incoming order payload
       function isValidOrder() {

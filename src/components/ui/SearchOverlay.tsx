@@ -60,14 +60,14 @@ export default function SearchOverlay({ onClose }: SearchOverlayProps) {
 
   return (
     <div 
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 backdrop-blur-sm p-0 md:p-4"
+      className="fixed inset-0 z-[100] flex items-start justify-center bg-black/40 backdrop-blur-sm p-0 md:items-center md:p-4"
       onClick={onClose}
     >
       <div 
-        className="relative flex h-[100dvh] md:h-auto md:max-h-[82vh] w-full max-w-[430px] md:max-w-[620px] flex-col bg-[var(--color-brand-bg)]/98 md:bg-white/95 p-4 md:p-6 pb-[calc(env(safe-area-inset-bottom)+16px)] md:pb-6 backdrop-blur-2xl md:rounded-[32px] md:shadow-[0_24px_64px_rgba(166,66,112,0.18)] md:border md:border-white/40"
+        className="relative flex h-[100dvh] md:h-auto md:max-h-[82vh] w-full max-w-[430px] md:max-w-[620px] flex-col bg-[var(--color-brand-bg)]/98 md:bg-white/95 px-4 md:p-6 pt-[calc(36px+env(safe-area-inset-top)+8px)] md:pt-6 pb-[calc(env(safe-area-inset-bottom)+16px)] md:pb-6 backdrop-blur-2xl md:rounded-[32px] md:shadow-[0_24px_64px_rgba(166,66,112,0.18)] md:border md:border-white/40"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="pt-2">
+        <div>
           <div className="flex items-center gap-2">
             <div className="flex h-12 flex-1 items-center gap-2 rounded-full bg-white px-4 shadow-[var(--shadow-mobile-card)] border border-[#fbe5f0]">
               <Search size={18} className="shrink-0 text-[var(--color-brand-accent)]" />

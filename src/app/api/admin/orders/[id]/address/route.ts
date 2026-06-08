@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebaseAdmin';
+import { authorizeAdminRequest } from '@/lib/auth/serverAuth';
 
 export const runtime = 'nodejs';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await authorizeAdminRequest(req);
+  if (denied) return denied;
   try {
     const { id } = await params;
     const { addressSnapshot, shippingAddress } = await req.json();

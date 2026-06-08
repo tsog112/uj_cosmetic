@@ -5,7 +5,9 @@ import useSWR from 'swr';
 import { Camera, Image as ImageIcon, Link2, Loader2, Save, Trash2 } from 'lucide-react';
 import { useToast } from '@/components/admin/Toast';
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+import { authFetch } from '@/lib/auth/clientFetch';
+
+const fetcher = (url: string) => authFetch(url).then((res) => res.json());
 
 export default function InstagramSettings() {
   const { data: initialSlots, mutate, isLoading } = useSWR('/api/admin/instagram', fetcher);
@@ -38,7 +40,7 @@ export default function InstagramSettings() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+      const res = await authFetch('/api/upload', { method: 'POST', body: formData });
       if (!res.ok) throw new Error('Upload failed');
       const data = await res.json();
       
@@ -56,7 +58,7 @@ export default function InstagramSettings() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await fetch('/api/admin/instagram', {
+      const res = await authFetch('/api/admin/instagram', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(slots),
@@ -98,7 +100,7 @@ export default function InstagramSettings() {
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         {slots.map((slot, index) => (
-          <div key={slot.id} className="group relative flex flex-col gap-2 rounded-[20px] border border-[#f8dbe8] bg-white p-2 shadow-sm transition-all hover:shadow-md">
+          <div key={slot.id} className="group relative flex flex-col gap-2 rounded-[20px] border border-[var(--color-border)] bg-white p-2 shadow-sm transition-all hover:shadow-md">
             {/* Image Box */}
             <div className="relative aspect-square overflow-hidden rounded-[14px] bg-[#fff5f9]">
               {slot.imageUrl ? (

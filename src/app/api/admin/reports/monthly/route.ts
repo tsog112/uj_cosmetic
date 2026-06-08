@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { CANCELLED_ORDER_STATUS, PAID_ORDER_STATUS_VALUES } from '@/lib/constants/admin';
 import { getMonthlyReport } from '@/lib/services/firestoreAdminService';
+import { authorizeAdminRequest } from '@/lib/auth/serverAuth';
 
 function csvEscape(value: unknown) {
   const text = String(value ?? '');
@@ -8,6 +9,8 @@ function csvEscape(value: unknown) {
 }
 
 export async function GET(req: Request) {
+  const denied = await authorizeAdminRequest(req);
+  if (denied) return denied;
   try {
     const { searchParams } = new URL(req.url);
     const now = new Date();

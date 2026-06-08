@@ -26,14 +26,14 @@ export default function AdminSheet({ open, onClose, children }: AdminSheetProps)
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-            className="fixed inset-x-0 bottom-0 z-[70] max-h-[88vh] overflow-y-auto rounded-t-[30px] bg-white pb-[env(safe-area-inset-bottom)]"
+            className="admin-sheet fixed inset-x-0 bottom-0 z-[70] max-h-[88vh] overflow-y-auto pb-[env(safe-area-inset-bottom)]"
           >
-            <div className="mx-auto my-3 h-1.5 w-12 rounded-full bg-[#ecd0dc]" />
-            <div className="px-5 pb-7">
+            <div className="admin-sheet-handle" />
+            <div className="admin-sheet-body px-5 pb-7 md:px-8 md:pb-10">
               <button
                 type="button"
                 onClick={onClose}
-                className="mb-3 ml-auto flex rounded-full bg-[var(--color-brand-secondary)] p-2 text-[var(--color-brand-text)]"
+                className="mb-3 ml-auto flex rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] p-2 text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-border-strong)] hover:text-[var(--color-text-primary)]"
                 aria-label="Хаах"
               >
                 <X size={18} />

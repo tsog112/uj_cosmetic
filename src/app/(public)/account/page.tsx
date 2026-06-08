@@ -1,305 +1,188 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import { AnimatePresence, motion } from 'framer-motion';
-import { CheckCircle2, CircleDollarSign, ClipboardCheck, Edit3, Heart, Home, LogOut, MessageCircle, Package, PackageCheck, PackageOpen, Settings, Shield, Star, Trash2, Truck, ChevronDown, ChevronUp } from 'lucide-react';
+import {
+  ChevronRight,
+  LogOut,
+  MessageCircle,
+  Package,
+  Settings,
+  Shield,
+  Star,
+} from 'lucide-react';
+import OrderDeliveryTracker from '@/components/ui/OrderDeliveryTracker';
 import AuthGuard from '@/components/ui/AuthGuard';
-import ReviewForm from '@/components/ui/ReviewForm';
 import { useAuth } from '@/context/AuthContext';
-import { useCart } from '@/context/CartContext';
+import { useLocale } from '@/context/LocaleContext';
+import { useToast } from '@/components/ui/Toast';
 import { db } from '@/lib/firebase';
-import { deleteReview, getAllProducts, getUserReviews } from '@/lib/services/firestoreService';
+import ReviewForm from '@/components/ui/ReviewForm';
+import { authFetch } from '@/lib/auth/clientFetch';
+import { getUserReviews } from '@/lib/services/firestoreService';
 import { formatPrice, type Product, type Review } from '@/types';
 
-type AccountTab = 'orders' | 'reviews';
+type ViewMode = 'profile' | 'orders' | 'reviews';
 
-const statusLabels: Record<string, string> = {
+const STATUS_LABELS: Record<string, string> = {
   pending: 'Төлбөр хүлээж байна',
-  confirmed: 'Төлбөр баталгаажуулах',
-  processing: 'Захиалга бэлдэх',
+  confirmed: 'Төлбөр баталгаажсан',
+  processing: 'Захиалга бэлдэж байна',
   shipped: 'Хүргэлт хийгдэж байна',
   delivered: 'Захиалга хүргэгдсэн',
   cancelled: 'Цуцлагдсан',
-  PENDING: 'Төлбөр хүлээж байна',
-  CONFIRMED: 'Төлбөр баталгаажуулах',
-  PROCESSING: 'Захиалга бэлдэх',
-  SHIPPED: 'Хүргэлт хийгдэж байна',
-  DELIVERED: 'Захиалга хүргэгдсэн',
-  CANCELLED: 'Цуцлагдсан',
 };
-
-const trackingSteps = [
-  {
-    status: 'pending',
-    title: 'Төлбөр шалгаж байна',
-    description: 'Админ төлбөр болон захиалгын мэдээллийг баталгаажуулна.',
-    Icon: CircleDollarSign,
-  },
-  {
-    status: 'confirmed',
-    title: 'Төлбөр баталгаажсан',
-    description: 'Захиалга баталгаажиж, бүтээгдэхүүн бэлтгэх дараалалд орлоо.',
-    Icon: ClipboardCheck,
-  },
-  {
-    status: 'processing',
-    title: 'Бүтээгдэхүүн бэлдэж байна',
-    description: 'Агуулах дээр бүтээгдэхүүнийг шалгаж, савлаж байна.',
-    Icon: PackageOpen,
-  },
-  {
-    status: 'shipped',
-    title: 'Хүргэлтэд гарсан',
-    description: 'Захиалга хүргэлтийн компанид шилжиж, замдаа явж байна.',
-    Icon: Truck,
-  },
-  {
-    status: 'delivered',
-    title: 'Хүргэгдсэн',
-    description: 'Захиалга амжилттай хүргэгдлээ. Баярлалаа.',
-    Icon: Home,
-  },
-];
-
-const statusOrder = trackingSteps.map((step) => step.status);
-
-function normalizeStatus(status: string) {
-  return String(status || 'pending').toLowerCase();
-}
-
-function OrderTracking({ status }: { status: string }) {
-  const normalized = normalizeStatus(status);
-  const activeIndex = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'].indexOf(normalized);
-  
-  if (activeIndex === -1) return null;
-
-  const trackingStepsMN = [
-    { status: 'pending', label: 'Төлбөр хүлээж байна' },
-    { status: 'confirmed', label: 'Төлбөр баталгаажуулах' },
-    { status: 'processing', label: 'Захиалга бэлдэх' },
-    { status: 'shipped', label: 'Хүргэлт хийгдэж байна' },
-    { status: 'delivered', label: 'Захиалга хүргэгдсэн' },
-  ];
-
-  const isShipped = normalized === 'shipped';
-
-  return (
-    <div className="mt-4 overflow-hidden rounded-[14px] border border-black/[0.08] bg-white">
-      <style jsx global>{`
-        @keyframes scooter-ride {
-          0%, 100% { transform: translateX(10px); }
-          50% { transform: translateX(35px); }
-        }
-        @keyframes scooter-bounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-2px); }
-        }
-        @keyframes package-pulse {
-          0%, 100% { transform: scale(1) translateY(0); opacity: 0.9; }
-          50% { transform: scale(1.15) translateY(-3px); opacity: 1; }
-        }
-        @keyframes road-move {
-          0% { stroke-dashoffset: 0; }
-          100% { stroke-dashoffset: -20; }
-        }
-        .scooter-animated {
-          animation: scooter-ride 4s ease-in-out infinite;
-        }
-        .scooter-bounce-animated {
-          animation: scooter-bounce 0.6s ease-in-out infinite;
-        }
-        .package-animated {
-          animation: package-pulse 1.5s ease-in-out infinite;
-        }
-        .road-animated {
-          animation: road-move 1s linear infinite;
-        }
-      `}</style>
-
-      {/* Animation Area */}
-      <div className="relative h-28 w-full bg-[#FFF0F6] overflow-hidden flex items-center justify-center">
-        {/* Dashed Road Line */}
-        <div className="absolute inset-x-0 bottom-6 h-0.5">
-          <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-            <line
-              x1="0"
-              y1="1"
-              x2="2000"
-              y2="1"
-              stroke="#D4537E"
-              strokeWidth="2"
-              strokeDasharray="8 8"
-              className={isShipped ? "road-animated" : ""}
-              opacity="0.3"
-            />
-          </svg>
-        </div>
-
-        {/* Scooter and Package Group */}
-        <div className={`absolute left-1/4 -translate-x-1/2 flex flex-col items-center bottom-6 ${isShipped ? "scooter-animated" : ""}`}>
-          
-          {/* Floating Package */}
-          <div className={`mb-1 relative z-10 ${isShipped ? "package-animated" : ""}`}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="#D4537E" stroke="#FFF" strokeWidth="1" strokeLinejoin="round" />
-              <path d="M2 7V17L12 22V12L2 7Z" fill="#D4537E" stroke="#FFF" strokeWidth="1" strokeLinejoin="round" opacity="0.9" />
-              <path d="M12 12V22L22 17V7L12 12Z" fill="#D4537E" stroke="#FFF" strokeWidth="1" strokeLinejoin="round" opacity="0.8" />
-            </svg>
-          </div>
-
-          {/* Scooter Silhouette */}
-          <div className={isShipped ? "scooter-bounce-animated" : ""}>
-            <svg width="64" height="42" viewBox="0 0 64 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path
-                d="M12 32 C12 26, 18 24, 26 25 L38 25 C42 25, 46 20, 48 16 L51 9 C51.5 7.5, 53 7, 55 7 H59"
-                stroke="#D4537E"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path d="M22 32 H44" stroke="#D4537E" strokeWidth="3" strokeLinecap="round" />
-              <circle cx="18" cy="32" r="6" stroke="#D4537E" strokeWidth="2.5" fill="#FFF0F6" />
-              <circle cx="18" cy="32" r="2.5" fill="#D4537E" />
-              <circle cx="44" cy="32" r="6" stroke="#D4537E" strokeWidth="2.5" fill="#FFF0F6" />
-              <circle cx="44" cy="32" r="2.5" fill="#D4537E" />
-              <path d="M51 9 L44 32" stroke="#D4537E" strokeWidth="2.5" strokeLinecap="round" />
-              <path d="M48 9 H56" stroke="#D4537E" strokeWidth="2.5" strokeLinecap="round" />
-              <path
-                d="M13 22 C13 20.5, 15 19, 18 19 H28 C30.5 19, 32 20.5, 32 22 C32 23.5, 30.5 25, 28 25 H18 C15 25, 13 23.5, 13 22 Z"
-                fill="#D4537E"
-              />
-              <circle cx="53" cy="12" r="2.5" fill="#FFF0F6" stroke="#D4537E" strokeWidth="1.5" />
-            </svg>
-          </div>
-        </div>
-
-        {/* Status Indicator Badge on corner */}
-        <div className="absolute right-3 top-3 rounded-full bg-white/90 backdrop-blur-xs px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-[#993556] shadow-xs border border-[#D4537E]/10">
-          {isShipped ? "Хүргэгдэж байна" : "Хянах"}
-        </div>
-      </div>
-
-      {/* Progress tracker */}
-      <div className="p-4 bg-white">
-        <div className="relative flex items-center justify-between">
-          <div className="absolute top-[15px] left-[6%] right-[6%] h-[2px] bg-gray-100 -z-0" />
-          <div
-            className="absolute top-[15px] left-[6%] h-[2px] bg-[#D4537E] -z-0 transition-all duration-500"
-            style={{ width: `${(activeIndex / 4) * 88}%` }}
-          />
-
-          {trackingStepsMN.map((step, index) => {
-            const completed = index < activeIndex;
-            const current = index === activeIndex;
-
-            return (
-              <div key={step.status} className="relative z-10 flex flex-col items-center flex-1">
-                {completed ? (
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#D4537E] text-white shadow-xs transition-colors duration-300">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                ) : current ? (
-                  <div className="relative flex h-8 w-8 items-center justify-center rounded-full border-2 border-[#D4537E] bg-white text-[#D4537E] shadow-sm">
-                    <div className="h-2.5 w-2.5 rounded-full bg-[#D4537E]" />
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full border-2 border-[#D4537E] opacity-75" />
-                  </div>
-                ) : (
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-gray-200 bg-white text-gray-300">
-                    <div className="h-2.5 w-2.5 rounded-full bg-gray-200" />
-                  </div>
-                )}
-
-                <span
-                  className={`mt-2 text-center text-[9px] leading-[1.3] max-w-[60px] whitespace-normal transition-all duration-300 ${
-                    current ? 'text-[#D4537E] font-bold' : 'text-gray-400 font-medium'
-                  }`}
-                  style={{ display: 'block', margin: '0 auto' }}
-                >
-                  {step.label}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ClientStatusBadge({ status }: { status: string }) {
-  const norm = normalizeStatus(status);
-  let bg = 'bg-[#FBEAF0]';
-  let text = 'text-[#993556]';
-  let label = statusLabels[norm] || status;
-
-  if (norm === 'pending') {
-    bg = 'bg-[#FAEEDA]';
-    text = 'text-[#854F0B]';
-  } else if (norm === 'confirmed' || norm === 'processing' || norm === 'shipped') {
-    bg = 'bg-[#FBEAF0]';
-    text = 'text-[#993556]';
-  } else if (norm === 'delivered') {
-    bg = 'bg-[#EAF3DE]';
-    text = 'text-[#3B6D11]';
-  } else if (norm === 'cancelled' || norm === 'refunded') {
-    bg = 'bg-[#FCEBEB]';
-    text = 'text-[#A32D2D]';
-  }
-
-  return (
-    <span className={`inline-block rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider ${bg} ${text}`}>
-      {label}
-    </span>
-  );
-}
-
-function OrderReviewCta({ order, reviews, productSlugById }: { order: any; reviews: Review[]; productSlugById: Record<string, string> }) {
-  if (normalizeStatus(order.status) !== 'delivered') return null;
-  const items = Array.isArray(order.items) ? order.items : [];
-  const pendingItem = items.find((item: any) => !reviews.some((review) => review.orderId === order.id && review.productId === item.productId));
-  if (!pendingItem) {
-    return (
-      <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-[var(--status-success-bg)] px-3 py-2 text-[11px] font-extrabold text-[var(--status-success)]">
-        <CheckCircle2 size={14} /> Сэтгэгдэл бичсэн
-      </div>
-    );
-  }
-  const slug = pendingItem.productSlug || productSlugById[pendingItem.productId];
-  if (!slug) return null;
-  return (
-    <Link href={`/shop/${slug}?reviewOrderId=${order.id}`} className="mt-3 inline-flex h-10 items-center gap-2 rounded-full bg-[var(--color-brand-accent)] px-4 text-[11px] font-extrabold text-white">
-      <span className="relative flex h-2.5 w-2.5">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
-      </span>
-      Сэтгэгдэл бичих
-    </Link>
-  );
-}
 
 function toDate(value: any) {
   if (!value) return null;
-  if (value.toDate) return value.toDate();
+  if (typeof value.toDate === 'function') return value.toDate();
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function normalizeStatus(status: any) {
+  return String(status || 'pending').toLowerCase();
+}
+
+function orderNumber(order: any, index: number) {
+  if (order.orderNumber && /^#\d{4}-\d{4}$/.test(order.orderNumber)) return order.orderNumber;
+  const created = toDate(order.createdAt) || new Date();
+  return `#${created.getFullYear()}-${String(index + 1).padStart(4, '0')}`;
+}
+
+function orderItemName(item: any) {
+  return item?.name_mn || item?.name || item?.productName || item?.product?.name || 'Бүтээгдэхүүн';
+}
+
+function orderItemImage(item: any) {
+  if (item?.imageUrl) return item.imageUrl;
+  if (item?.image) return item.image;
+  if (item?.productImage) return item.productImage;
+  const productImages = item?.product?.images;
+  if (typeof productImages === 'string') {
+    try {
+      const parsed = JSON.parse(productImages);
+      if (Array.isArray(parsed) && parsed[0]) return String(parsed[0]);
+    } catch {
+      /* ignore invalid json */
+    }
+  }
+  if (Array.isArray(productImages) && productImages[0]) return String(productImages[0]);
+  return '/placeholder-product.svg';
+}
+
+function orderItemProductHref(item: any) {
+  const slug = String(item?.productSlug || item?.slug || item?.product?.slug || '').trim();
+  if (!slug) return null;
+  return `/shop/${encodeURIComponent(slug)}`;
+}
+
+async function enrichOrdersWithProductSlugs(orders: any[]) {
+  const productIds = [
+    ...new Set(
+      orders.flatMap((order) => (order.items || []).map((item: any) => String(item?.productId || '').trim()).filter(Boolean)),
+    ),
+  ];
+  if (!productIds.length) return orders;
+
+  let slugMap: Record<string, string> = {};
+  try {
+    const response = await fetch('/api/products/resolve-slugs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productIds }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (response.ok && data?.slugs) slugMap = data.slugs;
+  } catch {
+    /* keep orders without slugs */
+  }
+
+  return orders.map((order) => ({
+    ...order,
+    items: (order.items || []).map((item: any) => {
+      const productId = String(item?.productId || '').trim();
+      const productSlug = String(item?.productSlug || item?.slug || slugMap[productId] || '').trim();
+      return { ...item, productSlug };
+    }),
+  }));
+}
+
+function mergeOrderRecords(firestoreOrder: any | undefined, postgresOrder: any) {
+  if (!firestoreOrder) return postgresOrder;
+  const items = postgresOrder.items?.length ? postgresOrder.items : firestoreOrder.items;
+  return {
+    ...firestoreOrder,
+    ...postgresOrder,
+    items: (items || []).map((item: any, index: number) => {
+      const fsItem = (firestoreOrder.items || [])[index] || (firestoreOrder.items || []).find((entry: any) => entry?.productId === item?.productId);
+      return {
+        ...fsItem,
+        ...item,
+        productId: item?.productId || fsItem?.productId,
+        productSlug: String(item?.productSlug || fsItem?.productSlug || fsItem?.slug || '').trim(),
+      };
+    }),
+  };
+}
+
+function OrderItemRow({ item, idx }: { item: any; idx: number }) {
+  const href = orderItemProductHref(item);
+  const className =
+    'flex items-center gap-3 rounded-[14px] bg-[#F7F3F5] p-2.5 transition-colors duration-200 hover:bg-white';
+
+  const body = (
+    <>
+      <div className="relative h-14 w-12 shrink-0 overflow-hidden rounded-[12px] border bg-white" style={{ borderColor: 'var(--color-border)' }}>
+        <Image src={orderItemImage(item)} alt={orderItemName(item)} fill sizes="48px" className="object-cover" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="line-clamp-2 text-[12px] font-bold leading-snug text-[var(--color-text-primary)]">{orderItemName(item)}</p>
+        <p className="mt-1 text-[11px] font-semibold text-[var(--color-text-muted)]">
+          {Number(item.quantity || 1)}ш · {formatPrice(Number(item.price || item.salePrice || 0) * Number(item.quantity || 1))}
+        </p>
+      </div>
+      {href ? <ChevronRight size={16} className="shrink-0 text-[var(--color-brand)]" aria-hidden="true" /> : null}
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className={`${className} uj-pressable`} style={{ textDecoration: 'none', color: 'inherit' }}>
+        {body}
+      </Link>
+    );
+  }
+
+  return <div className={className}>{body}</div>;
+}
+
+function formatOrderDate(value: any) {
+  const date = toDate(value);
+  if (!date) return '';
+  return date.toLocaleString('mn-MN', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 function reviewToProduct(review: Review): Product {
   return {
     id: review.productId,
-    slug: review.productSlug,
-    name_mn: review.productName,
-    name_en: review.productName,
+    slug: review.productSlug || review.productId,
+    name_mn: review.productName || 'Бүтээгдэхүүн',
+    name_en: review.productName || '',
     price: 0,
     salePrice: null,
     saleEndDate: null,
     category: 'other',
-    images: review.imageUrls,
+    images: review.imageUrls?.length ? review.imageUrls : ['/placeholder-product.svg'],
     videoUrl: null,
     description_mn: '',
     ingredients: '',
@@ -315,623 +198,376 @@ function reviewToProduct(review: Review): Product {
   };
 }
 
-function AccountContent() {
-  const router = useRouter();
-  const { addToCart } = useCart();
-  const { user, isAdmin, signOut } = useAuth();
-  const [orders, setOrders] = useState<any[]>([]);
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<AccountTab>('orders');
-  const [editingReview, setEditingReview] = useState<Review | null>(null);
-  const [productSlugById, setProductSlugById] = useState<Record<string, string>>({});
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
-  const [ordersSubTab, setOrdersSubTab] = useState<'active' | 'history'>('active');
-  const [selectedHistoryOrder, setSelectedHistoryOrder] = useState<any>(null);
-  const [expandedHistoryIds, setExpandedHistoryIds] = useState<Record<string, boolean>>({});
-  const [currentView, setCurrentView] = useState<'profile' | 'orders' | 'reviews'>('profile');
-
-  const activeOrders = useMemo(() => {
-    return orders.filter((order) => order.archived !== true);
-  }, [orders]);
-
-  const historyOrders = useMemo(() => {
-    return orders.filter((order) => order.archived === true);
-  }, [orders]);
-
-  const toggleExpandHistory = (orderId: string) => {
-    setExpandedHistoryIds((prev) => ({
-      ...prev,
-      [orderId]: !prev[orderId],
-    }));
-  };
-
-  const handleReorder = (order: any) => {
-    if (!order || !order.items) return;
-    order.items.forEach((item: any) => {
-      const match = allProducts.find((p) => p.id === item.productId);
-      const productObj: Product = match || {
-        id: item.productId,
-        slug: item.productSlug || '',
-        name_mn: item.name_mn || item.name || 'Бүтээгдэхүүн',
-        name_en: item.name_en || item.name || 'Product',
-        price: item.price || 0,
-        salePrice: null,
-        saleEndDate: null,
-        category: 'other',
-        images: item.image ? [item.image] : [],
-        description_mn: '',
-        ingredients: '',
-        howToUse: '',
-        featured: false,
-        published: true,
-        inStock: true,
-        stockQuantity: 99,
-        views: 0,
-        orderCount: 0,
-        videoUrl: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      addToCart(productObj, item.quantity || 1);
-    });
-    router.push('/cart');
-  };
-
-  const loadAccountData = async () => {
-    if (!user) return;
-    setLoading(true);
-    const [orderResult, reviewResult, productResult] = await Promise.allSettled([
-      getDocs(query(collection(db, 'orders'), where('userId', '==', user.uid))),
-      getUserReviews(user.uid),
-      getAllProducts({ published: true }),
-    ]);
-
-    if (orderResult.status === 'fulfilled') {
-      setOrders(orderResult.value.docs.map((doc) => ({ id: doc.id, ...doc.data() })).sort((a: any, b: any) => (toDate(b.createdAt)?.getTime() || 0) - (toDate(a.createdAt)?.getTime() || 0)));
-    }
-    if (reviewResult.status === 'fulfilled') setReviews(reviewResult.value);
-    if (productResult.status === 'fulfilled') {
-      setAllProducts(productResult.value);
-      setProductSlugById(Object.fromEntries(productResult.value.map((product) => [product.id, product.slug])));
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    void loadAccountData();
-  }, [user]);
-
-  const summary = useMemo(() => ({ orders: orders.length, reviews: reviews.length }), [orders.length, reviews.length]);
-
-  if (!user) return null;
-
-  const removeReview = async (reviewId: string) => {
-    if (!confirm('Энэ сэтгэгдлийг устгах уу?')) return;
-    await deleteReview(reviewId);
-    setReviews((prev) => prev.filter((item) => item.id !== reviewId));
-  };
-
+function StatusBadge({ status }: { status: string }) {
+  const normalized = normalizeStatus(status);
+  const isDone = normalized === 'delivered';
+  const isBad = normalized === 'cancelled';
   return (
-    <div className="space-y-5 px-4 pb-[104px] md:max-w-xl lg:max-w-2xl mx-auto md:mt-6">
-      {loading ? (
-        <div className="space-y-3">{Array.from({ length: 3 }).map((_, index) => <div key={index} className="h-32 rounded-[24px] animate-shimmer" />)}</div>
-      ) : (
-        <>
-          {/* PROFILE VIEW (default dashboard layout) */}
-          {currentView === 'profile' && (
-            <div className="space-y-5">
-              {/* Profile card and menu (unified top card) */}
-              <section className="rounded-[16px] bg-white p-5 border border-[#F4C0D1] shadow-[var(--shadow-mobile-card)] space-y-5">
-                {/* Profile Info */}
-                <div className="flex items-center gap-4">
-                  <div className="h-[52px] w-[52px] shrink-0 overflow-hidden rounded-full border border-[#F4C0D1] flex items-center justify-center bg-[var(--color-soft-pink)] text-[18px] font-extrabold text-[var(--color-primary)]">
-                    {user.photoURL ? (
-                      <img src={user.photoURL} alt={user.displayName || 'Profile'} className="h-full w-full object-cover" />
-                    ) : (
-                      (user.displayName || user.email || 'U').charAt(0).toUpperCase()
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="truncate text-[18px] font-extrabold text-[var(--color-text-dark)] leading-tight">
-                        {user.displayName || 'Хэрэглэгч'}
-                      </h2>
-                      {isAdmin && (
-                        <span className="inline-block shrink-0 rounded-full bg-[#FBEAF0] px-2.5 py-0.5 text-[10px] font-extrabold text-[#993556] border border-[#F4C0D1]/30">
-                          Админ
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-0.5 truncate text-[12px] text-[var(--color-text-medium)] leading-none">{user.email}</p>
-                  </div>
-                </div>
-
-                {/* Stats Row: 2 equal tiles — with count-up animation */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-[12px] bg-[var(--color-brand-bg)] p-3.5 text-center border border-pink-100/20">
-                    <p
-                      className="text-xl font-extrabold text-[var(--color-text-dark)]"
-                      style={{ animation: 'countUp 0.5s cubic-bezier(0.16,1,0.3,1) both', animationDelay: '0.1s' }}
-                    >
-                      {orders.length}
-                    </p>
-                    <p className="mt-1 text-[10px] font-bold text-[var(--color-text-medium)]">Нийт захиалга</p>
-                  </div>
-                  <div className="rounded-[12px] bg-[var(--color-brand-bg)] p-3.5 text-center border border-pink-100/20">
-                    <p
-                      className="text-xl font-extrabold text-[var(--color-text-dark)]"
-                      style={{ animation: 'countUp 0.5s cubic-bezier(0.16,1,0.3,1) both', animationDelay: '0.2s' }}
-                    >
-                      {reviews.length}
-                    </p>
-                    <p className="mt-1 text-[10px] font-bold text-[var(--color-text-medium)]">Сэтгэгдэл</p>
-                  </div>
-                </div>
-
-                {/* Vertical Menu List */}
-                <div className="divide-y divide-[#fde8f0] border-t border-[#fde8f0] pt-1">
-                  {/* Menu item 1: Миний захиалгууд */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOrdersSubTab('active');
-                      setCurrentView('orders');
-                    }}
-                    className="group w-full py-3.5 flex items-center justify-between gap-3 text-left active:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#FFF0F6] text-[#D4537E]">
-                        <Package size={16} />
-                      </div>
-                      <div>
-                        <p className="text-[13px] font-medium text-[var(--color-text-dark)]">Миний захиалгууд</p>
-                        <p className="text-[11px] text-gray-400">
-                          {activeOrders.length} идэвхтэй · {historyOrders.length} дууссан
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {activeOrders.length > 0 && (
-                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#D4537E] text-[10px] font-bold text-white">
-                          {activeOrders.length}
-                        </span>
-                      )}
-                      <span className="text-gray-400 text-lg font-bold transition-transform duration-200 group-hover:translate-x-1">›</span>
-                    </div>
-                  </button>
-
-                  {/* Menu item 2: Миний сэтгэгдлүүд */}
-                  <button
-                    type="button"
-                    onClick={() => setCurrentView('reviews')}
-                    className="group w-full py-3.5 flex items-center justify-between gap-3 text-left active:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#FFF0F6] text-[#D4537E]">
-                        <MessageCircle size={16} />
-                      </div>
-                      <div>
-                        <p className="text-[13px] font-medium text-[var(--color-text-dark)]">Миний сэтгэгдлүүд</p>
-                        <p className="text-[11px] text-gray-400">{reviews.length} сэтгэгдэл бичсэн</p>
-                      </div>
-                    </div>
-                    <span className="text-gray-400 text-lg font-bold transition-transform duration-200 group-hover:translate-x-1">›</span>
-                  </button>
-
-                  {/* Menu item 3: Хадгалсан бараа */}
-                  <Link
-                    href="/wishlist"
-                    className="group w-full py-3.5 flex items-center justify-between gap-3 text-left active:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#FFF0F6] text-[#D4537E]">
-                        <Heart size={16} className="fill-[#D4537E]" />
-                      </div>
-                      <div>
-                        <p className="text-[13px] font-medium text-[var(--color-text-dark)]">Хадгалсан бараа</p>
-                        <p className="text-[11px] text-gray-400">Дуртай барааны жагсаалт</p>
-                      </div>
-                    </div>
-                    <span className="text-gray-400 text-lg font-bold transition-transform duration-200 group-hover:translate-x-1">›</span>
-                  </Link>
-
-                  {/* Menu item 4: Тохиргоо */}
-                  <Link
-                    href="/settings"
-                    className="group w-full py-3.5 flex items-center justify-between gap-3 text-left active:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-gray-100 text-gray-500">
-                        <Settings size={16} />
-                      </div>
-                      <div>
-                        <p className="text-[13px] font-medium text-[var(--color-text-dark)]">Тохиргоо</p>
-                        <p className="text-[11px] text-gray-400">Нууц үг, хаяг, холбоо барих</p>
-                      </div>
-                    </div>
-                    <span className="text-gray-400 text-lg font-bold transition-transform duration-200 group-hover:translate-x-1">›</span>
-                  </Link>
-
-                  {/* Menu item 5: Админ самбар */}
-                  {isAdmin && (
-                    <Link
-                      href="/admin"
-                      className="group w-full py-3.5 flex items-center justify-between gap-3 text-left active:bg-gray-50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-gray-100 text-gray-500">
-                          <Shield size={16} />
-                        </div>
-                        <div>
-                          <p className="text-[13px] font-medium text-[var(--color-text-dark)]">Админ самбар</p>
-                          <p className="text-[11px] text-gray-400">Захиалга, хэрэглэгч удирдах</p>
-                        </div>
-                      </div>
-                      <span className="text-gray-400 text-lg font-bold transition-transform duration-200 group-hover:translate-x-1">›</span>
-                    </Link>
-                  )}
-
-                  {/* Menu item 6: Гарах */}
-                  <button
-                    type="button"
-                    onClick={() => signOut()}
-                    className="w-full py-3.5 flex items-center justify-between gap-3 text-left active:bg-red-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#FCEBEB] text-[#A32D2D]">
-                        <LogOut size={16} />
-                      </div>
-                      <div>
-                        <p className="text-[13px] font-bold text-[#A32D2D]">Гарах</p>
-                      </div>
-                    </div>
-                  </button>
-                </div>
-              </section>
-
-              {/* Inline compact active orders */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between pt-2">
-                  <h3 className="text-[12px] font-extrabold text-[var(--color-text-dark)] uppercase tracking-wider">
-                    Идэвхтэй захиалга
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentView('orders')}
-                    className="text-[11px] font-bold text-[var(--color-primary)] hover:underline"
-                  >
-                    Бүгдийг харах ›
-                  </button>
-                </div>
-
-                <div className="space-y-3">
-                  {activeOrders.length ? (
-                    activeOrders.slice(0, 2).map((order) => (
-                      <article key={order.id} className="rounded-[16px] bg-white p-4 shadow-[var(--shadow-mobile-card)] border border-[#F4C0D1] space-y-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <span className="font-mono rounded-full bg-gray-100 border border-gray-200/50 px-2 py-0.5 text-xs text-gray-700 tracking-wide font-medium">
-                              {order.orderNumber || `#${order.id.slice(-6).toUpperCase()}`}
-                            </span>
-                            <p className="mt-1.5 text-[15px] font-extrabold text-[var(--color-text-dark)]">{formatPrice(order.total || 0)}</p>
-                          </div>
-                          <ClientStatusBadge status={order.status} />
-                        </div>
-                        <div className="mt-3 space-y-2">
-                          {order.items?.map((item: any, index: number) => {
-                            const slug = item.productSlug || productSlugById[item.productId];
-                            const content = (
-                              <>
-                                <span className="min-w-0 flex-1 font-bold line-clamp-1">{item.name_mn || item.name || 'Бүтээгдэхүүн'} x {item.quantity || 1}</span>
-                                <strong className="shrink-0">{formatPrice((item.price || 0) * (item.quantity || 1))}</strong>
-                              </>
-                            );
-                            return slug ? (
-                              <Link key={`${order.id}-${index}`} href={`/shop/${slug}`} className="flex items-center justify-between gap-3 rounded-[12px] bg-[var(--color-brand-bg)] p-2.5 text-[11px] active:scale-[0.99] border border-black/[0.01]">
-                                {content}
-                              </Link>
-                            ) : (
-                              <div key={`${order.id}-${index}`} className="flex items-center justify-between gap-3 rounded-[12px] bg-[var(--color-brand-bg)] p-2.5 text-[11px] border border-black/[0.01]">
-                                {content}
-                              </div>
-                            );
-                          })}
-                        </div>
-                  <OrderReviewCta order={order} reviews={reviews} productSlugById={productSlugById} />
-                  <OrderTracking status={order.status} />
-                      </article>
-                    ))
-                  ) : (
-                    <div className="rounded-[16px] bg-white px-5 py-8 text-center border border-[#F4C0D1] shadow-[var(--shadow-mobile-card)]">
-                      <p className="text-[12px] font-bold text-gray-400">Идэвхтэй захиалга байхгүй байна.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* FULL TABBED ORDERS VIEW */}
-          {currentView === 'orders' && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 pb-1 border-b border-pink-100/30">
-                <button
-                  type="button"
-                  onClick={() => setCurrentView('profile')}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-white border border-[#F4C0D1] text-gray-700 shadow-xs active:scale-95 transition-transform text-sm font-extrabold"
-                >
-                  ←
-                </button>
-                <h1 className="text-[14px] font-extrabold text-[var(--color-text-dark)] uppercase">Миний захиалгууд</h1>
-              </div>
-
-              {/* Active vs History sub-tabs */}
-              <div className="flex rounded-full bg-gray-100 p-1 border border-black/[0.04]">
-                <button
-                  type="button"
-                  onClick={() => setOrdersSubTab('active')}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-full text-[11px] font-extrabold transition-all ${
-                    ordersSubTab === 'active' ? 'bg-white text-[var(--color-primary)] shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  <span>Идэвхтэй</span>
-                  <span className={`rounded-full px-1.5 py-0.5 text-[9px] ${ordersSubTab === 'active' ? 'bg-[var(--color-soft-pink)] text-[var(--color-primary)]' : 'bg-gray-200 text-gray-500'}`}>
-                    {activeOrders.length}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOrdersSubTab('history')}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-full text-[11px] font-extrabold transition-all ${
-                    ordersSubTab === 'history' ? 'bg-white text-[var(--color-primary)] shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  <span>Түүх</span>
-                  <span className={`rounded-full px-1.5 py-0.5 text-[9px] ${ordersSubTab === 'history' ? 'bg-[var(--color-soft-pink)] text-[var(--color-primary)]' : 'bg-gray-200 text-gray-500'}`}>
-                    {historyOrders.length}
-                  </span>
-                </button>
-              </div>
-
-              {/* Orders List rendering */}
-              {ordersSubTab === 'active' ? (
-                <section className="space-y-3">
-                  {activeOrders.length ? activeOrders.map((order) => (
-                    <article key={order.id} className="rounded-[24px] bg-white p-4 shadow-[var(--shadow-mobile-card)] border border-black/[0.04]">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <span className="font-mono rounded-full bg-gray-100 border border-gray-200/50 px-2 py-0.5 text-xs text-gray-700 tracking-wide font-medium">
-                            {order.orderNumber || `#${order.id.slice(-6).toUpperCase()}`}
-                          </span>
-                          <p className="mt-1.5 text-[16px] font-extrabold text-[var(--color-text-dark)]">{formatPrice(order.total || 0)}</p>
-                        </div>
-                        <ClientStatusBadge status={order.status} />
-                      </div>
-                      <div className="mt-3 space-y-2">
-                        {order.items?.map((item: any, index: number) => {
-                          const slug = item.productSlug || productSlugById[item.productId];
-                          const content = (
-                            <>
-                              <span className="min-w-0 flex-1 font-bold line-clamp-1">{item.name_mn || item.name || 'Бүтээгдэхүүн'} x {item.quantity || 1}</span>
-                              <strong className="shrink-0">{formatPrice((item.price || 0) * (item.quantity || 1))}</strong>
-                            </>
-                          );
-                          return slug ? (
-                            <Link key={`${order.id}-${index}`} href={`/shop/${slug}`} className="flex items-center justify-between gap-3 rounded-[16px] bg-[var(--color-brand-bg)] p-3 text-[12px] active:scale-[0.99] border border-black/[0.01]">
-                              {content}
-                            </Link>
-                          ) : (
-                            <div key={`${order.id}-${index}`} className="flex items-center justify-between gap-3 rounded-[16px] bg-[var(--color-brand-bg)] p-3 text-[12px] border border-black/[0.01]">
-                              {content}
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <OrderTracking status={order.status} />
-                    </article>
-                  )) : <EmptyState title="Идэвхтэй захиалга алга байна" href="/shop" label="Дэлгүүр үзэх" />}
-                </section>
-              ) : (
-                <section className="space-y-3">
-                  {historyOrders.length ? historyOrders.map((order) => {
-                    const primaryProduct = order.items?.[0];
-                    const itemsCount = order.items?.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0) || 0;
-                    const productName = primaryProduct?.name_mn || primaryProduct?.name || 'Бүтээгдэхүүн';
-                    const displayProductName = itemsCount > 1 ? `${productName} + ${itemsCount - 1} бараа` : productName;
-                    const isExpanded = !!expandedHistoryIds[order.id];
-
-                    return (
-                      <div
-                        key={order.id}
-                        className="overflow-hidden rounded-[20px] bg-white border border-black/[0.04] shadow-[var(--shadow-mobile-card)] transition-all duration-200"
-                      >
-                        {/* Collapsed Header / Row */}
-                        <button
-                          type="button"
-                          onClick={() => toggleExpandHistory(order.id)}
-                          className="flex w-full items-center justify-between gap-3 p-4 text-left hover:bg-gray-50/60 active:bg-gray-100/40 transition-colors"
-                        >
-                          <div className="min-w-0 flex-1 space-y-1.5">
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono rounded-full bg-gray-100 border border-gray-200/50 px-2 py-0.5 text-xs text-gray-700 tracking-wide font-medium">
-                                {order.orderNumber || `#${order.id.slice(-6).toUpperCase()}`}
-                              </span>
-                              <span className="text-[10px] font-bold text-gray-400">
-                                {toDate(order.createdAt)?.toLocaleDateString('mn-MN')}
-                              </span>
-                            </div>
-                            <p className="truncate text-[13px] font-extrabold text-[var(--color-text-dark)]">
-                              {displayProductName}
-                            </p>
-                            <p className="text-[12px] font-bold text-[var(--color-text-medium)]">
-                              {formatPrice(order.total || 0)}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <ClientStatusBadge status={order.status} />
-                            {isExpanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
-                          </div>
-                        </button>
-
-                        {/* Expanded Content */}
-                        <AnimatePresence initial={false}>
-                          {isExpanded && (
-                            <motion.div
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: 'auto', opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              transition={{ duration: 0.2 }}
-                              className="border-t border-gray-100 bg-gray-50/30"
-                            >
-                              <div className="p-4 space-y-4">
-                                {/* Product items inside expanded */}
-                                <div className="space-y-2">
-                                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-gray-400">Бараанууд</p>
-                                  {order.items?.map((item: any, index: number) => {
-                                    const slug = item.productSlug || productSlugById[item.productId];
-                                    const itemContent = (
-                                      <>
-                                        <span className="min-w-0 flex-1 font-bold line-clamp-1">
-                                          {item.name_mn || item.name || 'Бүтээгдэхүүн'} x {item.quantity || 1}
-                                        </span>
-                                        <strong className="shrink-0">{formatPrice((item.price || 0) * (item.quantity || 1))}</strong>
-                                      </>
-                                    );
-                                    return slug ? (
-                                      <Link
-                                        key={index}
-                                        href={`/shop/${slug}`}
-                                        className="flex items-center justify-between gap-3 rounded-[14px] bg-white p-3 text-[12px] border border-black/[0.02] hover:bg-pink-50/20 active:scale-[0.99] transition-all"
-                                      >
-                                        {itemContent}
-                                      </Link>
-                                    ) : (
-                                      <div
-                                        key={index}
-                                        className="flex items-center justify-between gap-3 rounded-[14px] bg-white p-3 text-[12px] border border-black/[0.02]"
-                                      >
-                                        {itemContent}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-
-                                {/* Price Details */}
-                                <div className="rounded-[18px] bg-white p-4 space-y-2 border border-black/[0.03]">
-                                  <div className="flex justify-between text-[12px] text-gray-500">
-                                    <span>Барааны дүн</span>
-                                    <span>{formatPrice(order.subtotal || 0)}</span>
-                                  </div>
-                                  <div className="flex justify-between text-[12px] text-gray-500">
-                                    <span>Хүргэлтийн төлбөр</span>
-                                    <span>{order.shippingCost === 0 ? 'Үнэгүй' : formatPrice(order.shippingCost || 0)}</span>
-                                  </div>
-                                  <div className="border-t border-gray-200/80 my-2 pt-2 flex justify-between text-[14px] font-extrabold text-[var(--color-text-dark)]">
-                                    <span>Нийт дүн</span>
-                                    <span className="text-[var(--color-primary)]">{formatPrice(order.total || 0)}</span>
-                                  </div>
-                                </div>
-
-                                {/* Address details */}
-                                <div className="space-y-1">
-                                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-gray-400">Хүргэлтийн хаяг</p>
-                                  <div className="rounded-[18px] bg-white p-4 border border-black/[0.03] text-[13px] leading-relaxed">
-                                    <p className="font-extrabold text-[var(--color-text-dark)]">{order.customerName || order.displayName}</p>
-                                    <p className="mt-1 font-medium text-gray-500">{order.address || order.shippingAddress}</p>
-                                    {order.phone && (
-                                      <p className="mt-1.5 font-bold text-[var(--color-text-medium)]">Утас: {order.phone}</p>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Reorder Button */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleReorder(order)}
-                                  className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] text-[12px] font-extrabold text-white shadow-xs active:scale-[0.98] transition-all hover:bg-[var(--color-primary)]/90"
-                                >
-                                  <PackageCheck size={15} />
-                                  Дахин захиалах
-                                </button>
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    );
-                  }) : <EmptyState title="Захиалгын түүх алга байна" href="/shop" label="Бараа үзэх" />}
-                </section>
-              )}
-            </div>
-          )}
-
-          {/* FULL USER REVIEWS VIEW */}
-          {currentView === 'reviews' && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 pb-1 border-b border-pink-100/30">
-                <button
-                  type="button"
-                  onClick={() => setCurrentView('profile')}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-white border border-[#F4C0D1] text-gray-700 shadow-xs active:scale-95 transition-transform text-sm font-extrabold"
-                >
-                  ←
-                </button>
-                <h1 className="text-[14px] font-extrabold text-[var(--color-text-dark)] uppercase">Миний сэтгэгдлүүд</h1>
-              </div>
-
-              <section className="space-y-3">
-                {reviews.length ? reviews.map((review) => (
-                  <article key={review.id} className="rounded-[24px] bg-white p-4 shadow-[var(--shadow-mobile-card)] border border-black/[0.04]">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <Link href={`/shop/${review.productSlug}`} className="block truncate text-[14px] font-extrabold">{review.productName}</Link>
-                        <div className="mt-1 flex gap-0.5 text-[#E6A0BE]">{Array.from({ length: 5 }).map((_, index) => <Star key={index} size={13} fill={index < review.rating ? 'currentColor' : 'none'} />)}</div>
-                      </div>
-                      <span className="rounded-full bg-[var(--color-brand-bg)] px-2 py-1 text-[10px] font-bold text-[var(--color-text-medium)]">{review.approved ? 'Нийтлэгдсэн' : 'Шалгаж байна'}</span>
-                    </div>
-                    <p className="mt-3 text-[13px] leading-relaxed">{review.content}</p>
-                    {review.imageUrls.length > 0 && (
-                      <div className="mt-3 flex gap-2 overflow-x-auto hide-scrollbar">
-                        {review.imageUrls.map((url) => (
-                          <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[14px] bg-[var(--color-soft-pink)]">
-                            <img src={url} alt="Review image" className="h-full w-full object-cover" />
-                          </a>
-                        ))}
-                      </div>
-                    )}
-                    <div className="mt-3 flex gap-2">
-                      <button onClick={() => setEditingReview(review)} className="flex h-9 items-center gap-1 rounded-full bg-[var(--color-soft-pink)] px-4 text-[11px] font-extrabold text-[var(--color-text-dark)]"><Edit3 size={13} /> Засах</button>
-                      <button onClick={() => removeReview(review.id)} className="flex h-9 items-center gap-1 rounded-full bg-[var(--status-error-bg)] px-4 text-[11px] font-extrabold text-[var(--status-error)]"><Trash2 size={13} /> Устгах</button>
-                    </div>
-                  </article>
-                )) : <EmptyState title="Сэтгэгдэл алга байна" href="/shop" label="Бүтээгдэхүүн үзэх" />}
-              </section>
-            </div>
-          )}
-        </>
-      )}
-
-      <AnimatePresence>
-        {editingReview && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/35 backdrop-blur-sm" onClick={() => setEditingReview(null)} />
-            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 28, stiffness: 320 }} className="fixed bottom-0 left-1/2 z-[70] max-h-[88vh] w-full max-w-[430px] -translate-x-1/2 overflow-y-auto rounded-t-[30px] bg-white p-4 pb-[env(safe-area-inset-bottom)]">
-              <ReviewForm product={reviewToProduct(editingReview)} review={editingReview} onCancel={() => setEditingReview(null)} onSubmitted={() => { setEditingReview(null); void loadAccountData(); }} />
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-    </div>
+    <span
+      className="uj-status-badge rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em]"
+      style={{
+        background: isBad ? 'var(--color-status-cancel-bg)' : isDone ? 'var(--color-status-done-bg)' : 'var(--color-brand-light)',
+        color: isBad ? 'var(--color-status-cancel-text)' : isDone ? 'var(--color-status-done-text)' : 'var(--color-brand)',
+      }}
+    >
+      {STATUS_LABELS[normalized] || status}
+    </span>
   );
 }
 
-function EmptyState({ title, href, label }: { title: string; href: string; label: string }) {
+function MenuRow({
+  href,
+  icon: Icon,
+  title,
+  subtitle,
+  badge,
+}: {
+  href: string;
+  icon: React.ElementType;
+  title: string;
+  subtitle?: string;
+  badge?: number;
+}) {
   return (
-    <div className="rounded-[28px] bg-white px-6 py-12 text-center shadow-[var(--shadow-mobile-card)]">
-      <p className="text-lg font-extrabold text-[var(--color-text-dark)]">{title}</p>
-      <Link href={href} className="mt-5 inline-flex h-11 items-center rounded-full bg-[var(--color-primary)] px-5 text-[13px] font-extrabold text-white">{label}</Link>
-    </div>
+    <Link
+      href={href}
+      className="flex min-h-[58px] items-center justify-between gap-3 border-b py-3 uj-pressable"
+      style={{ borderColor: 'var(--color-border)', textDecoration: 'none' }}
+    >
+      <span className="flex min-w-0 items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] bg-[var(--color-brand-light)] text-[var(--color-brand)]">
+          <Icon size={18} strokeWidth={1.8} />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-[14px] font-bold text-[var(--color-text-primary)]">{title}</span>
+          {subtitle && <span className="mt-0.5 block truncate text-[12px] text-[var(--color-text-muted)]">{subtitle}</span>}
+        </span>
+      </span>
+      <span className="flex shrink-0 items-center gap-2">
+        {badge !== undefined && badge > 0 && (
+          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--color-brand)] px-1.5 text-[10px] font-bold text-white">
+            {badge}
+          </span>
+        )}
+        <ChevronRight size={17} className="text-[var(--color-text-muted)]" />
+      </span>
+    </Link>
+  );
+}
+
+function AccountContent() {
+  const pathname = usePathname();
+  const { user, isAdmin, signOut } = useAuth();
+  const { toast } = useToast();
+  const { locale } = useLocale();
+  const [orders, setOrders] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [orderTab, setOrderTab] = useState<'active' | 'history'>('active');
+  const [expandedOrderIds, setExpandedOrderIds] = useState<Record<string, boolean>>({});
+  const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
+  const view: ViewMode = pathname.includes('/orders')
+    ? 'orders'
+    : pathname.includes('/reviews')
+      ? 'reviews'
+      : 'profile';
+
+  useEffect(() => {
+    if (!user) return;
+    let mounted = true;
+    setLoading(true);
+    Promise.allSettled([
+      getDocs(query(collection(db, 'orders'), where('userId', '==', user.uid))),
+      authFetch('/api/orders/mine').then((res) => (res.ok ? res.json() : [])),
+      getUserReviews(user.uid),
+    ]).then(async ([orderResult, pgOrderResult, reviewResult]) => {
+      if (!mounted) return;
+      const merged = new Map<string, any>();
+      if (orderResult.status === 'fulfilled') {
+        orderResult.value.docs.forEach((doc) => {
+          merged.set(doc.id, { id: doc.id, ...doc.data() });
+        });
+      }
+      if (pgOrderResult.status === 'fulfilled' && Array.isArray(pgOrderResult.value)) {
+        pgOrderResult.value.forEach((order: any) => {
+          const existing = merged.get(order.id);
+          merged.set(order.id, mergeOrderRecords(existing, order));
+        });
+      }
+      const rows = Array.from(merged.values()).sort(
+        (a: any, b: any) => (toDate(b.createdAt)?.getTime() || 0) - (toDate(a.createdAt)?.getTime() || 0),
+      );
+      const enriched = await enrichOrdersWithProductSlugs(rows);
+      if (!mounted) return;
+      setOrders(enriched);
+      if (reviewResult.status === 'fulfilled') setReviews(reviewResult.value);
+      setLoading(false);
+    });
+    return () => { mounted = false; };
+  }, [user]);
+
+  const activeOrders = useMemo(() => orders.filter((order) => !['delivered', 'cancelled'].includes(normalizeStatus(order.status))), [orders]);
+  const historyOrders = useMemo(() => orders.filter((order) => ['delivered', 'cancelled'].includes(normalizeStatus(order.status))), [orders]);
+  const visibleOrders = orderTab === 'active' ? activeOrders : historyOrders;
+  const toggleOrderExpanded = (orderId: string) => {
+    setExpandedOrderIds((prev) => ({ ...prev, [orderId]: !prev[orderId] }));
+  };
+
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const cancelOrder = async (order: any) => {
+    if (!user) return;
+    const confirmed = window.confirm('Энэ захиалгыг цуцлах уу? Цуцалсны дараа буцаах боломжгүй.');
+    if (!confirmed) return;
+    setCancellingId(order.id);
+    try {
+      const res = await authFetch(`/api/orders/${order.id}/cancel`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || 'Захиалга цуцлахад алдаа гарлаа.');
+      setOrders((prev) => prev.map((item) => (item.id === order.id ? { ...item, status: 'cancelled' } : item)));
+      toast('Захиалга цуцлагдлаа.', 'success');
+    } catch (error: any) {
+      toast(error?.message || 'Захиалга цуцлахад алдаа гарлаа.', 'error');
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
+  const isCancellable = (order: any) =>
+    ['pending', 'confirmed'].includes(normalizeStatus(order.status)) && order.paymentStatus !== 'paid';
+
+  const refreshReviews = async () => {
+    if (!user) return;
+    const next = await getUserReviews(user.uid).catch(() => []);
+    setReviews(next);
+  };
+
+  const startEditReview = (review: Review) => {
+    setEditingReviewId(review.id);
+  };
+
+  const deleteReview = async (review: Review) => {
+    const confirmed = window.confirm('Энэ сэтгэгдлийг устгах уу?');
+    if (!confirmed || !user) return;
+    try {
+      const res = await authFetch(`/api/reviews/${review.id}`, { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || 'Сэтгэгдэл устгахад алдаа гарлаа.');
+      setReviews((prev) => prev.filter((item) => item.id !== review.id));
+      toast('Сэтгэгдэл устгагдлаа.', 'success');
+    } catch (error: any) {
+      toast(error?.message || 'Сэтгэгдэл устгахад алдаа гарлаа.', 'error');
+    }
+  };
+
+  if (!user) return null;
+
+  const initial = (user.displayName || user.email || 'U').trim().charAt(0).toUpperCase();
+
+  return (
+    <main className="luxury-shell uj-page mx-auto w-full max-w-xl px-4 pb-[104px] pt-2">
+      {view === 'profile' && (
+        <div className="space-y-4">
+          <section className="rounded-[24px] border bg-white p-5" style={{ borderColor: 'var(--color-border)' }}>
+            <div className="flex items-center gap-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--color-brand-light)] text-[20px] font-bold text-[var(--color-brand)]">
+                {user.photoURL ? <img src={user.photoURL} alt="" className="h-full w-full object-cover" /> : initial}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <h1 className="truncate text-[20px] font-bold text-[var(--color-text-primary)]">{user.displayName || 'UJ хэрэглэгч'}</h1>
+                  {isAdmin && <span className="rounded-full bg-[var(--color-brand-light)] px-2 py-1 text-[10px] font-bold text-[var(--color-brand)]">Админ</span>}
+                </div>
+                <p className="mt-1 truncate text-[12px] text-[var(--color-text-muted)]">{user.email}</p>
+              </div>
+            </div>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <div className="rounded-[16px] border bg-[#F7F3F5] p-4 text-center" style={{ borderColor: 'var(--color-border)' }}>
+                <p className="text-[22px] font-bold">{orders.length}</p>
+                <p className="mt-1 text-[11px] font-semibold text-[var(--color-text-muted)]">Нийт захиалга</p>
+              </div>
+              <div className="rounded-[16px] border bg-[#F7F3F5] p-4 text-center" style={{ borderColor: 'var(--color-border)' }}>
+                <p className="text-[22px] font-bold">{reviews.length}</p>
+                <p className="mt-1 text-[11px] font-semibold text-[var(--color-text-muted)]">Сэтгэгдэл</p>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-[24px] border bg-white px-4" style={{ borderColor: 'var(--color-border)' }}>
+            <MenuRow href="/profile/orders" icon={Package} title="Миний захиалгууд" subtitle={`${activeOrders.length} идэвхтэй захиалга`} badge={activeOrders.length} />
+            <MenuRow href="/profile/reviews" icon={MessageCircle} title={locale === 'en' ? 'My reviews' : 'Миний сэтгэгдлүүд'} subtitle={`${reviews.length} ${locale === 'en' ? 'reviews' : 'сэтгэгдэл'}`} />
+            <MenuRow href="/profile/settings" icon={Settings} title="Тохиргоо" subtitle="Нэр, и-мэйл, хаяг, Google холболт" />
+            {isAdmin && <MenuRow href="/admin" icon={Shield} title="Admin самбар" subtitle="Захиалга, бүтээгдэхүүн, хэрэглэгч" />}
+            <button
+              type="button"
+              onClick={() => signOut()}
+              className="flex min-h-[58px] w-full items-center gap-3 py-3 text-left uj-pressable"
+              style={{ color: 'var(--color-status-cancel-text)', background: 'transparent', border: 'none' }}
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-[var(--color-status-cancel-bg)]">
+                <LogOut size={18} />
+              </span>
+              <span className="text-[14px] font-bold">Гарах</span>
+            </button>
+          </section>
+        </div>
+      )}
+
+      {view === 'orders' && (
+        <section className="space-y-5">
+          <div className="flex items-start gap-3">
+            <Link href="/profile" className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border bg-white text-[var(--color-brand)]" style={{ borderColor: 'var(--color-border)', textDecoration: 'none' }}>
+              <ChevronRight size={18} className="rotate-180" />
+            </Link>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--color-brand)]">Orders</p>
+              <h1 className="mt-1 text-[26px] font-bold text-[var(--color-text-primary)]">Миний захиалгууд</h1>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-1 rounded-[18px] bg-[#F7F3F5] p-1">
+            {(['active', 'history'] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setOrderTab(tab)}
+                className="h-11 rounded-[14px] text-[12px] font-bold transition-colors"
+                style={{ background: orderTab === tab ? '#fff' : 'transparent', color: orderTab === tab ? 'var(--color-brand)' : 'var(--color-text-muted)', border: 'none', boxShadow: orderTab === tab ? 'var(--shadow-xs)' : 'none' }}
+              >
+                {tab === 'active' ? `Идэвхтэй · ${activeOrders.length}` : `Түүх · ${historyOrders.length}`}
+              </button>
+            ))}
+          </div>
+          {loading ? (
+            <div className="space-y-3">{Array.from({ length: 2 }).map((_, index) => <div key={index} className="h-32 rounded-[22px] uj-shimmer" />)}</div>
+          ) : visibleOrders.length ? (
+            <div className="space-y-3">
+              {visibleOrders.map((order, index) => (
+                <article key={order.id} className="rounded-[22px] border bg-white p-4" style={{ borderColor: 'var(--color-border)' }}>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="rounded-full bg-[#F7F3F5] px-3 py-1 font-mono text-[12px] font-bold">{orderNumber(order, index)}</span>
+                    <StatusBadge status={order.status} />
+                  </div>
+                  <p className="mt-3 text-[13px] font-bold">{order.customerName || order.name || 'UJ хэрэглэгч'}</p>
+                  {formatOrderDate(order.createdAt) && (
+                    <p className="mt-1 text-[11px] font-semibold text-[var(--color-text-muted)]">{formatOrderDate(order.createdAt)}</p>
+                  )}
+                  <p className="mt-1 text-[12px] text-[var(--color-text-muted)]">{(order.items || []).length} бараа · {formatPrice(order.total || 0)}</p>
+                  {(order.items || []).length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {(expandedOrderIds[order.id] ? (order.items || []) : (order.items || []).slice(0, 3)).map((item: any, idx: number) => (
+                        <OrderItemRow key={`${item.productId || orderItemName(item)}-${idx}`} item={item} idx={idx} />
+                      ))}
+                      {(order.items || []).length > 3 && (
+                        <button
+                          type="button"
+                          onClick={() => toggleOrderExpanded(order.id)}
+                          className="text-[11px] font-semibold text-[var(--color-brand)]"
+                        >
+                          {expandedOrderIds[order.id] ? 'Хураах' : `Бүгдийг харах (${(order.items || []).length})`}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {orderTab === 'active' && (
+                    <OrderDeliveryTracker status={order.status} />
+                  )}
+                  {orderTab === 'history' && !['cancelled'].includes(normalizeStatus(order.status)) && (
+                    <OrderDeliveryTracker status={order.status} />
+                  )}
+                  {orderTab === 'active' && isCancellable(order) && (
+                    <button
+                      type="button"
+                      onClick={() => cancelOrder(order)}
+                      disabled={cancellingId === order.id}
+                      className="mt-3 h-10 w-full rounded-full bg-[var(--color-status-cancel-bg)] text-[12px] font-bold text-[var(--color-status-cancel-text)] disabled:opacity-50"
+                    >
+                      {cancellingId === order.id ? 'Цуцалж байна...' : 'Захиалга цуцлах'}
+                    </button>
+                  )}
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-[22px] border bg-white px-6 py-10 text-center" style={{ borderColor: 'var(--color-border)' }}>
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-brand-light)] text-[var(--color-brand)]">
+                <Package size={28} strokeWidth={1.6} />
+              </div>
+              <p className="mt-4 text-[15px] font-bold text-[var(--color-text-primary)]">
+                {orderTab === 'active' ? 'Идэвхтэй захиалга алга' : 'Захиалгын түүх хоосон'}
+              </p>
+              <p className="mt-2 text-[13px] text-[var(--color-text-muted)]">Одоогоор {orderTab === 'active' ? 'идэвхтэй' : 'дууссан'} захиалга бүртгэгдээгүй байна.</p>
+              <Link href="/shop" className="mt-6 inline-flex h-11 items-center rounded-full bg-[var(--color-brand)] px-6 text-[13px] font-bold text-white" style={{ textDecoration: 'none' }}>Дэлгүүр үзэх</Link>
+            </div>
+          )}
+        </section>
+      )}
+
+      {view === 'reviews' && (
+        <section className="space-y-5">
+          <div className="flex items-start gap-3">
+            <Link href="/profile" className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border bg-white text-[var(--color-brand)]" style={{ borderColor: 'var(--color-border)', textDecoration: 'none' }}>
+              <ChevronRight size={18} className="rotate-180" />
+            </Link>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--color-brand)]">Reviews</p>
+              <h1 className="mt-1 text-[26px] font-bold text-[var(--color-text-primary)]">Миний сэтгэгдлүүд</h1>
+            </div>
+          </div>
+          {loading ? (
+            <div className="space-y-3">{Array.from({ length: 2 }).map((_, index) => <div key={index} className="h-40 rounded-[22px] uj-shimmer" />)}</div>
+          ) : reviews.length ? reviews.map((review) => (
+            <article key={review.id} className="rounded-[22px] border bg-white p-5" style={{ borderColor: 'var(--color-border)' }}>
+              {editingReviewId === review.id ? (
+                <ReviewForm
+                  product={reviewToProduct(review)}
+                  review={review}
+                  onSubmitted={async () => {
+                    await refreshReviews();
+                    setEditingReviewId(null);
+                    toast('Сэтгэгдэл амжилттай шинэчлэгдлээ.', 'success');
+                  }}
+                  onCancel={() => setEditingReviewId(null)}
+                />
+              ) : (
+                <>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex gap-0.5 text-[var(--color-brand)]">
+                      {Array.from({ length: review.rating || 5 }).map((_, index) => <Star key={index} size={14} fill="currentColor" />)}
+                    </div>
+                    <span className="rounded-full bg-[#F7F3F5] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">
+                      {review.status === 'visible' ? 'Нийтлэгдсэн' : review.status === 'pending' ? 'Хүлээгдэж буй' : 'Нуугдсан'}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-[14px] leading-7 text-[var(--color-text-primary)]">{review.content || review.body}</p>
+                  {(review.imageUrls || []).length > 0 && (
+                    <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+                      {(review.imageUrls || []).map((url, index) => (
+                        <div key={`${url}-${index}`} className="relative h-20 w-20 shrink-0 overflow-hidden rounded-[14px] border border-[var(--color-border)] bg-[#F7F3F5]">
+                          <Image src={url} alt={review.productName || 'review'} fill sizes="80px" className="object-cover" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <p className="mt-4 text-[12px] font-semibold text-[var(--color-text-muted)]">{review.productName}</p>
+                  <div className="mt-4 flex flex-wrap items-center gap-2 border-t pt-4" style={{ borderColor: 'var(--color-border)' }}>
+                    <button type="button" onClick={() => startEditReview(review)} className="h-10 rounded-full border border-[var(--color-border)] px-5 text-[12px] font-bold text-[var(--color-brand)]">Засах</button>
+                    <button type="button" onClick={() => deleteReview(review)} className="h-10 rounded-full bg-[var(--color-status-cancel-bg)] px-5 text-[12px] font-bold text-[var(--color-status-cancel-text)]">Устгах</button>
+                  </div>
+                </>
+              )}
+            </article>
+          )) : (
+            <div className="rounded-[22px] border bg-white px-6 py-10 text-center" style={{ borderColor: 'var(--color-border)' }}>
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-brand-light)] text-[var(--color-brand)]">
+                <MessageCircle size={28} strokeWidth={1.6} />
+              </div>
+              <p className="mt-4 text-[15px] font-bold">Сэтгэгдэл байхгүй</p>
+              <p className="mt-2 text-[13px] text-[var(--color-text-muted)]">Хүргэгдсэн захиалгаас сэтгэгдэл бичиж болно.</p>
+            </div>
+          )}
+        </section>
+      )}
+
+    </main>
   );
 }
 

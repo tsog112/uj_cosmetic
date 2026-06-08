@@ -2,8 +2,10 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { MessageCircle, Send, Sparkles, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { mobileChatFabClass, mobileChatFabProductStickyClass } from '@/lib/layout/shell';
 import { getAllProducts, getSiteSettings } from '@/lib/services/firestoreService';
 import { DEFAULT_SETTINGS, Product, SiteSettings, formatPrice } from '@/types';
 
@@ -205,7 +207,11 @@ function ChatPanel({ onClose, scrollRef, messages, sending, input, setInput, onS
 }
 
 export default function ChatAssistant() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const hideMobileFab = pathname === '/cart' || pathname === '/checkout';
+  const hasProductStickyBar = Boolean(pathname?.match(/^\/shop\/[^/]+$/) && pathname !== '/shop');
+  const mobileFabBottomClass = hasProductStickyBar ? mobileChatFabProductStickyClass : mobileChatFabClass;
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
   const [products, setProducts] = useState<Product[]>([]);
   const [input, setInput] = useState('');
@@ -314,11 +320,11 @@ export default function ChatAssistant() {
         </AnimatePresence>
 
         {/* FAB — only visible when chat closed */}
-        {!open && (
-          <div className="fixed bottom-[80px] right-4 z-[300] pointer-events-auto">
+        {!open && !hideMobileFab && (
+          <div className={`fixed right-4 z-[300] pointer-events-auto ${mobileFabBottomClass}`}>
             <motion.button
               onClick={() => setOpen(true)}
-              className="flex h-[56px] w-[56px] items-center justify-center rounded-full bg-[var(--color-brand-accent)] text-white shadow-[0_14px_34px_rgba(228,95,154,0.34)] ring-4 ring-white"
+              className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-[var(--color-brand-accent)] text-white shadow-[0_12px_28px_rgba(228,95,154,0.3)] ring-4 ring-white"
               whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.93 }}
               aria-label="Чат нээх"
@@ -330,7 +336,7 @@ export default function ChatAssistant() {
       </div>
 
       {/* Desktop: fixed bottom-right corner popup */}
-      <div className="fixed bottom-8 right-8 z-[300] hidden md:flex md:flex-col md:items-end pointer-events-none">
+      <div className="fixed bottom-10 right-10 z-[300] hidden md:flex md:flex-col md:items-end pointer-events-none">
         <AnimatePresence>
           {open && (
             <motion.div

@@ -1,4 +1,5 @@
-import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp, type Query } from 'firebase-admin/firestore';
+import { assertFirestoreCircuitClosed, recordFirestoreError } from '@/lib/firestoreCircuitBreaker';
 import { getAdminDb } from '@/lib/firebaseAdmin';
 import { type OrderStatus } from '@/types';
 import { LOW_STOCK_THRESHOLD } from '@/lib/constants/admin';
@@ -6,6 +7,7 @@ import { LOW_STOCK_THRESHOLD } from '@/lib/constants/admin';
 const PAID_STATUSES: OrderStatus[] = ['confirmed', 'processing', 'shipped', 'delivered'];
 const CANCELLED_STATUS: OrderStatus = 'cancelled';
 const PENDING_STATUS: OrderStatus = 'pending';
+const ORDER_STATUS_VALUES: OrderStatus[] = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
 
 function toDate(value: unknown): Date {
   if (!value) return new Date();
@@ -15,6 +17,19 @@ function toDate(value: unknown): Date {
   }
   const parsed = new Date(value as string);
   return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+}
+
+function withTimeout<T>(promise: Promise<T>, label: string, ms = 1500): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    }),
+  ]);
+}
+
+function isTimeoutError(error: any) {
+  return String(error?.message || error).includes('timed out');
 }
 
 export function normalizeOrderStatus(status: unknown): OrderStatus {
@@ -68,6 +83,9 @@ export type AdminProduct = {
   notifyOnFeature?: boolean;
   showOnHome?: boolean;
   showInSearch?: boolean;
+  showcaseFeatured?: boolean;
+  showcaseNewest?: boolean;
+  showcaseSale?: boolean;
   specs?: Record<string, string>;
   images: string[];
   categoryId: string;
@@ -104,6 +122,9 @@ export function firestoreToAdminProduct(id: string, data: FirebaseFirestore.Docu
     notifyOnFeature: Boolean(data.notifyOnFeature ?? false),
     showOnHome: data.showOnHome !== false,
     showInSearch: data.showInSearch !== false,
+    showcaseFeatured: Boolean(data.showcaseFeatured ?? data.showcase_featured ?? false),
+    showcaseNewest: Boolean(data.showcaseNewest ?? data.showcase_newest ?? false),
+    showcaseSale: Boolean(data.showcaseSale ?? data.showcase_sale ?? false),
     specs: data.specs && typeof data.specs === 'object' && !Array.isArray(data.specs) ? data.specs as Record<string, string> : {},
     images: parseProductImages(data.images),
     categoryId,
@@ -147,6 +168,12 @@ export function adminPayloadToFirestore(body: Record<string, unknown>, existingS
     notifyOnFeature: Boolean(body.notifyOnFeature ?? false),
     showOnHome: body.showOnHome !== false,
     showInSearch: body.showInSearch !== false,
+    showcaseFeatured: Boolean(body.showcaseFeatured ?? body.isFeatured ?? false),
+    showcaseNewest: Boolean(body.showcaseNewest ?? false),
+    showcaseSale: Boolean(body.showcaseSale ?? false),
+    showcase_featured: Boolean(body.showcaseFeatured ?? body.isFeatured ?? false),
+    showcase_newest: Boolean(body.showcaseNewest ?? false),
+    showcase_sale: Boolean(body.showcaseSale ?? false),
     lowStockThreshold: parseInt(String(body.lowStockThreshold ?? LOW_STOCK_THRESHOLD), 10) || LOW_STOCK_THRESHOLD,
     specs: body.specs && typeof body.specs === 'object' && !Array.isArray(body.specs) ? body.specs : {},
     published: body.isVisible !== false,
@@ -187,6 +214,18 @@ export async function patchAdminProduct(id: string, body: Record<string, unknown
   if ('notifyOnFeature' in body) patch.notifyOnFeature = Boolean(body.notifyOnFeature);
   if ('showOnHome' in body) patch.showOnHome = Boolean(body.showOnHome);
   if ('showInSearch' in body) patch.showInSearch = Boolean(body.showInSearch);
+  if ('showcaseFeatured' in body) {
+    patch.showcaseFeatured = Boolean(body.showcaseFeatured);
+    patch.showcase_featured = Boolean(body.showcaseFeatured);
+  }
+  if ('showcaseNewest' in body) {
+    patch.showcaseNewest = Boolean(body.showcaseNewest);
+    patch.showcase_newest = Boolean(body.showcaseNewest);
+  }
+  if ('showcaseSale' in body) {
+    patch.showcaseSale = Boolean(body.showcaseSale);
+    patch.showcase_sale = Boolean(body.showcaseSale);
+  }
   if ('lowStockThreshold' in body) patch.lowStockThreshold = Math.max(0, parseInt(String(body.lowStockThreshold ?? LOW_STOCK_THRESHOLD), 10) || LOW_STOCK_THRESHOLD);
   if ('specs' in body && body.specs && typeof body.specs === 'object' && !Array.isArray(body.specs)) patch.specs = body.specs;
 
@@ -211,16 +250,58 @@ export async function listAdminProducts(filters?: {
   page?: number;
   limit?: number;
 }) {
+  assertFirestoreCircuitClosed();
   const db = getAdminDb();
+  const page = filters?.page || 1;
+  const limit = filters?.limit || 20;
   
   // Fetch categories map for product details
-  const categoriesSnap = await db.collection('categories').get();
   const categoriesMap: Record<string, string> = {};
-  categoriesSnap.docs.forEach(doc => {
-    categoriesMap[doc.id] = doc.data().name_mn || doc.data().name || doc.id;
-  });
+  try {
+    const categoriesSnap = await withTimeout(db.collection('categories').get(), 'admin product categories', 800);
+    categoriesSnap.docs.forEach(doc => {
+      categoriesMap[doc.id] = doc.data().name_mn || doc.data().name || doc.id;
+    });
+  } catch (error: any) {
+    console.warn('Admin product categories query failed:', error.message || error);
+  }
 
-  const snap = await db.collection('products').get();
+  if (!filters?.search) {
+    try {
+      let query: Query = db.collection('products');
+      if (filters?.category && filters.category !== 'all') {
+        query = query.where('category', '==', filters.category);
+      }
+      if (filters?.inStock === 'true' || filters?.inStock === 'inStock') {
+        query = query.where('stock', '>', 0);
+      } else if (filters?.inStock === 'false' || filters?.inStock === 'outOfStock' || filters?.inStock === 'empty') {
+        query = query.where('stock', '==', 0);
+      } else if (filters?.inStock === 'low' || filters?.inStock === 'lowStock') {
+        query = query.where('stock', '>', 0).where('stock', '<=', LOW_STOCK_THRESHOLD);
+      }
+
+      const start = (page - 1) * limit;
+      const orderedQuery = query.orderBy(filters?.inStock === 'true' || filters?.inStock === 'inStock' ? 'stock' : 'updatedAt', 'desc');
+      const [snap, totalSnap] = await withTimeout(Promise.all([
+        orderedQuery.offset(start).limit(limit).get(),
+        query.count().get(),
+      ]), 'bounded admin products');
+      const products = snap.docs.map((doc) => firestoreToAdminProduct(doc.id, doc.data(), categoriesMap));
+
+      return {
+        products,
+        totalCount: totalSnap.data().count,
+        totalPages: Math.ceil(totalSnap.data().count / limit) || 1,
+        currentPage: page,
+      };
+    } catch (error: any) {
+      recordFirestoreError(error);
+      console.warn('Bounded Firestore products query failed, using compatibility path:', error.message || error);
+      if (isTimeoutError(error)) throw error;
+    }
+  }
+
+  const snap = await withTimeout(db.collection('products').limit(500).get(), 'admin products compatibility');
   let items = snap.docs.map((doc) => firestoreToAdminProduct(doc.id, doc.data(), categoriesMap));
 
   if (filters?.category && filters.category !== 'all') {
@@ -246,8 +327,6 @@ export async function listAdminProducts(filters?: {
 
   items.sort((a, b) => b.id.localeCompare(a.id));
 
-  const page = filters?.page || 1;
-  const limit = filters?.limit || 20;
   const totalCount = items.length;
   const start = (page - 1) * limit;
 
@@ -382,17 +461,99 @@ export async function listAdminOrders(filters?: {
   city?: string;
   archived?: boolean;
 }) {
+  assertFirestoreCircuitClosed();
   const page = filters?.page || 1;
   const limitCount = filters?.limit || 20;
+  const showArchived = filters?.archived ?? false;
+  const statusFilter = filters?.status && filters.status !== 'all' ? normalizeOrderStatus(filters.status) : null;
+  const needsInMemoryFiltering = Boolean(
+    filters?.search ||
+    filters?.priceMin !== undefined ||
+    filters?.priceMax !== undefined ||
+    filters?.city ||
+    filters?.regionId ||
+    filters?.districtId ||
+    filters?.khorooId,
+  );
+  let skipFirestoreCompatibility = false;
+
+  if (!needsInMemoryFiltering) {
+    try {
+      const db = getAdminDb();
+      const applyDateFilters = (query: Query) => {
+        let nextQuery = query;
+        if (filters?.dateFrom) {
+          nextQuery = nextQuery.where('createdAt', '>=', Timestamp.fromDate(new Date(filters.dateFrom)));
+        }
+        if (filters?.dateTo) {
+          const toDateObj = new Date(filters.dateTo);
+          toDateObj.setHours(23, 59, 59, 999);
+          nextQuery = nextQuery.where('createdAt', '<=', Timestamp.fromDate(toDateObj));
+        }
+        return nextQuery;
+      };
+
+      const baseCollection = db.collection('orders');
+      const baseForCounts = showArchived
+        ? applyDateFilters(baseCollection.where('archived', '==', true))
+        : applyDateFilters(baseCollection);
+      let activeQuery = baseForCounts;
+      if (statusFilter) activeQuery = activeQuery.where('status', '==', statusFilter);
+
+      const start = (page - 1) * limitCount;
+      const [pageSnap, activeCountSnap, ...statusCountSnaps] = await withTimeout(Promise.all([
+        activeQuery.orderBy('createdAt', 'desc').offset(start).limit(limitCount).get(),
+        activeQuery.count().get(),
+        ...ORDER_STATUS_VALUES.map((status) => baseForCounts.where('status', '==', status).count().get()),
+      ]), 'bounded admin orders');
+
+      const statusCounts = statusCountSnaps.reduce((acc: Record<string, number>, snap, index) => {
+        acc[ORDER_STATUS_VALUES[index]] = snap.data().count;
+        acc.all += snap.data().count;
+        return acc;
+      }, { all: 0, pending: 0, confirmed: 0, processing: 0, shipped: 0, delivered: 0, cancelled: 0 });
+
+      const orders = pageSnap.docs
+        .map((doc: any) => firestoreToAdminOrder(doc.id, doc.data()))
+        .filter((order) => showArchived || !order.archived);
+      const totalCount = activeCountSnap.data().count;
+
+      return {
+        orders,
+        totalCount,
+        totalPages: Math.ceil(totalCount / limitCount) || 1,
+        currentPage: page,
+        statusCounts,
+        summary: {
+          totalOrders: statusCounts.all,
+          todayOrders: 0,
+          pendingOrders: statusCounts.pending,
+          filteredAmount: orders.reduce((sum: number, order: any) => sum + Number(order.total || 0), 0),
+          confirmedRevenue: orders.filter((order: any) => order.status !== 'cancelled').reduce((sum: number, order: any) => sum + Number(order.total || 0), 0),
+        },
+      };
+    } catch (error: any) {
+      recordFirestoreError(error);
+      console.warn('Bounded Firestore orders query failed, using compatibility path:', error.message || error);
+      skipFirestoreCompatibility = isTimeoutError(error);
+    }
+  }
   
   let allOrders: any[] = [];
   let totalCount = 0;
   
   try {
+    if (skipFirestoreCompatibility) {
+      throw new Error('Skipping Firestore compatibility query after timeout.');
+    }
     const db = getAdminDb();
-    const snap = await db.collection('orders').get();
+    const snap = await withTimeout(
+      db.collection('orders').orderBy('createdAt', 'desc').limit(500).get(),
+      'admin orders compatibility',
+    );
     allOrders = snap.docs.map((doc: any) => firestoreToAdminOrder(doc.id, doc.data()));
   } catch (error: any) {
+    recordFirestoreError(error);
     console.warn('Firestore orders query failed, falling back to SQLite:', error.message || error);
     try {
       const { PrismaClient } = await import('@prisma/client');
@@ -412,7 +573,9 @@ export async function listAdminOrders(filters?: {
       allOrders = dbOrders.map(o => {
         let parsedAddress = null;
         if (o.addressSnapshot) {
-          try { parsedAddress = JSON.parse(o.addressSnapshot); } catch {}
+          parsedAddress = typeof o.addressSnapshot === 'string'
+            ? (() => { try { return JSON.parse(o.addressSnapshot); } catch { return null; } })()
+            : o.addressSnapshot;
         }
         const hasLegacyOtherAddress = 
           !parsedAddress || 
@@ -456,7 +619,6 @@ export async function listAdminOrders(filters?: {
   }
 
   // Filter by archived status BEFORE any other filters/counts
-  const showArchived = filters?.archived ?? false;
   allOrders = allOrders.filter((o: any) => Boolean(o.archived) === showArchived);
 
   // Sort by date descending
@@ -515,7 +677,6 @@ export async function listAdminOrders(filters?: {
   }, { all: 0, pending: 0, confirmed: 0, processing: 0, shipped: 0, delivered: 0, cancelled: 0 });
 
   // Now apply status filter to get active orders
-  const statusFilter = filters?.status && filters.status !== 'all' ? normalizeOrderStatus(filters.status) : null;
   let activeOrders = allOrders;
   if (statusFilter) {
     activeOrders = allOrders.filter((o: any) => o.status === statusFilter);
@@ -542,69 +703,15 @@ export async function listAdminOrders(filters?: {
 }
 
 export async function getAdminOrder(id: string) {
+  assertFirestoreCircuitClosed();
   const db = getAdminDb();
   const doc = await db.collection('orders').doc(id).get();
   if (!doc.exists) return null;
   return firestoreToAdminOrder(doc.id, doc.data()!);
 }
 
-export async function updateAdminOrderStatus(id: string, status: string) {
-  const normalized = normalizeOrderStatus(status);
-  const db = getAdminDb();
-  await db.collection('orders').doc(id).set(
-    { status: normalized, updatedAt: FieldValue.serverTimestamp() },
-    { merge: true },
-  );
-  return getAdminOrder(id);
-}
-
-export async function getAdminStats() {
-  const db = getAdminDb();
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const firstDayThisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-  const firstDayLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-
-  const [productsCount, usersCount, pendingCount, lowStockCount, recentOrdersSnap] = await Promise.all([
-    db.collection('products').count().get(),
-    db.collection('users').count().get(),
-    db.collection('orders').where('status', '==', PENDING_STATUS).count().get(),
-    db.collection('products').where('stock', '>', 0).where('stock', '<=', LOW_STOCK_THRESHOLD).count().get(),
-    db.collection('orders').where('createdAt', '>=', firstDayLastMonth).get(),
-  ]);
-
-  const orders = recentOrdersSnap.docs.map((doc: any) => firestoreToAdminOrder(doc.id, doc.data()));
-  const activeOrders = orders.filter((order) => order.status !== CANCELLED_STATUS);
-  const todayOrders = activeOrders.filter((order) => order.createdAt >= today);
-  const thisMonthOrders = activeOrders.filter((order) => order.createdAt >= firstDayThisMonth);
-  const lastMonthOrders = activeOrders.filter(
-    (order) => order.createdAt >= firstDayLastMonth && order.createdAt < firstDayThisMonth,
-  );
-
-  const todayRevenue = todayOrders.reduce((sum, order) => sum + order.total, 0);
-  const thisMonthRevenue = thisMonthOrders.reduce((sum, order) => sum + order.total, 0);
-  const lastMonthRevenue = lastMonthOrders.reduce((sum, order) => sum + order.total, 0);
-
-  let revenueChange = 0;
-  if (lastMonthRevenue > 0) {
-    revenueChange = ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100;
-  } else if (thisMonthRevenue > 0) {
-    revenueChange = 100;
-  }
-
-  return {
-    todayRevenue,
-    todayOrderCount: todayOrders.length,
-    pendingCount: pendingCount.data().count,
-    lowStockCount: lowStockCount.data().count,
-    totalProducts: productsCount.data().count,
-    totalCustomers: usersCount.data().count,
-    monthlyRevenue: thisMonthRevenue,
-    revenueChange,
-  };
-}
-
 export async function listAdminUsers(search?: string) {
+  assertFirestoreCircuitClosed();
   const db = getAdminDb();
   const snap = await db.collection('users').get();
   const ordersSnap = await db.collection('orders').get();
@@ -654,148 +761,10 @@ export async function updateAdminUserRole(userId: string, role: 'admin' | 'custo
   };
 }
 
-export async function getAdminAnalytics() {
+export async function countFirestoreAdmins(): Promise<{ count: number; ids: string[] }> {
   const db = getAdminDb();
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-  const weekStart = new Date(today);
-  weekStart.setDate(today.getDate() - 6);
-
-  const [ordersSnap, productsSnap, usersSnap] = await Promise.all([
-    db.collection('orders').get(),
-    db.collection('products').get(),
-    db.collection('users').get(),
-  ]);
-
-  const orders = ordersSnap.docs.map((doc) => firestoreToAdminOrder(doc.id, doc.data()));
-  const products = productsSnap.docs.map((doc) => firestoreToAdminProduct(doc.id, doc.data()));
-
-  const monthOrders = orders.filter((order) => order.createdAt >= monthStart);
-  const paidMonthOrders = monthOrders.filter((order) => PAID_STATUSES.includes(order.status as OrderStatus));
-  const pendingPayments = monthOrders.filter((order) => order.status === PENDING_STATUS);
-  const weekOrders = orders.filter((order) => order.createdAt >= weekStart);
-  const paidWeekOrders = weekOrders.filter((order) => PAID_STATUSES.includes(order.status as OrderStatus));
-
-  const monthRevenue = paidMonthOrders.reduce((sum, order) => sum + order.total, 0);
-  const weekRevenue = paidWeekOrders.reduce((sum, order) => sum + order.total, 0);
-  const averageOrder = paidWeekOrders.length ? Math.round(weekRevenue / paidWeekOrders.length) : 0;
-
-  const customers = usersSnap.docs.map((doc) => ({
-    id: doc.id,
-    orders: orders.filter((order) => order.userId === doc.id && order.status !== CANCELLED_STATUS),
-  }));
-  const repeatCustomers = customers.filter((customer) => customer.orders.length > 1).length;
-  const customerValue = customers.length
-    ? Math.round(
-        customers.reduce((sum, customer) => sum + customer.orders.reduce((acc, order) => acc + order.total, 0), 0) /
-          customers.length,
-      )
-    : 0;
-
-  const dayLabel = (date: Date) => `${date.getMonth() + 1}/${date.getDate()}`;
-  const revenueByDay = Array.from({ length: 7 }).map((_, index) => {
-    const date = new Date(weekStart);
-    date.setDate(weekStart.getDate() + index);
-    const next = new Date(date);
-    next.setDate(date.getDate() + 1);
-    const dayOrders = paidWeekOrders.filter((order) => order.createdAt >= date && order.createdAt < next);
-    return {
-      date: dayLabel(date),
-      revenue: dayOrders.reduce((sum, order) => sum + order.total, 0),
-      orders: dayOrders.length,
-    };
-  });
-
-  const statusValues: OrderStatus[] = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
-  const statusBreakdown = statusValues.map((status) => ({
-    status,
-    count: monthOrders.filter((order) => order.status === status).length,
-  }));
-
-  const productPerformance = products
-    .map((product) => {
-      const productOrders = orders.reduce((count, order) => {
-        const items = order.items || [];
-        return (
-          count +
-          items
-            .filter((item) => item.productId === product.id)
-            .reduce((sum, item) => sum + Number(item.quantity || 0), 0)
-        );
-      }, 0);
-      const views = product.views || 0;
-      const conversion = views > 0 ? Number(((productOrders / views) * 100).toFixed(1)) : productOrders > 0 ? 100 : 0;
-      return {
-        id: product.id,
-        name: product.name,
-        views,
-        orders: productOrders,
-        conversion,
-        stock: product.stock,
-      };
-    })
-    .sort((a, b) => b.orders - a.orders || b.views - a.views);
-
-  const topProducts = [...productPerformance]
-    .filter((item) => item.orders > 0)
-    .slice(0, 8)
-    .map((item) => {
-      const product = products.find((entry) => entry.id === item.id);
-      return {
-        id: item.id,
-        name: item.name,
-        category: product?.category?.name || 'Ангилалгүй',
-        quantity: item.orders,
-        revenue: item.orders * (product?.salePrice ?? product?.price ?? 0),
-      };
-    });
-
-  const inventoryRisk = products
-    .filter((product) => product.stock <= LOW_STOCK_THRESHOLD)
-    .slice(0, 8)
-    .map((product) => ({
-      id: product.id,
-      name: product.name,
-      category: product.category?.name || 'Ангилалгүй',
-      stock: product.stock,
-      price: product.salePrice ?? product.price,
-      visible: product.isVisible,
-      soldCount: product.orderCount || 0,
-    }));
-
-  const expensesSnap = await db.collection('expenses').where('date', '>=', monthStart).get();
-  const expenses = expensesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  const totalExpenses = expenses.reduce((sum, exp: any) => sum + (exp.amount || 0), 0);
-  const netProfit = monthRevenue - totalExpenses;
-
-  return {
-    summary: {
-      monthRevenue,
-      weekRevenue,
-      averageOrder,
-      paidOrderCount: paidWeekOrders.length,
-      lowStockCount: products.filter((product) => product.stock <= LOW_STOCK_THRESHOLD).length,
-      repeatCustomers,
-      customerValue,
-      totalCustomers: usersSnap.size,
-      productCount: products.length,
-      pendingPaymentCount: pendingPayments.length,
-      pendingPaymentAmount: pendingPayments.reduce((sum, order) => sum + order.total, 0),
-      expenseTracked: true,
-      totalExpenses,
-      netProfit,
-    },
-    expenses: expenses.map((e: any) => ({
-      ...e,
-      date: e.date?.toDate ? e.date.toDate() : new Date(e.date)
-    })).sort((a: any, b: any) => b.date.getTime() - a.date.getTime()),
-    revenueByDay,
-    statusBreakdown,
-    topProducts,
-    inventoryRisk,
-    productPerformance,
-  };
+  const snap = await db.collection('users').where('role', '==', 'admin').get();
+  return { count: snap.size, ids: snap.docs.map((doc) => doc.id) };
 }
 
 export async function addAdminExpense(data: { title: string; amount: number; category: string; date: string }) {
@@ -939,7 +908,7 @@ async function hydrateUserStats(users: any[]) {
   });
 }
 
-export async function listAdminCustomers(search?: string, page = 1, limit = 20) {
+export async function listAdminCustomers(search?: string, page = 1, limit = 20, role: string = 'all') {
   const db = getAdminDb();
   
   // 1. Fetch all users from Firestore (index-free since there's no native composite filter)
@@ -953,12 +922,22 @@ export async function listAdminCustomers(search?: string, page = 1, limit = 20) 
       [u.displayName, u.name, u.email, u.phone].filter(Boolean).some(val => String(val).toLowerCase().includes(term))
     );
   }
-  
-  // Filter out admins in memory
-  allUsers = allUsers.filter((u: any) => u.role !== 'admin');
 
-  // Sort by createdAt descending in memory
-  allUsers.sort((a: any, b: any) => toDate(b.createdAt).getTime() - toDate(a.createdAt).getTime());
+  if (role === 'admin') {
+    allUsers = allUsers.filter((u: any) => u.role === 'admin');
+  } else if (role === 'customer') {
+    allUsers = allUsers.filter((u: any) => u.role !== 'admin');
+  }
+
+  // Sort by createdAt descending in memory (admins first when showing all)
+  allUsers.sort((a: any, b: any) => {
+    if (role === 'all') {
+      const aAdmin = a.role === 'admin';
+      const bAdmin = b.role === 'admin';
+      if (aAdmin !== bAdmin) return aAdmin ? -1 : 1;
+    }
+    return toDate(b.createdAt).getTime() - toDate(a.createdAt).getTime();
+  });
   
   const totalCount = allUsers.length;
   const start = (page - 1) * limit;
@@ -986,31 +965,4 @@ export async function getMonthlyReport(year: number, month: number) {
     .filter((order) => order.createdAt < end && order.status !== CANCELLED_STATUS);
 
   return orders;
-}
-
-export async function archiveAdminOrder(id: string, archive: boolean) {
-  const db = getAdminDb();
-  const archivedAt = archive ? new Date() : null;
-  
-  await db.collection('orders').doc(id).set(
-    { 
-      archived: archive, 
-      archivedAt: archivedAt ? FieldValue.serverTimestamp() : null,
-      updatedAt: FieldValue.serverTimestamp() 
-    },
-    { merge: true },
-  );
-
-  try {
-    const { PrismaClient } = await import('@prisma/client');
-    const prisma = new PrismaClient();
-    await prisma.order.update({
-      where: { id },
-      data: { archived: archive, archivedAt }
-    });
-  } catch (err) {
-    console.error('Failed to sync manual archive status to SQLite:', err);
-  }
-
-  return getAdminOrder(id);
 }

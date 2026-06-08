@@ -1,10 +1,13 @@
 'use client';
 
+import { authFetch } from '@/lib/auth/clientFetch';
 import { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
-import { CheckCircle2, Eye, EyeOff, MessageSquareReply, Search, Star, Trash2, SlidersHorizontal, BadgeCheck } from 'lucide-react';
+import { CheckCircle2, Eye, EyeOff, MessageSquareReply, Search, Star, Trash2, BadgeCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import AdminPageHeader from '@/components/admin/AdminPageHeader';
+import AdminFilterToggleButton from '@/components/admin/AdminFilterToggleButton';
+import AdminPageShell from '@/components/admin/AdminPageShell';
+import AdminSearchField from '@/components/admin/AdminSearchField';
 import AdminSheet from '@/components/admin/AdminSheet';
 import Pagination from '@/components/admin/Pagination';
 import { useToast } from '@/components/admin/Toast';
@@ -24,6 +27,7 @@ export default function AdminReviewsPage() {
   const [replyText, setReplyText] = useState('');
   const [expandedReviews, setExpandedReviews] = useState<Set<string>>(new Set());
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isSavingReply, setIsSavingReply] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const { showToast } = useToast();
@@ -52,17 +56,17 @@ export default function AdminReviewsPage() {
     );
     setSelectedReview((prev: any) => (prev?.id === id ? { ...prev, status, approved: status === 'visible', featured: featured ?? prev.featured, adminReply: adminReply ?? prev.adminReply } : prev));
     try {
-      const res = await fetch(`/api/admin/reviews/${id}/status`, {
+      const res = await authFetch(`/api/admin/reviews/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status, adminReply, featured }),
       });
       if (!res.ok) throw new Error();
       mutate();
-      showToast(status === 'visible' ? 'С??г?гд?л ний?л?гдл??' : status === 'hidden' ? 'С??г?гд?л н??гдлаа' : 'С??г?гд?л ?үл??гд?ж байна');
+      showToast(status === 'visible' ? 'Сэтгэгдэл нийтлэгдлээ' : status === 'hidden' ? 'Сэтгэгдэл нуугдлаа' : 'Сэтгэгдэл хүлээгдэж байна');
     } catch {
       mutate();
-      showToast('?лдаа га?лаа', 'error');
+      showToast('Алдаа гарлаа', 'error');
     }
   };
 
@@ -72,13 +76,13 @@ export default function AdminReviewsPage() {
       false
     );
     try {
-      const res = await fetch(`/api/admin/reviews/${id}`, { method: 'DELETE' });
+      const res = await authFetch(`/api/admin/reviews/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error();
       mutate();
-      showToast('С??г?гд?л ???гагдлаа');
+      showToast('Сэтгэгдэл устгагдлаа');
     } catch {
       mutate();
-      showToast('У??га?ад алдаа га?лаа', 'error');
+      showToast('Устгахад алдаа гарлаа', 'error');
     }
   };
 
@@ -90,63 +94,82 @@ export default function AdminReviewsPage() {
     await setReviewStatus(review.id, 'visible', review.adminReply, !review.featured);
   };
 
+  const saveAdminReply = async (id: string, reply: string) => {
+    const trimmed = reply.trim();
+    if (!trimmed) {
+      showToast('Хариу бичнэ үү', 'error');
+      return;
+    }
+
+    setIsSavingReply(true);
+    mutate(
+      (prev: any) =>
+        prev
+          ? { ...prev, reviews: prev.reviews.map((r: any) => (r.id === id ? { ...r, adminReply: trimmed } : r)) }
+          : prev,
+      false,
+    );
+    setSelectedReview((prev: any) => (prev?.id === id ? { ...prev, adminReply: trimmed } : prev));
+
+    try {
+      const res = await authFetch(`/api/admin/reviews/${id}/reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminReply: trimmed }),
+      });
+      if (!res.ok) throw new Error();
+      mutate();
+      showToast('Хариу хадгалагдлаа');
+    } catch {
+      mutate();
+      showToast('Хариу хадгалахад алдаа гарлаа', 'error');
+    } finally {
+      setIsSavingReply(false);
+    }
+  };
+
   const featuredCount = data?.statusCounts?.featured || 0;
 
   return (
-    <div className="space-y-4 p-4 pb-[104px]">
-      <AdminPageHeader eyebrow="С??г?гдлийн ?ди?длага" title="С??г?гдлүүд" />
-
-      <section className="rounded-[24px] bg-white p-3 shadow-[var(--shadow-mobile-card)]">
+    <AdminPageShell>
+      <section className="admin-toolbar space-y-3">
         <div className="flex items-center gap-2">
-          <div className="relative min-w-0 flex-1">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-brand-muted)]" />
-            <input
+          <div className="min-w-0 flex-1">
+            <AdminSearchField
               value={search}
-              onChange={(event) => handleSearch(event.target.value)}
-              placeholder="С??г?гд?л, ба?аа, н????? ?ай?..."
-              className="h-11 w-full rounded-full border border-[#f8dbe8] bg-[var(--color-brand-bg)] pl-10 pr-4 text-[13px] font-semibold outline-none focus:ring-2 focus:ring-[#f3b8cf] transition-all"
+              onChange={handleSearch}
+              placeholder="Сэтгэгдэл, бараа, нэрээр хайх..."
             />
           </div>
-          <button
-            onClick={() => setIsFilterOpen((prev) => !prev)}
-            className="flex h-11 shrink-0 items-center justify-center gap-2 rounded-full px-4 transition-all"
-            style={{
-              background: isFilterOpen ? 'var(--color-brand-accent)' : 'var(--color-brand-bg)',
-              border: isFilterOpen ? '1px solid var(--color-brand-accent)' : '1px solid #f8dbe8',
-              color: isFilterOpen ? '#FFFFFF' : 'var(--color-brand-text)',
-            }}
-          >
-            <SlidersHorizontal size={16} strokeWidth={2.5} />
-          </button>
+          <AdminFilterToggleButton
+            open={isFilterOpen}
+            onToggle={() => setIsFilterOpen((prev) => !prev)}
+            activeCount={activeTab !== 'all' ? 1 : 0}
+          />
         </div>
 
         <AnimatePresence>
           {isFilterOpen && (
             <motion.div
+              id="admin-filter-panel"
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
               className="overflow-hidden"
             >
-              <div className="mt-3 rounded-[20px] p-4 bg-[var(--color-brand-bg)] border border-[#f8dbe8]">
-                <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-brand-muted)]">
-                  Төлөвөө? ?үү?
-                </p>
-                <div className="mobile-chip-grid">
+              <div className="mt-3 rounded-[20px] border border-[var(--color-border)] bg-[var(--color-bg)] p-4">
+                <p className="mb-3 admin-eyebrow">Төлөвөөр шүүх</p>
+                <div className="flex flex-wrap gap-2">
                   {REVIEW_FILTERS.map((tab) => (
                     <button
                       key={tab.value}
                       type="button"
                       onClick={() => setActiveTab(tab.value)}
-                      className={`mobile-chip gap-1 border transition-colors ${
-                        activeTab === tab.value
-                          ? 'border-[var(--color-brand-accent)] bg-[var(--color-brand-secondary)] text-[var(--color-brand-text)]'
-                          : 'border-[#f8dbe8] bg-white text-[var(--color-brand-muted)] hover:bg-[#f8dbe8]/30'
-                      }`}
+                      className={`admin-chip gap-1 ${activeTab === tab.value ? 'admin-chip-active' : 'admin-chip-idle'}`}
                     >
                       {tab.label}
-                      <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${activeTab === tab.value ? 'bg-white text-[var(--color-brand-accent)]' : 'bg-[#f8dbe8]/50 text-[var(--color-brand-muted)]'}`}>
+                      <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${activeTab === tab.value ? 'bg-white/25' : 'bg-black/5'}`}>
                         {tab.value === 'all' ? data?.statusCounts?.total || 0 : data?.statusCounts?.[tab.value] || 0}
                       </span>
                     </button>
@@ -158,74 +181,80 @@ export default function AdminReviewsPage() {
         </AnimatePresence>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <section className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
         {isLoading ? (
           Array.from({ length: 4 }).map((_, index) => <div key={index} className="h-48 rounded-[24px] animate-shimmer" />)
         ) : data?.reviews?.length > 0 ? (
           data.reviews.map((review: any) => (
-            <article key={review.id} onClick={() => { setSelectedReview(review); setReplyText(review.adminReply || ''); }} className={`flex flex-col gap-3 rounded-[24px] p-4 shadow-[var(--shadow-mobile-card)] transition-opacity ${review.status === 'visible' ? 'bg-white' : 'bg-white/70'}`}>
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate text-[14px] font-extrabold text-[var(--color-brand-text)]">{review.userName || '?о?ин'}</p>
-                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${review.status === 'visible' ? 'bg-[var(--status-success-bg)] text-[var(--status-success)]' : review.status === 'hidden' ? 'bg-[#f8dbe8] text-[var(--color-brand-muted)]' : 'bg-[var(--status-warning-bg)] text-[var(--status-warning)]'}`}>
-                      {review.status === 'visible' ? '?ий?л?гд??н' : review.status === 'hidden' ? '????ан' : 'Хүл??гд?ж б?й'}
-                    </span>
+            <article
+              key={review.id}
+              onClick={() => { setSelectedReview(review); setReplyText(review.adminReply || ''); }}
+              className={`admin-card-soft admin-card-tap flex h-full min-h-[260px] cursor-pointer flex-col p-4 ${review.status === 'hidden' ? 'opacity-80' : ''}`}
+            >
+              <div className="flex min-h-0 flex-1 flex-col gap-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-[14px] font-extrabold text-[var(--color-text-primary)]">{review.userName || 'Зочин'}</p>
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${review.status === 'visible' ? 'bg-[var(--color-status-done-bg)] text-[var(--color-status-done-text)]' : review.status === 'hidden' ? 'bg-[var(--color-bg)] text-[var(--color-text-muted)]' : 'bg-[var(--color-status-pending-bg)] text-[var(--color-status-pending-text)]'}`}>
+                        {review.status === 'visible' ? 'Нийтлэгдсэн' : review.status === 'hidden' ? 'Нуугдсан' : 'Хүлээгдэж буй'}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 truncate text-[11px] font-bold text-[var(--color-brand)]">{review.productName}</p>
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      <span className="rounded-full bg-[var(--color-bg)] px-2 py-0.5 font-mono text-[10px] font-bold text-[var(--color-text-muted)]">#{String(review.orderId || 'no-order').slice(-6).toUpperCase()}</span>
+                      {review.verifiedPurchase && <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-status-done-bg)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-status-done-text)]"><BadgeCheck size={11} /> Баталгаажсан</span>}
+                      {review.featured && <span className="rounded-full bg-[var(--color-brand-light)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-brand)]">Нүүр</span>}
+                    </div>
+                    <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">{mounted ? formatDateMN(review.createdAt) : ''}</p>
                   </div>
-                  <p className="mt-0.5 truncate text-[11px] font-bold text-[var(--color-brand-accent)]">{review.productName}</p>
-                  <div className="mt-1 flex flex-wrap gap-1.5">
-                    <span className="rounded-full bg-[var(--color-brand-bg)] px-2 py-0.5 font-mono text-[10px] font-bold text-[var(--color-brand-muted)]">#{String(review.orderId || 'no-order').slice(-6).toUpperCase()}</span>
-                    {review.verifiedPurchase && <span className="inline-flex items-center gap-1 rounded-full bg-[var(--status-success-bg)] px-2 py-0.5 text-[10px] font-bold text-[var(--status-success)]"><BadgeCheck size={11} /> Verified</span>}
-                    {review.featured && <span className="rounded-full bg-[var(--color-brand-secondary)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-brand-accent)]">Нүүр</span>}
+                  <div className="flex shrink-0 items-center gap-1">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star key={i} size={14} className={i < (review.rating || 5) ? 'fill-[#FFD700] text-[#FFD700]' : 'fill-transparent text-[var(--color-border)]'} />
+                    ))}
                   </div>
-                  <p className="mt-1 text-[10px] text-[var(--color-brand-muted)]">{mounted ? formatDateMN(review.createdAt) : ''}</p>
                 </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} size={14} className={i < (review.rating || 5) ? 'fill-[#FFD700] text-[#FFD700]' : 'fill-transparent text-[#e8d2dc]'} />
-                  ))}
-                </div>
-              </div>
 
-              <div>
-                <p className={`text-[13px] leading-relaxed text-[var(--color-brand-text)] ${expandedReviews.has(review.id) ? '' : 'line-clamp-3'}`}>{review.content}</p>
-                {String(review.content || '').length > 120 && (
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setExpandedReviews((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(review.id)) next.delete(review.id);
-                        else next.add(review.id);
-                        return next;
-                      });
-                    }}
-                    className="mt-1 h-8 text-[12px] font-extrabold text-[var(--color-brand-accent)]"
-                  >
-                    {expandedReviews.has(review.id) ? 'Х??аа?' : '??лг??'}
-                  </button>
+                <div>
+                  <p className={`text-[13px] leading-relaxed text-[var(--color-text-primary)] ${expandedReviews.has(review.id) ? '' : 'line-clamp-3'}`}>{review.content}</p>
+                  {String(review.content || '').length > 120 && (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setExpandedReviews((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(review.id)) next.delete(review.id);
+                          else next.add(review.id);
+                          return next;
+                        });
+                      }}
+                      className="mt-1 h-8 text-[12px] font-extrabold text-[var(--color-brand)]"
+                    >
+                      {expandedReviews.has(review.id) ? 'Хураах' : 'Дэлгэх'}
+                    </button>
+                  )}
+                </div>
+
+                {review.imageUrls?.length > 0 && (
+                  <div className="grid grid-cols-4 gap-2">
+                    {review.imageUrls.map((url: string, index: number) => (
+                      <div key={index} className="relative aspect-square overflow-hidden rounded-[12px] border border-[var(--color-border)]">
+                        <Image src={url} alt="Review photo" fill sizes="80px" className="object-cover" />
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
 
-              {review.imageUrls?.length > 0 && (
-                <div className="grid grid-cols-4 gap-2">
-                  {review.imageUrls.map((url: string, index: number) => (
-                    <div key={index} className="relative aspect-square overflow-hidden rounded-[12px] border border-[#f8dbe8]">
-                      <Image src={url} alt="Review photo" fill sizes="80px" className="object-cover" />
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="mt-2 flex flex-row gap-2 border-t border-[#f8dbe8] pt-3">
+              <div className="admin-divider mt-auto grid grid-cols-3 gap-2 pt-3">
                 <button
                   type="button"
                   onClick={(event) => {
                     event.stopPropagation();
                     void toggleFeatured(review);
                   }}
-                  className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-full text-[12px] font-extrabold transition-colors ${review.featured ? 'bg-[var(--color-brand-accent)] text-white' : 'bg-[var(--color-brand-bg)] text-[var(--color-brand-text)]'}`}
+                  className={`flex h-10 items-center justify-center gap-1.5 rounded-full text-[11px] font-extrabold transition-colors ${review.featured ? 'bg-[var(--color-brand)] text-white' : 'bg-[var(--color-bg)] text-[var(--color-text-primary)]'}`}
                 >
                   <Star size={14} /> {review.featured ? 'Нүүрт' : 'Нүүр'}
                 </button>
@@ -235,13 +264,9 @@ export default function AdminReviewsPage() {
                     event.stopPropagation();
                     setReviewStatus(review.id, review.status === 'visible' ? 'hidden' : 'visible');
                   }}
-                  className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-full text-[12px] font-extrabold transition-colors ${
-                    review.status === 'visible'
-                      ? 'bg-[var(--color-brand-secondary)] text-[var(--color-brand-text)]'
-                      : 'bg-[var(--color-brand-accent)] text-white'
-                  }`}
+                  className="flex h-10 items-center justify-center gap-1.5 rounded-full bg-[var(--color-bg)] text-[11px] font-extrabold text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-border-strong)]"
                 >
-                  {review.status === 'visible' ? <><EyeOff size={14} /> ????</> : <><Eye size={14} /> ?ий?л??</>}
+                  {review.status === 'visible' ? <><EyeOff size={14} /> Нуух</> : <><Eye size={14} /> Нийтлэх</>}
                 </button>
                 <button
                   type="button"
@@ -249,23 +274,23 @@ export default function AdminReviewsPage() {
                     event.stopPropagation();
                     setPendingDeleteReview(review.id);
                   }}
-                  className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full bg-[#FFF0F3] text-[12px] font-extrabold text-[var(--color-brand-danger)] transition-colors"
-                  aria-label="У??га?"
+                  className="flex h-10 items-center justify-center gap-1.5 rounded-full bg-[var(--color-status-cancel-bg)] text-[11px] font-extrabold text-[var(--color-status-cancel-text)] transition-colors"
+                  aria-label="Устгах"
                 >
-                  <Trash2 size={14} /> У??га?
+                  <Trash2 size={14} /> Устгах
                 </button>
               </div>
             </article>
           ))
         ) : (
-          <div className="col-span-full rounded-[24px] bg-white p-10 text-center shadow-[var(--shadow-mobile-card)]">
-            <p className="text-sm font-bold text-[var(--color-brand-muted)]">С??г?гд?л олд?онгүй</p>
+          <div className="admin-empty col-span-full">
+            <p className="text-sm font-bold text-[var(--color-brand-muted)]">Сэтгэгдэл олдсонгүй</p>
           </div>
         )}
       </section>
 
       <Pagination page={page} totalItems={data?.totalCount || 0} pageSize={20} onPageChange={setPage} />
-      <div className="rounded-[18px] bg-white p-3 text-center text-[12px] font-extrabold text-[var(--color-brand-muted)] shadow-[var(--shadow-mobile-card)]">
+      <div className="admin-toast text-[var(--color-text-muted)]">
         Нүүр хуудсанд сонгосон: {featuredCount} / 6
       </div>
 
@@ -273,9 +298,9 @@ export default function AdminReviewsPage() {
         {selectedReview && (
           <div className="space-y-5">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--color-brand-accent)]">Review detail</p>
-              <h2 className="mt-1 text-[21px] font-extrabold text-[var(--color-brand-text)]">{selectedReview.productName || '?ү???гд??үүн'}</h2>
-              <p className="mt-1 text-[13px] text-[var(--color-brand-muted)]">{selectedReview.userName || '?о?ин'} · {mounted ? formatDateMN(selectedReview.createdAt) : ''}</p>
+              <p className="admin-eyebrow">Сэтгэгдлийн дэлгэрэнгүй</p>
+              <h2 className="mt-1 text-[21px] font-extrabold text-[var(--color-text-primary)]">{selectedReview.productName || 'Бүтээгдэхүүн'}</h2>
+              <p className="mt-1 text-[13px] text-[var(--color-text-muted)]">{selectedReview.userName || 'Зочин'} · {mounted ? formatDateMN(selectedReview.createdAt) : ''}</p>
             </div>
 
             <div className="flex items-center gap-1 text-[var(--color-brand-accent)]">
@@ -287,18 +312,23 @@ export default function AdminReviewsPage() {
             <p className="rounded-[20px] bg-[var(--color-brand-bg)] p-4 text-[15px] leading-7 text-[var(--color-brand-text)]">{selectedReview.content}</p>
 
             <label className="block">
-              <span className="mb-2 flex items-center gap-2 text-[12px] font-extrabold uppercase tracking-[0.12em] text-[var(--color-brand-muted)]"><MessageSquareReply size={14} /> ?дмин? ?а?и?</span>
-              <textarea value={replyText} onChange={(event) => setReplyText(event.target.value)} rows={4} className="w-full rounded-[18px] bg-[var(--color-brand-bg)] p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-[#f3b8cf]" placeholder="Х???гл?г?ид ?а?агда? ?а?и? би?и?..." />
+              <span className="mb-2 flex items-center gap-2 text-[12px] font-extrabold uppercase tracking-[0.12em] text-[var(--color-text-muted)]"><MessageSquareReply size={14} /> Админы хариу</span>
+              <textarea value={replyText} onChange={(event) => setReplyText(event.target.value)} rows={4} className="admin-input min-h-[120px] resize-none py-3" placeholder="Хэрэглэгчид харагдах хариу бичнэ үү..." />
             </label>
 
-            <button onClick={() => setReviewStatus(selectedReview.id, selectedReview.status || 'pending', replyText)} className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--color-brand-accent)] text-sm font-extrabold text-white">
-              <CheckCircle2 size={17} /> Reply ?адгала?
+            <button
+              type="button"
+              disabled={isSavingReply}
+              onClick={() => saveAdminReply(selectedReview.id, replyText)}
+              className="admin-btn-primary w-full disabled:opacity-60"
+            >
+              <CheckCircle2 size={17} /> {isSavingReply ? 'Хадгалж байна...' : 'Хариу хадгалах'}
             </button>
 
             <div className="grid grid-cols-3 gap-2">
-              <button onClick={() => setReviewStatus(selectedReview.id, 'visible', replyText)} className="h-11 rounded-full bg-[var(--status-success-bg)] text-[12px] font-extrabold text-[var(--status-success)]">?ий?л??</button>
-              <button onClick={() => setReviewStatus(selectedReview.id, 'hidden', replyText)} className="h-11 rounded-full bg-[var(--color-brand-secondary)] text-[12px] font-extrabold text-[var(--color-brand-text)]">????</button>
-              <button onClick={() => setPendingDeleteReview(selectedReview.id)} className="h-11 rounded-full bg-[var(--status-error-bg)] text-[12px] font-extrabold text-[var(--status-error)]">У??га?</button>
+              <button type="button" onClick={() => setReviewStatus(selectedReview.id, 'visible', replyText)} className="admin-btn-secondary h-11 text-[12px]">Нийтлэх</button>
+              <button type="button" onClick={() => setReviewStatus(selectedReview.id, 'hidden', replyText)} className="admin-btn-secondary h-11 text-[12px]">Нуух</button>
+              <button type="button" onClick={() => setPendingDeleteReview(selectedReview.id)} className="flex h-11 items-center justify-center rounded-full bg-[var(--color-status-cancel-bg)] text-[12px] font-extrabold text-[var(--color-status-cancel-text)]">Устгах</button>
             </div>
           </div>
         )}
@@ -306,15 +336,15 @@ export default function AdminReviewsPage() {
 
       <AdminConfirmSheet
         open={Boolean(pendingDeleteReview)}
-        title="С??г?гд?л ???га? ???"
-        body="Эн? үйлдлийг б??аа? боломжгүй. У??га?даа и?г?л??й байна ???"
-        confirmLabel="У??га?"
+        title="Сэтгэгдэл устгах уу?"
+        body="Энэ үйлдлийг буцаах боломжгүй. Устгахдаа итгэлтэй байна уу?"
+        confirmLabel="Устгах"
         destructive
         onClose={() => setPendingDeleteReview(null)}
         onConfirm={() => {
           if (pendingDeleteReview) void deleteReview(pendingDeleteReview).then(() => setPendingDeleteReview(null));
         }}
       />
-    </div>
+    </AdminPageShell>
   );
 }

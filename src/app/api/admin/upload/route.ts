@@ -1,4 +1,5 @@
 import { v2 as cloudinary } from "cloudinary";
+import { authorizeAdminRequest } from '@/lib/auth/serverAuth';
 
 const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
 const API_KEY = process.env.CLOUDINARY_API_KEY;
@@ -13,6 +14,8 @@ cloudinary.config({
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
+  const denied = await authorizeAdminRequest(req);
+  if (denied) return denied;
   if (!CLOUD_NAME || !API_KEY || !API_SECRET) {
     console.error("[admin/upload] Missing Cloudinary credentials");
     return Response.json(

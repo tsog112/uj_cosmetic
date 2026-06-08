@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebaseAdmin';
 import { checkQPayInvoice } from '@/lib/qpay';
+import { getPostgresOrderPayment, markPostgresOrderPaid } from '@/lib/services/postgresAdminService';
 
 export const runtime = 'nodejs';
 
@@ -11,6 +12,26 @@ export async function POST(request: Request) {
 
     if (!orderId) {
       return NextResponse.json({ error: 'orderId is required' }, { status: 400 });
+    }
+
+    const pgOrder = await getPostgresOrderPayment(orderId);
+    if (pgOrder) {
+      if (!pgOrder.qpayInvoiceId) {
+        return NextResponse.json({ error: 'QPay invoice not found' }, { status: 400 });
+      }
+
+      const payment = await checkQPayInvoice(pgOrder.qpayInvoiceId);
+      const paidRow = payment.rows?.find((row) => row.payment_status === 'PAID');
+
+      if (paidRow || Number(payment.count || 0) > 0) {
+        await markPostgresOrderPaid(orderId, {
+          paidAmount: Number(payment.paid_amount || paidRow?.payment_amount || 0),
+          paymentId: paidRow?.payment_id || '',
+          paidAt: paidRow?.payment_date ? new Date(paidRow.payment_date) : new Date(),
+        });
+      }
+
+      return NextResponse.json({ success: true });
     }
 
     const orderRef = getAdminDb().collection('orders').doc(orderId);
@@ -25,7 +46,7 @@ export async function POST(request: Request) {
     }
 
     const payment = await checkQPayInvoice(invoiceId);
-    const paidRow = payment.rows?.find(row => row.payment_status === 'PAID');
+    const paidRow = payment.rows?.find((row) => row.payment_status === 'PAID');
 
     if (paidRow || Number(payment.count || 0) > 0) {
       await orderRef.set({

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebaseAdmin';
+import { authorizeAdminRequest } from '@/lib/auth/serverAuth';
 
 export async function GET() {
   try {
@@ -14,6 +15,8 @@ export async function GET() {
 }
 
 export async function PUT(req: NextRequest) {
+  const denied = await authorizeAdminRequest(req);
+  if (denied) return denied;
   try {
     const slots = await req.json();
     const db = getAdminDb();

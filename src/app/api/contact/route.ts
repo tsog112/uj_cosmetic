@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendContactMessageToAdmin } from '@/lib/emailService';
+import { enforceRateLimit } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
+  const limited = await enforceRateLimit(req, { key: 'contact', limit: 5, windowMs: 10 * 60_000 });
+  if (limited) return limited;
   try {
     const { name, email, message } = await req.json();
 

@@ -13,6 +13,9 @@ export interface Product {
   ingredients: string;
   howToUse: string;
   featured: boolean;
+  showcaseFeatured?: boolean;
+  showcaseNewest?: boolean;
+  showcaseSale?: boolean;
   published: boolean;
   inStock: boolean;
   stockQuantity: number;
@@ -71,6 +74,8 @@ export interface Order {
   qpayInvoiceId?: string;
   promoCode?: string;
   discount?: number;
+  market?: 'MN' | 'KR';
+  currency?: 'MNT' | 'KRW';
   qpayQrText?: string;
   qpayQrImage?: string;
   qpayShortUrl?: string;
@@ -98,6 +103,9 @@ export interface Review {
   featured: boolean;
   editCount: number;
   approved: boolean;
+  adminReply?: string;
+  likeCount?: number;
+  likedByUser?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -115,7 +123,50 @@ export interface WishlistItem {
   createdAt: Date;
 }
 
+export type HomeFaqItem = { question: string; answer: string };
+export type HomeTrustItem = { title: string; sub: string; icon?: string };
+export type AboutValueItem = { title: string; description: string; icon?: string };
+
+export type AboutPageSettings = {
+  heroImage?: string;
+  heroEyebrow?: string;
+  heroTitle?: string;
+  storyEyebrow?: string;
+  storyTitle?: string;
+  storyParagraphs?: string[];
+  storyImage?: string;
+  philosophyEyebrow?: string;
+  philosophyTitle?: string;
+  philosophyParagraphs?: string[];
+  valuesEyebrow?: string;
+  valuesTitle?: string;
+  values?: AboutValueItem[];
+  showContactForm?: boolean;
+  contactEyebrow?: string;
+  contactTitle?: string;
+};
+
+export type HomePageSettings = {
+  introTitle?: string;
+  introBody?: string;
+  promiseTitle?: string;
+  promiseBody?: string;
+  promiseCtaLabel?: string;
+  promiseCtaHref?: string;
+  careTitle?: string;
+  careBody?: string;
+  careCtaLabel?: string;
+  faqTitle?: string;
+  faqBody?: string;
+  faqItems?: HomeFaqItem[];
+  trustItems?: HomeTrustItem[];
+  showcaseFeaturedTitle?: string;
+  showcaseNewestTitle?: string;
+  showcaseSaleTitle?: string;
+};
+
 export interface SiteSettings {
+  storeName?: string;
   announcementText: string;
   announcementActive: boolean;
   freeShippingThreshold: number;
@@ -123,10 +174,19 @@ export interface SiteSettings {
   bankName: string;
   bankAccount: string;
   bankAccountName: string;
+  /** 1 KRW = mntPerKrw MNT */
+  mntPerKrw?: number;
+  krShippingCost?: number;
+  krFreeShippingThreshold?: number;
+  krBankName?: string;
+  krBankAccount?: string;
+  krBankAccountName?: string;
   instagramUrl: string;
   facebookUrl?: string;
   phone: string;
   email: string;
+  homePage?: HomePageSettings;
+  aboutPage?: AboutPageSettings;
 }
 
 export interface AppUser {
@@ -165,6 +225,12 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   bankName: '',
   bankAccount: '',
   bankAccountName: '',
+  mntPerKrw: 2.75,
+  krShippingCost: 5000,
+  krFreeShippingThreshold: 80000,
+  krBankName: '',
+  krBankAccount: '',
+  krBankAccountName: '',
   instagramUrl: '',
   facebookUrl: '',
   phone: '',

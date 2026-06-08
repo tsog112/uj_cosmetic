@@ -1,0 +1,26 @@
+---
+description: uj_cosmetic — гол модуль, entry file-ууд
+alwaysApply: true
+---
+
+# Project map (товч)
+
+Next.js 16 App Router + Prisma (Postgres) + Firebase auth. Vitest: `src/lib/__tests__/`.
+
+| Бүс | Гол зам |
+|-----|---------|
+| Public UI | `src/app/(public)/` |
+| Admin UI | `src/app/admin/` |
+| API | `src/app/api/` |
+| DB schema | `prisma/schema.prisma` |
+| Admin backend | `src/lib/services/postgresAdminService.ts` |
+| Hooks | `src/lib/hooks/useAdmin.ts` |
+| Constants | `src/lib/constants/admin.ts` |
+| MN хаяг | `src/components/ui/AddressSelector.tsx`, `src/app/api/address/` |
+| KR хаяг | `src/components/ui/KoreanAddressSelector.tsx`, `orderAddress.ts` |
+| Төлбөр MN | `src/lib/qpay.ts`, `src/app/api/qpay/` |
+| Market/currency | `MarketContext.tsx`, `currency.ts`, `PriceDisplay.tsx` |
+
+**Orders flow:** checkout → `api/orders/create` → admin `orders/page` + `api/admin/orders`.
+
+Шинэ feature-д эхлээд энэ хүснэгтээр файл сонго; бүх `src/` scan хийхгүй.

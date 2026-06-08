@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebaseAdmin';
 import { toPublicProduct } from '@/lib/publicDto';
+import { enforceRateLimit } from '@/lib/rateLimit';
 import { DEFAULT_SETTINGS, formatPrice, type SiteSettings } from '@/types';
 
 type ChatMessage = {
@@ -224,6 +225,8 @@ function toGeminiContent(message: ChatMessage) {
 }
 
 export async function POST(request: Request) {
+  const limited = await enforceRateLimit(request, { key: 'chat', limit: 15, windowMs: 60_000 });
+  if (limited) return limited;
   try {
     const body = await request.json();
     const messages = Array.isArray(body.messages) ? body.messages as ChatMessage[] : [];

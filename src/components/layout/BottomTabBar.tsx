@@ -2,99 +2,81 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Grid, Heart, Home, ShoppingBag, User } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Grid, Home, ShoppingBag, User } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+import { useLocale } from '@/context/LocaleContext';
 
 export default function BottomTabBar() {
   const pathname = usePathname();
-  const { cartItemCount: totalItems } = useCart();
+  const { cartItemCount } = useCart();
+  const { t } = useLocale();
 
   const tabs = [
-    { label: 'Home',     href: '/',         icon: Home },
-    { label: 'Дэлгүүр', href: '/shop',      icon: Grid },
-    { label: 'Сагс',     href: '/cart',      icon: ShoppingBag, badge: totalItems },
-    { label: 'Хүсэл',    href: '/wishlist',  icon: Heart },
-    { label: 'Profile',  href: '/account',   icon: User },
+    { label: t('nav.home'), href: '/', icon: Home },
+    { label: t('nav.shop'), href: '/shop', icon: Grid },
+    { label: t('nav.cart'), href: '/cart', icon: ShoppingBag, cart: true },
+    { label: t('nav.profile'), href: '/profile', icon: User },
   ];
 
   return (
     <div
-      className="fixed bottom-0 inset-x-0 mx-auto z-50 w-full max-w-[430px] pb-[env(safe-area-inset-bottom)]"
+      className="fixed inset-x-0 bottom-0 z-[var(--z-drawer)] w-full pb-[env(safe-area-inset-bottom)]"
       style={{
-        background: 'rgba(253, 232, 243, 0.92)',
-        backdropFilter: 'blur(28px) saturate(200%)',
-        WebkitBackdropFilter: 'blur(28px) saturate(200%)',
-        borderTop: '1px solid rgba(233, 30, 140, 0.12)',
-        boxShadow: '0 -4px 32px rgba(233, 30, 140, 0.10)',
+        background: 'rgba(255,255,255,0.96)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        borderTop: 'var(--border-thin)',
+        boxShadow: '0 -10px 30px rgba(34, 18, 28, 0.12)',
       }}
     >
-      <nav className="grid h-[64px] grid-cols-5 px-2">
+      <nav className="grid h-[64px] grid-cols-4 px-2" aria-label="Мобайл үндсэн навигаци">
         {tabs.map((tab) => {
           const isActive = tab.href === '/' ? pathname === '/' : pathname.startsWith(tab.href);
           const Icon = tab.icon;
+          const badge = tab.cart ? cartItemCount : 0;
 
           return (
             <Link
               key={tab.href}
               href={tab.href}
-              className="relative flex h-full min-w-0 flex-col items-center justify-center gap-[3px]"
+              className="relative flex h-full min-w-0 flex-col items-center justify-center gap-[3px] uj-pressable"
               aria-label={tab.label}
+              aria-current={isActive ? 'page' : undefined}
+              style={{ minHeight: 'auto', textDecoration: 'none' }}
             >
-              <div className="relative z-10 flex h-[32px] w-[54px] items-center justify-center">
-                {/* Active pill background with spring slide */}
-                <AnimatePresence>
-                  {isActive && (
-                    <motion.div
-                      layoutId="bottom-tab-pill"
-                      className="absolute inset-0 rounded-[16px]"
-                      style={{
-                        background: 'linear-gradient(135deg, rgba(233,30,140,0.14) 0%, rgba(194,24,91,0.10) 100%)',
-                        boxShadow: '0 2px 12px rgba(233,30,140,0.12)',
-                      }}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-                    />
-                  )}
-                </AnimatePresence>
-
-                <Icon
-                  size={22}
-                  strokeWidth={isActive ? 2.2 : 1.6}
-                  fill={isActive ? 'rgba(233,30,140,0.14)' : 'none'}
-                  className="relative z-10 transition-all duration-200"
-                  style={{ color: isActive ? 'var(--color-primary)' : 'var(--color-text-medium)' }}
-                />
-                
-                {tab.badge !== undefined && tab.badge > 0 && (
-                  <motion.span
-                    key={tab.badge}
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: 'spring', stiffness: 500, damping: 20 }}
-                    className="absolute right-[4px] -top-1 z-20 flex h-[15px] min-w-[15px] items-center justify-center rounded-full border px-0.5 text-[9px] font-bold leading-none text-white"
-                    style={{
-                      background: 'var(--color-deep-rose)',
-                      borderColor: 'var(--color-brand-bg)',
-                      fontVariantNumeric: 'tabular-nums',
-                    }}
-                  >
-                    {Math.min(tab.badge, 99)}
-                  </motion.span>
+              <span className="relative flex h-8 w-14 items-center justify-center">
+                {isActive && (
+                  <span
+                    className="absolute inset-0 rounded-full"
+                    style={{ background: 'var(--color-brand-light)', boxShadow: 'var(--shadow-xs)' }}
+                    aria-hidden="true"
+                  />
                 )}
-              </div>
-
-              {/* Label */}
+                <Icon
+                  size={20}
+                  strokeWidth={isActive ? 2.15 : 1.65}
+                  className="relative z-10 transition-all duration-200"
+                  style={{ color: isActive ? 'var(--color-brand)' : 'var(--color-text-muted)' }}
+                  aria-hidden="true"
+                />
+                {badge > 0 && (
+                  <span
+                    key={badge}
+                    className="absolute right-1 -top-1 z-20 flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-bold leading-none text-white uj-cart-badge-pop"
+                    style={{ background: 'var(--color-brand)', minHeight: 'auto' }}
+                    aria-label={`${badge} бараа`}
+                  >
+                    {Math.min(badge, 99)}
+                  </span>
+                )}
+              </span>
               <span
                 className="relative z-10 max-w-full truncate transition-all duration-200"
                 style={{
-                  fontFamily: isActive ? '"Montserrat", sans-serif' : 'inherit',
-                  fontSize: 9.5,
+                  fontSize: 10,
                   fontWeight: isActive ? 700 : 500,
+                  color: isActive ? 'var(--color-brand)' : 'var(--color-text-muted)',
                   letterSpacing: isActive ? '0.04em' : 0,
-                  color: isActive ? 'var(--color-primary)' : 'var(--color-text-medium)',
                 }}
               >
                 {tab.label}

@@ -1,0 +1,155 @@
+@keyframes uj-page-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes uj-page-exit {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes uj-sheet-enter {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes uj-overlay-enter {
+  from { opacity: 0; }
+  to { opacity: 0.5; }
+}
+
+@keyframes uj-hero-slide {
+  from { opacity: 0; transform: scale(1.02); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes uj-shimmer {
+  from { background-position: 0% 50%; }
+  to { background-position: 100% 50%; }
+}
+
+@keyframes uj-heart-on {
+  0% { transform: scale(0); }
+  70% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+@keyframes uj-heart-off {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.8); }
+  100% { transform: scale(1); }
+}
+
+@keyframes uj-badge-mount {
+  from { opacity: 0; transform: translateX(-4px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes uj-cart-badge-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.4); }
+  100% { transform: scale(1); }
+}
+
+::view-transition-old(root) {
+  animation: uj-page-exit 180ms ease-in both;
+}
+
+::view-transition-new(root) {
+  animation: uj-page-enter 280ms ease-out both;
+}
+
+.uj-page {
+  animation: uj-page-enter 280ms ease-out both;
+}
+
+.uj-bottom-sheet {
+  animation: uj-sheet-enter 320ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.uj-sheet-overlay {
+  animation: uj-overlay-enter 320ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.uj-hero-frame {
+  animation: uj-hero-slide 800ms ease both;
+}
+
+.uj-scroll-row {
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.uj-scroll-row::-webkit-scrollbar {
+  display: none;
+}
+
+.uj-snap-start {
+  scroll-snap-align: start;
+}
+
+.uj-pressable {
+  transition: transform 200ms ease-out;
+}
+
+.uj-pressable:active {
+  transform: scale(0.97);
+  transition-duration: 100ms;
+}
+
+.uj-image-hover {
+  overflow: hidden;
+}
+
+@media (hover: hover) {
+  .uj-image-hover img {
+    transition: transform 400ms ease;
+  }
+
+  .uj-image-hover:hover img {
+    transform: scale(1.05);
+  }
+}
+
+.uj-shimmer {
+  background: linear-gradient(90deg, #f7f3f5 0%, #fde8f0 45%, #f7f3f5 100%);
+  background-size: 220% 100%;
+  animation: uj-shimmer 1.4s ease infinite;
+}
+
+.uj-heart-on {
+  animation: uj-heart-on 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.uj-heart-off {
+  animation: uj-heart-off 200ms ease both;
+}
+
+.uj-status-badge {
+  animation: uj-badge-mount 200ms ease-out both;
+}
+
+.uj-cart-badge-pop {
+  animation: uj-cart-badge-pop 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes uj-delivery-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.uj-delivery-vehicle {
+  animation: uj-delivery-bob 1.35s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
+}

@@ -1,870 +1,604 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { collection, getDocs, orderBy, query } from 'firebase/firestore';
-import { ArrowRight, BadgeCheck, Sparkles, Star, Truck, Droplet, Sun, Moon, Flower2, Leaf, Waves, Wind, Beaker, FlaskConical, Feather, Heart, Gem, ShieldPlus, MoreHorizontal, Tags, Syringe, Pill, Scale, Activity } from 'lucide-react';
-import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
+import {
+  ArrowRight,
+  BadgeCheck,
+  Camera,
+  Sparkles,
+  Star,
+} from 'lucide-react';
+import Accordion from '@/components/ui/Accordion';
+import { AnimatePresence, motion } from 'framer-motion';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import FadeInSection from '@/components/motion/FadeInSection';
+import HeroSlideIndicator from '@/components/ui/HeroSlideIndicator';
+import HorizontalScrollRow from '@/components/ui/HorizontalScrollRow';
 import ProductCard from '@/components/ui/ProductCard';
-import ScrollReveal from '@/components/ui/ScrollReveal';
-import FloatingPetals from '@/components/ui/FloatingPetals';
-import { db } from '@/lib/firebase';
-import { getAllProducts, getLatestReviews, getCategories } from '@/lib/services/firestoreService';
-import { type Product, type Review } from '@/types';
+import { getAllProducts, getLatestReviews } from '@/lib/services/firestoreService';
+import { categoryToneFromColor, getCategoryIcon } from '@/lib/categoryIcons';
+import { mobileSiteFooterClass } from '@/lib/layout/shell';
+import { resolveHomePage, resolveTrustItems } from '@/lib/resolveSiteContent';
+import { type HomePageSettings, type Product, type Review, type SiteSettings } from '@/types';
 
-type InstagramSlot = { id: string; instagramUrl: string; imageUrl: string };
+gsap.registerPlugin(ScrollTrigger, useGSAP);
 
-const ICON_MAP: Record<string, React.ElementType> = {
-  Droplet, Sparkles, Sun, Moon, Flower2, Leaf, Waves, Wind, Beaker, FlaskConical, Feather, Heart, Gem, ShieldPlus, Tags, MoreHorizontal, Syringe, Pill, Scale, Activity
+type HomeCategory = {
+  id: string;
+  slug: string;
+  name?: string;
+  name_mn?: string;
+  icon?: string;
+  color?: string;
+  image?: string;
+  showOnHome?: boolean;
+  sortOrder?: number;
+  productCount?: number;
 };
 
-function getVisiblePages(currentPage: number, totalPages: number): (number | string)[] {
-  const pages: (number | string)[] = [];
-  if (totalPages <= 5) {
-    for (let i = 1; i <= totalPages; i++) {
-      pages.push(i);
-    }
-  } else {
-    pages.push(1);
-    let start = Math.max(2, currentPage - 1);
-    let end = Math.min(totalPages - 1, currentPage + 1);
-    if (currentPage <= 3) {
-      end = 4;
-    } else if (currentPage >= totalPages - 2) {
-      start = totalPages - 3;
-    }
-    if (start > 2) {
-      pages.push('...');
-    }
-    for (let i = start; i <= end; i++) {
-      pages.push(i);
-    }
-    if (end < totalPages - 1) {
-      pages.push('...');
-    }
-    pages.push(totalPages);
-  }
-  return pages;
+type InstagramSlot = {
+  id: string;
+  imageUrl?: string;
+  instagramUrl?: string;
+};
+
+const serifStack = 'Georgia, "Times New Roman", serif';
+
+function firstImage(product?: Product) {
+  return product?.images?.find(Boolean) || '/placeholder-product.svg';
 }
 
-// ── Word-by-word staggered text reveal ───────────────────────────────────
-function StaggeredText({ text, style }: { text: string; style?: React.CSSProperties }) {
-  const words = text.split(' ');
-  return (
-    <span style={style}>
-      {words.map((word, i) => (
-        <motion.span
-          key={i}
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 + i * 0.08, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          style={{ display: 'inline-block', marginRight: '0.28em' }}
-        >
-          {word}
-        </motion.span>
-      ))}
-    </span>
-  );
+function productName(product?: Product) {
+  return product?.name_mn || product?.name_en || '\u0411\u04af\u0442\u044d\u044d\u0433\u0434\u044d\u0445\u04af\u04af\u043d';
 }
 
-// ── Stars ─────────────────────────────────────────────────────────────────
-function Stars({ rating, size = 12 }: { rating: number; size?: number }) {
+function initials(name?: string) {
+  return (name || 'UJ').trim().split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase();
+}
+
+export default function HomePage() {
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [categories, setCategories] = useState<HomeCategory[]>([]);
+  const [instagramSlots, setInstagramSlots] = useState<InstagramSlot[]>([]);
+  const [homePage, setHomePage] = useState<HomePageSettings>({});
+  const [slideIndex, setSlideIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    Promise.all([
+      getAllProducts({ published: true }).catch(() => []),
+      getLatestReviews(10).catch(() => []),
+      fetch('/api/categories').then((res) => res.ok ? res.json() : []).catch(() => []),
+      fetch('/api/instagram-feed').then((res) => res.ok ? res.json() : []).catch(() => []),
+      fetch('/api/settings').then((res) => res.ok ? res.json() : {}).catch(() => ({})),
+    ]).then(([productData, reviewData, categoryData, instagramData, settingsData]) => {
+      setProducts(Array.isArray(productData) ? productData : []);
+      setReviews(Array.isArray(reviewData) ? reviewData.filter((review) => review.status === 'visible') : []);
+      setCategories(Array.isArray(categoryData) ? categoryData : []);
+      setInstagramSlots(Array.isArray(instagramData) ? instagramData : []);
+      const settings = settingsData as SiteSettings;
+      setHomePage(resolveHomePage(settings?.homePage && typeof settings.homePage === 'object' ? settings.homePage : undefined));
+    });
+  }, []);
+
+  const heroProducts = useMemo(() => {
+    const featured = products.filter((product) => product.featured);
+    return (featured.length ? featured : products).slice(0, 5);
+  }, [products]);
+
+  const heroReady = heroProducts.length > 0;
+
+  useGSAP(() => {
+    if (!heroReady) return;
+
+    const mm = gsap.matchMedia();
+    const scope = rootRef.current;
+    if (!scope) return;
+
+    mm.add('(prefers-reduced-motion: no-preference)', () => {
+      const pill = scope.querySelector('[data-hero-pill]');
+      const title = scope.querySelector('[data-hero-title]');
+      const subtitle = scope.querySelector('[data-hero-subtitle]');
+      const actions = scope.querySelector('[data-hero-actions]');
+
+      if (pill || title || subtitle || actions) {
+        const heroTimeline = gsap.timeline({ defaults: { ease: 'power3.out' } });
+        if (pill) heroTimeline.from(pill, { y: 16, opacity: 0, duration: 0.45 });
+        if (title) heroTimeline.from(title, { y: 24, opacity: 0, duration: 0.55 }, '-=0.18');
+        if (subtitle) heroTimeline.from(subtitle, { y: 18, opacity: 0, duration: 0.45 }, '-=0.2');
+        if (actions) heroTimeline.from(actions, { y: 12, opacity: 0, duration: 0.4 }, '-=0.2');
+      }
+
+      const rows = gsap.utils.toArray<HTMLElement>('[data-showcase-row]', scope);
+      rows.forEach((row) => {
+        gsap.from(row, {
+          y: 26,
+          opacity: 0,
+          duration: 0.55,
+          ease: 'power2.out',
+          scrollTrigger: {
+            trigger: row,
+            start: 'top 88%',
+            once: true,
+          },
+        });
+      });
+    });
+
+    return () => mm.revert();
+  }, { scope: rootRef, dependencies: [heroReady] });
+
+  const slideCount = Math.max(heroProducts.length, 1);
+
+  useEffect(() => {
+    if (paused || slideCount <= 1) return;
+    const timer = window.setTimeout(() => {
+      setSlideIndex((current) => (current + 1) % slideCount);
+    }, 3000);
+    return () => window.clearTimeout(timer);
+  }, [paused, slideIndex, slideCount]);
+
+  useEffect(() => {
+    if (slideIndex >= slideCount) setSlideIndex(0);
+  }, [slideIndex, slideCount]);
+
+  const featuredProducts = useMemo(() => {
+    const flagged = products.filter((product) => product.showcaseFeatured);
+    if (flagged.length) return flagged.slice(0, 10);
+    const featured = products.filter((product) => product.featured || product.orderCount > 0);
+    return (featured.length ? featured : products).slice(0, 10);
+  }, [products]);
+
+  const newestProducts = useMemo(() => {
+    const flagged = products.filter((product) => product.showcaseNewest);
+    const pool = flagged.length ? flagged : [...products];
+    return pool
+      .sort((a, b) => new Date(b.createdAt as unknown as string).getTime() - new Date(a.createdAt as unknown as string).getTime())
+      .slice(0, 10);
+  }, [products]);
+
+  const saleProducts = useMemo(() => {
+    const flagged = products.filter((product) => product.showcaseSale);
+    if (flagged.length) return flagged.slice(0, 10);
+    return products
+      .filter((product) => product.salePrice != null && product.salePrice < (product.price ?? 0))
+      .slice(0, 10);
+  }, [products]);
+
+  const trustItems = useMemo(() => resolveTrustItems(homePage), [homePage]);
+
+  const careProducts = useMemo(() => {
+    const featured = products.filter((p) => p.showcaseFeatured || p.featured);
+    return (featured.length ? featured : products).slice(0, 4);
+  }, [products]);
+
+  const activeProduct = heroProducts[slideIndex] || heroProducts[0];
+  const heroSubtitle = activeProduct?.description_mn?.slice(0, 160) || '';
+
   return (
-    <div className="flex gap-0.5" style={{ color: '#E91E8C' }}>
-      {Array.from({ length: 5 }).map((_, i) => (
-        <Star key={i} size={size} fill={i < rating ? 'currentColor' : 'none'} strokeWidth={1.5} />
-      ))}
+    <div ref={rootRef} className="luxury-shell min-h-screen text-[var(--color-text-primary)]">
+      <section
+        className="relative overflow-hidden bg-[#2d1823] text-white"
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+      >
+        {activeProduct ? (
+          <>
+        <div className="absolute inset-0">
+          <Image src={firstImage(activeProduct)} alt={productName(activeProduct)} fill priority sizes="100vw" className="object-cover opacity-65" />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(35,20,28,0.88),rgba(35,20,28,0.56)_46%,rgba(35,20,28,0.16))]" />
+          <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(35,20,28,0.78),rgba(35,20,28,0.1)_55%)]" />
+        </div>
+
+        <div className="relative z-10 mx-auto flex min-h-[calc(100svh-160px)] max-w-[1180px] items-end px-4 pb-12 pt-20 md:min-h-[680px] md:items-center md:px-8 md:py-16">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={slideIndex}
+              className="max-w-[560px]"
+              initial={{ opacity: 0, y: 22 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -14 }}
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div data-hero-pill className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/85 backdrop-blur">
+                <Sparkles size={14} />
+                {activeProduct.featured ? 'Онцлох' : 'Шинэ'}
+              </div>
+              <h1 data-hero-title className="mt-5 text-[clamp(32px,7vw,68px)] font-medium leading-[1.04]" style={{ fontFamily: serifStack }}>
+                {productName(activeProduct)}
+              </h1>
+              {heroSubtitle ? <p data-hero-subtitle className="mt-4 max-w-[460px] text-[14px] font-medium leading-6 text-white/78">{heroSubtitle}</p> : null}
+              <div data-hero-actions className="mt-7 flex flex-wrap items-center gap-2.5">
+                <Link href={`/shop/${activeProduct.slug}`} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--color-brand)] px-6 text-[13px] font-semibold text-white">
+                  Дэлгэрэнгүй
+                  <ArrowRight size={17} strokeWidth={1.8} />
+                </Link>
+                <Link href="/shop" className="inline-flex h-11 items-center justify-center rounded-full border border-white/28 bg-white/12 px-5 text-[13px] font-semibold text-white backdrop-blur">
+                  {'\u0411\u04af\u0433\u0434\u0438\u0439\u0433 \u0445\u0430\u0440\u0430\u0445'}
+                </Link>
+              </div>
+            </motion.div>
+          </AnimatePresence>
+
+        </div>
+
+        <HeroSlideIndicator current={slideIndex} total={slideCount} />
+          </>
+        ) : (
+          <div className="relative z-10 mx-auto flex min-h-[320px] max-w-[1180px] items-center px-4 py-16 md:px-8">
+            <p className="text-white/70">Одоогоор бүтээгдэхүүн байхгүй байна.</p>
+          </div>
+        )}
+      </section>
+
+      <section className="border-b border-[#f5d5e0] bg-white" style={{ boxShadow: 'var(--shadow-xs)' }}>
+        <div className="mx-auto grid max-w-[1180px] grid-cols-2 md:grid-cols-4">
+          {trustItems.map(({ title, sub, icon }) => {
+            const Icon = getCategoryIcon(icon);
+            return (
+            <div key={title} className="px-4 py-4 text-center md:border-r md:border-[#f5d5e0] md:last:border-r-0">
+              <Icon className="mx-auto text-[var(--color-brand)]" size={19} strokeWidth={1.7} />
+              <p className="mt-2 text-[13px] font-semibold">{title}</p>
+              <p className="mt-1 text-[12px] text-[var(--color-text-muted)]">{sub}</p>
+            </div>
+          );})}
+        </div>
+      </section>
+
+      <main className="mx-auto flex w-full max-w-[1180px] flex-col gap-14 px-5 py-10 md:px-8 md:py-14">
+        <FadeInSection><IntroSection homePage={homePage} /></FadeInSection>
+        <CategoryEditorial categories={categories} />
+        <FadeInSection delay={0.08}><PromiseBanner homePage={homePage} /></FadeInSection>
+        <FadeInSection delay={0.1}><ProductShowcase title={homePage.showcaseFeaturedTitle || 'Эрхэмсэг сонголтууд'} href="/shop" products={featuredProducts} autoScroll /></FadeInSection>
+        <ProductShowcase title={homePage.showcaseNewestTitle || 'Шинэхэн ирсэн'} href="/shop?sort=newest" products={newestProducts} autoScroll />
+        {careProducts.length > 0 ? <CareNote products={careProducts} homePage={homePage} /> : null}
+        <ProductShowcase title={homePage.showcaseSaleTitle || 'Зөөллөн үнэтэй санал'} href="/shop?onSale=true" products={saleProducts} autoScroll />
+        {reviews.length > 0 ? <ReviewEditorial reviews={reviews} /> : null}
+        <InstagramEditorial slots={instagramSlots} products={products} />
+        {homePage.faqItems && homePage.faqItems.length > 0 ? <FaqSection homePage={homePage} /> : null}
+      </main>
+
+      <Footer />
     </div>
   );
 }
 
-// ── Section label with underline draw ────────────────────────────────────
-function SectionLabel({ eyebrow, title, href, linkLabel }: {
-  eyebrow: string; title: string; href?: string; linkLabel?: string;
-}) {
+function IntroSection({ homePage }: { homePage: HomePageSettings }) {
+  if (!homePage.introTitle && !homePage.introBody) return null;
   return (
-    <div className="mb-5 flex items-end justify-between">
+    <section className="grid gap-5 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)] md:items-end">
       <div>
-        <p
-          className="text-label"
-          style={{
-            color: 'var(--color-primary)',
-            fontFamily: '"Montserrat", sans-serif',
-          }}
-        >
-          {eyebrow}
-        </p>
-        <h2
-          className="mt-1 section-underline in-view leading-tight"
-          style={{
-            fontFamily: '"Playfair Display", "Cormorant Garamond", Georgia, serif',
-            fontSize: 26,
-            fontWeight: 500,
-            color: 'var(--color-text-dark)',
-            letterSpacing: '-0.01em',
-          }}
-        >
-          {title}
-        </h2>
+        <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-[var(--color-brand)]">UJ beauty note</p>
+        {homePage.introTitle ? (
+          <h2 className="mt-3 max-w-[560px] text-[clamp(30px,5vw,46px)] font-medium leading-[1.06] text-[#2a1d24]" style={{ fontFamily: serifStack }}>
+            {homePage.introTitle}
+          </h2>
+        ) : null}
       </div>
-      {href && linkLabel && (
-        <Link
-          href={href}
-          className="group flex items-center gap-1 text-[12px] font-bold transition-all"
-          style={{ color: 'var(--color-primary)', letterSpacing: '0.02em' }}
+      {homePage.introBody ? (
+        <p className="max-w-[520px] text-sm leading-7 text-[var(--color-text-secondary)] md:justify-self-end">{homePage.introBody}</p>
+      ) : null}
+    </section>
+  );
+}
+
+function CategoryHomeCard({ category }: { category: HomeCategory }) {
+  const Icon = getCategoryIcon(category.icon);
+  const name = category.name_mn || category.name || category.slug;
+  const tone = categoryToneFromColor(category.color);
+
+  return (
+    <Link
+      href={`/shop?category=${encodeURIComponent(category.slug)}`}
+      className="group flex min-w-0 w-full flex-col items-center rounded-[18px] border border-[#f0e4ea] bg-white px-1.5 py-3 text-center transition duration-200 hover:-translate-y-0.5 hover:border-[var(--color-brand)]/35 hover:shadow-[var(--shadow-sm)] md:rounded-[22px] md:px-2 md:py-5"
+      style={{ textDecoration: 'none', boxShadow: 'var(--shadow-xs)' }}
+    >
+      <span
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] border transition md:h-14 md:w-14 md:rounded-[18px]"
+        style={{ backgroundColor: tone.background, borderColor: tone.border, color: tone.color }}
+      >
+        <Icon className="h-[18px] w-[18px] md:h-5 md:w-5" strokeWidth={1.8} aria-hidden="true" />
+      </span>
+      <span className="mt-2 line-clamp-2 w-full px-0.5 text-[10px] font-bold leading-[1.2] text-[#1f2530] md:text-[12px] md:leading-5">
+        {name}
+      </span>
+    </Link>
+  );
+}
+
+function CategoryEditorial({ categories }: { categories: HomeCategory[] }) {
+  const display = categories
+    .filter((category) => category.showOnHome !== false)
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+
+  if (!display.length) return null;
+
+  return (
+    <section className="-mx-5 rounded-[24px] bg-[#fdf5f8] px-5 py-6 md:mx-0 md:bg-transparent md:px-0 md:py-0">
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--color-brand)]">Browse</p>
+          <h2 className="mt-1.5 text-[26px] font-medium leading-[1.06] text-[#2a1d24] md:text-[clamp(28px,4vw,40px)]" style={{ fontFamily: serifStack }}>
+            {'\u0410\u043d\u0433\u0438\u043b\u043b\u0430\u0430\u0440'}
+          </h2>
+          <div className="mt-2 h-[3px] w-10 rounded-full bg-[var(--color-brand)]" aria-hidden="true" />
+        </div>
+        <Link href="/shop" className="shrink-0 pb-1 text-[12px] font-semibold text-[var(--color-brand)] md:text-[13px]">
+          {'\u0411\u04af\u0433\u0434\u0438\u0439\u0433 \u0445\u0430\u0440\u0430\u0445'}
+        </Link>
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 md:mt-6 md:gap-2.5 lg:grid-cols-[repeat(auto-fit,minmax(96px,1fr))]">
+        {display.map((category) => (
+          <CategoryHomeCard key={category.id || category.slug} category={category} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PromiseBanner({ homePage }: { homePage: HomePageSettings }) {
+  if (!homePage.promiseTitle) return null;
+  return (
+    <section className="relative overflow-hidden rounded-[30px] bg-[linear-gradient(110deg,#d4537e,#8b2f52)] px-6 py-12 text-center text-white md:px-10" style={{ boxShadow: 'var(--shadow-md)' }}>
+      <div className="absolute -left-12 bottom-[-70px] h-44 w-44 rounded-full bg-white/10" />
+      <div className="absolute -right-12 top-[-70px] h-44 w-44 rounded-full bg-white/10" />
+      <p className="relative text-[11px] font-semibold uppercase tracking-[0.24em] text-white/70">Our promise</p>
+      <h2 className="relative mx-auto mt-4 max-w-[740px] text-[26px] font-medium leading-tight md:text-[34px]" style={{ fontFamily: serifStack }}>
+        {homePage.promiseTitle}
+      </h2>
+      {homePage.promiseBody ? <p className="relative mx-auto mt-3 max-w-[640px] text-sm text-white/80">{homePage.promiseBody}</p> : null}
+      <Link href={homePage.promiseCtaHref || '/about'} className="relative mt-7 inline-flex h-12 items-center justify-center gap-2 rounded-full border border-white/25 bg-white/18 px-8 text-sm font-semibold text-white">
+        {homePage.promiseCtaLabel || 'Бидний тухай'}
+        <ArrowRight size={16} />
+      </Link>
+    </section>
+  );
+}
+
+function CareNote({ products, homePage }: { products: Product[]; homePage: HomePageSettings }) {
+  if (!products.length) return null;
+  return (
+    <section className="overflow-hidden rounded-[28px] border border-[#f5d5e0] bg-[#fdf8fa]" style={{ boxShadow: 'var(--shadow-sm)' }}>
+      <div className="grid gap-6 p-5 md:grid-cols-2 md:items-center md:gap-8 md:p-8">
+        <div className="flex flex-col justify-center">
+          <div className="inline-flex w-fit items-center gap-2 rounded-full bg-[#fbe8f1] px-4 py-2 text-[12px] font-semibold text-[var(--color-brand-dark)]">
+            <Sparkles size={15} />
+            Онцлох
+          </div>
+          <h2 className="mt-4 text-[clamp(24px,4vw,32px)] font-medium leading-tight text-[#2a1d24]" style={{ fontFamily: serifStack }}>
+            {homePage.careTitle || 'Онцлох коллекц'}
+          </h2>
+          <p className="mt-3 max-w-[480px] text-sm leading-7 text-[var(--color-text-secondary)]">
+            {homePage.careBody || 'Манай онцлох бүтээгдэхүүнүүдийг эндээс танилцаарай.'}
+          </p>
+          <Link href="/shop" className="mt-6 inline-flex h-12 w-fit items-center justify-center rounded-full bg-[var(--color-brand)] px-7 text-sm font-semibold text-white transition-transform active:scale-[0.98]">
+            {homePage.careCtaLabel || 'Бүтээгдэхүүн үзэх'}
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {products.slice(0, 4).map((product, index) => (
+            <Link key={product.id} href={`/shop/${product.slug}`} className="relative aspect-[4/5] overflow-hidden rounded-[20px] bg-[#fbe8f1] animate-[fadeUp_0.7s_var(--ease-spring)_both]" style={{ animationDelay: `${index * 70}ms`, textDecoration: 'none', boxShadow: 'var(--shadow-xs)' }}>
+              <Image src={firstImage(product)} alt={productName(product)} fill sizes="(max-width: 768px) 42vw, 220px" className="object-cover transition-transform duration-500 hover:scale-105" />
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-3">
+                <p className="line-clamp-2 text-[12px] font-semibold leading-4 text-white">{productName(product)}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ProductShowcase({ title, href, products, autoScroll = false }: { title: string; href: string; products: Product[]; autoScroll?: boolean }) {
+  if (!products.length) return null;
+  const displayProducts = products.slice(0, 10);
+
+  return (
+    <section data-showcase-row className="min-w-0 overflow-visible">
+      <SectionTitle title={title} href={href} />
+      <div className="mt-5 hidden gap-3 md:grid md:grid-cols-4 md:gap-4 lg:grid-cols-5">
+        {displayProducts.slice(0, 5).map((product) => (
+          <div key={product.id} className="min-w-0 [&_article]:!w-full [&_article]:!min-w-0">
+            <ProductCard product={product} compact />
+          </div>
+        ))}
+      </div>
+      <HorizontalScrollRow className="-mx-5 mt-5 px-5 md:hidden" autoScroll={autoScroll}>
+        {displayProducts.map((product) => (
+          <ProductCard key={product.id} product={product} compact />
+        ))}
+      </HorizontalScrollRow>
+    </section>
+  );
+}
+
+function ReviewCard({ review, index }: { review: Review; index: number }) {
+  return (
+    <article
+      className="flex h-full min-h-[228px] w-[min(76vw,200px)] shrink-0 snap-start flex-col rounded-[16px] border border-[#f5d5e0] bg-white p-3 animate-[fadeUp_0.7s_var(--ease-spring)_both] md:min-h-[248px] md:w-full md:rounded-[18px] md:p-4"
+      style={{ animationDelay: `${index * 60}ms`, boxShadow: 'var(--shadow-xs)' }}
+    >
+      {review.imageUrls?.[0] && (
+        <div className="relative mb-2 h-[80px] shrink-0 overflow-hidden rounded-[12px] bg-[#fbe8f1] md:h-[96px]">
+          <Image src={review.imageUrls[0]} alt={review.productName || 'Review image'} fill sizes="(max-width: 768px) 200px, 320px" className="object-cover" />
+        </div>
+      )}
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex shrink-0 gap-0.5" aria-label={`${review.rating} star review`}>
+          {Array.from({ length: Math.max(1, Math.min(5, review.rating)) }).map((_, starIndex) => (
+            <Star key={starIndex} className="h-[11px] w-[11px] md:h-[12px] md:w-[12px]" fill="var(--color-brand)" color="var(--color-brand)" />
+          ))}
+        </div>
+        <p className="mt-2 flex-1 text-[11px] font-normal leading-[1.45] text-[#2a1d24] line-clamp-4 md:text-[12px] md:leading-[1.5]">
+          &ldquo;{review.content || review.body}&rdquo;
+        </p>
+        <div className="mt-auto flex items-center justify-between border-t border-[#f5ebef] pt-2.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#fbe8f1] text-[10px] font-semibold text-[var(--color-brand)]">
+              {initials(review.userName)}
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-[11px] font-semibold">{review.userName || 'UJ \u0445\u044d\u0440\u044d\u0433\u043b\u044d\u0433\u0447'}</p>
+              <p className="truncate text-[10px] text-[var(--color-text-muted)]">{review.productName}</p>
+            </div>
+          </div>
+          <BadgeCheck className="shrink-0 text-[#3B6D11]" size={15} />
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function ReviewEditorial({ reviews }: { reviews: Review[] }) {
+  if (!reviews.length) return null;
+  const displayReviews = reviews.slice(0, 8);
+
+  return (
+    <section data-showcase-row className="min-w-0 overflow-visible">
+      <div className="flex items-end justify-between gap-3">
+        <h2
+          className="max-w-[72%] text-[22px] font-medium leading-[1.12] text-[#2a1d24] md:max-w-none md:text-[clamp(28px,4vw,40px)] md:leading-[1.06]"
+          style={{ fontFamily: serifStack }}
         >
-          {linkLabel}
-          <ArrowRight
-            size={12}
-            strokeWidth={2.5}
-            className="transition-transform duration-200 group-hover:translate-x-1"
-          />
+          {'\u0425\u044d\u0440\u044d\u0433\u043b\u044d\u0433\u0447\u0434\u0438\u0439\u043d \u0431\u043e\u0434\u0438\u0442 \u0441\u044d\u0442\u0433\u044d\u0433\u0434\u044d\u043b'}
+        </h2>
+        <Link href="/reviews" className="shrink-0 pb-0.5 text-[12px] font-semibold text-[var(--color-brand)] md:text-[13px]">
+          {'\u0411\u04af\u0433\u0434\u0438\u0439\u0433 \u0445\u0430\u0440\u0430\u0445'}
+        </Link>
+      </div>
+
+      <div className="mt-5 hidden gap-4 md:grid md:grid-cols-2 lg:grid-cols-3">
+        {displayReviews.slice(0, 6).map((review, index) => (
+          <ReviewCard key={review.id} review={review} index={index} />
+        ))}
+      </div>
+
+      <HorizontalScrollRow className="-mx-5 mt-3 px-5 md:hidden" autoScroll>
+        {displayReviews.map((review, index) => (
+          <ReviewCard key={review.id} review={review} index={index} />
+        ))}
+      </HorizontalScrollRow>
+    </section>
+  );
+}
+
+function InstagramEditorial({ slots }: { slots: InstagramSlot[]; products: Product[] }) {
+  const displaySlots = slots.filter((slot) => slot.imageUrl).slice(0, 6);
+
+  if (!displaySlots.length) return null;
+
+  return (
+    <section className="rounded-[28px] border border-[#f5d5e0] bg-white p-5 md:p-8" style={{ boxShadow: 'var(--shadow-sm)' }}>
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full bg-[#fbe8f1] px-4 py-2 text-[12px] font-semibold text-[var(--color-brand-dark)]">
+            <Camera size={15} />
+            Instagram
+          </div>
+          <h2 className="mt-4 text-[clamp(28px,4vw,40px)] font-medium leading-[1.06] text-[#2a1d24]" style={{ fontFamily: serifStack }}>{'UJ-\u0438\u0439\u043d \u0433\u043e\u043e \u0441\u0430\u0439\u0445\u043d\u044b \u0436\u0438\u0436\u0438\u0433 \u0442\u044d\u043c\u0434\u044d\u0433\u043b\u044d\u043b\u04af\u04af\u0434'}</h2>
+        </div>
+        <p className="max-w-[420px] text-sm leading-7 text-[var(--color-text-secondary)]">
+          {'Texture, routine \u0441\u0430\u043d\u0430\u0430, \u0448\u0438\u043d\u044d\u0445\u044d\u043d \u0438\u0440\u0441\u044d\u043d \u0441\u043e\u043d\u0433\u043e\u043b\u0442\u0443\u0443\u0434\u044b\u0433 \u0438\u043b\u04af\u04af \u043e\u0439\u0440\u043e\u043e\u0441 \u0445\u0430\u0440\u0430\u0430\u0440\u0430\u0439.'}
+        </p>
+      </div>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
+        {displaySlots.map((slot, index) => (
+          <Link
+            key={slot.id || index}
+            href={slot.instagramUrl || '#'}
+            className="group relative aspect-square overflow-hidden rounded-[20px] bg-[#fbe8f1] animate-[scaleIn_0.6s_var(--ease-spring)_both]"
+            style={{ animationDelay: `${index * 50}ms`, textDecoration: 'none' }}
+            target={slot.instagramUrl?.startsWith('http') ? '_blank' : undefined}
+            rel={slot.instagramUrl?.startsWith('http') ? 'noopener noreferrer' : undefined}
+          >
+            <Image src={slot.imageUrl || '/placeholder-product.svg'} alt={`UJ Instagram ${index + 1}`} fill sizes="(max-width: 768px) 45vw, 170px" className="object-cover transition-transform duration-500 group-hover:scale-105" />
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function FaqSection({ homePage }: { homePage: HomePageSettings }) {
+  if (!homePage.faqItems?.length) return null;
+  return (
+    <section className="grid gap-8 rounded-[28px] bg-[#fbe8f1] p-6 md:grid-cols-[0.8fr_1.2fr] md:p-8" style={{ boxShadow: 'var(--shadow-sm)' }}>
+      <div>
+        <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-[var(--color-brand)]">Help desk</p>
+        {homePage.faqTitle ? (
+          <h2 className="mt-3 text-[clamp(28px,4vw,40px)] font-medium leading-[1.06] text-[#2a1d24]" style={{ fontFamily: serifStack }}>{homePage.faqTitle}</h2>
+        ) : null}
+        {homePage.faqBody ? (
+          <p className="mt-4 text-sm leading-7 text-[var(--color-text-secondary)]">{homePage.faqBody}</p>
+        ) : null}
+      </div>
+      <Accordion items={homePage.faqItems} />
+    </section>
+  );
+}
+
+function SectionTitle({ title, href }: { title: string; href?: string }) {
+  return (
+    <div className="flex items-end justify-between gap-4">
+      <h2 className="text-[clamp(28px,4vw,40px)] font-medium leading-[1.06] text-[#2a1d24]" style={{ fontFamily: serifStack }}>{title}</h2>
+      {href && (
+        <Link href={href} className="shrink-0 text-[13px] font-semibold text-[var(--color-brand)] hover:text-[var(--color-brand-dark)]">
+          {'\u0411\u04af\u0433\u0434\u0438\u0439\u0433 \u0445\u0430\u0440\u0430\u0445'}
         </Link>
       )}
     </div>
   );
 }
 
-// ── Sparkle particles ─────────────────────────────────────────────────────
-const SPARKLE_CONFIG = [
-  { x: '15%', delay: '0s',   dur: '3s',   size: 10, opacity: 0.7 },
-  { x: '40%', delay: '1.2s', dur: '4s',   size: 7,  opacity: 0.5 },
-  { x: '70%', delay: '0.5s', dur: '3.5s', size: 12, opacity: 0.6 },
-  { x: '85%', delay: '2.1s', dur: '5s',   size: 8,  opacity: 0.55 },
-  { x: '55%', delay: '1.7s', dur: '3.8s', size: 6,  opacity: 0.45 },
-];
-
-function SparkleParticles() {
+function Footer() {
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-      {SPARKLE_CONFIG.map((s, i) => (
-        <div
-          key={i}
-          style={{
-            position: 'absolute',
-            bottom: `${20 + i * 12}%`,
-            left: s.x,
-            animation: `sparkleDrift ${s.dur} ${s.delay} ease-out infinite`,
-            opacity: s.opacity,
-          }}
-        >
-          <svg width={s.size} height={s.size} viewBox="0 0 24 24">
-            <path
-              d="M12 2L13.5 10L22 12L13.5 14L12 22L10.5 14L2 12L10.5 10Z"
-              fill="#FFB6D9"
-            />
-          </svg>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── Instagram section ─────────────────────────────────────────────────────
-function InstagramFeedSection() {
-  const [slots, setSlots] = useState<InstagramSlot[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    getDocs(query(collection(db, 'instagramFeed'), orderBy('order', 'asc')))
-      .then((snap) =>
-        setSlots(
-          snap.docs
-            .map((d) => ({ id: d.id, ...d.data() } as InstagramSlot))
-            .filter((s) => s.imageUrl)
-        )
-      )
-      .catch(() => setSlots([]))
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (!loading && slots.length === 0) return null;
-
-  return (
-    <ScrollReveal>
-      <div className="mb-5 flex items-center justify-between">
+    <footer className={`bg-[#21151c] px-5 pt-12 text-white/60 md:px-8 md:py-12 ${mobileSiteFooterClass}`}>
+      <div className="mx-auto grid max-w-[1180px] gap-10 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <p className="text-label" style={{ color: 'var(--color-primary)', fontFamily: '"Montserrat", sans-serif' }}>
-            Instagram
-          </p>
-          <h2
-            className="mt-1 section-underline in-view"
-            style={{
-              fontFamily: '"Playfair Display", Georgia, serif',
-              fontSize: 26,
-              fontWeight: 500,
-              color: 'var(--color-text-dark)',
-            }}
-          >
-            @uj_cosmetic
-          </h2>
+          <Link href="/" className="inline-block" style={{ textDecoration: 'none' }}>
+            <span className="block text-[32px] font-medium text-white" style={{ fontFamily: serifStack }}>UJ</span>
+            <span className="mt-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--color-brand)]">Beauty & Wellness</span>
+          </Link>
+          <p className="mt-4 max-w-[260px] text-[13px] leading-7">{'\u0410\u0440\u044c\u0441 \u0430\u0440\u0447\u0438\u043b\u0433\u0430\u0430, \u0433\u043e\u043e \u0441\u0430\u0439\u0445\u0430\u043d, wellness \u0441\u043e\u043d\u0433\u043e\u043b\u0442\u0443\u0443\u0434\u044b\u0433 \u043d\u044d\u0433 \u0434\u043e\u0440\u043e\u043e\u0441.'}</p>
         </div>
-        <a
-          href="https://instagram.com/uj_cosmetic"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex h-9 items-center gap-1.5 rounded-full px-4 text-[12px] font-bold transition-all"
-          style={{
-            background: 'linear-gradient(135deg, #E91E8C, #C2185B)',
-            color: 'white',
-            boxShadow: '0 4px 12px rgba(233,30,140,0.28)',
-          }}
-        >
-          Дагах <ArrowRight size={11} strokeWidth={2.5} />
-        </a>
+        <FooterLinks title={'\u0414\u044d\u043b\u0433\u04af\u04af\u0440'} links={[{ label: '\u041d\u04af\u04af\u0440', href: '/' }, { label: '\u0414\u044d\u043b\u0433\u04af\u04af\u0440', href: '/shop' }, { label: '\u0425\u044f\u043c\u0434\u0440\u0430\u043b', href: '/shop?onSale=true' }]} />
+        <FooterLinks title={'\u041c\u044d\u0434\u044d\u044d\u043b\u044d\u043b'} links={[{ label: '\u0411\u0438\u0434\u043d\u0438\u0439 \u0442\u0443\u0445\u0430\u0439', href: '/about' }, { label: '\u0421\u044d\u0442\u0433\u044d\u0433\u0434\u044d\u043b', href: '/reviews' }, { label: '\u0417\u0430\u0445\u0438\u0430\u043b\u0433\u0430\u0430 \u0445\u044f\u043d\u0430\u0445', href: '/profile/orders' }, { label: '\u0421\u0430\u0433\u0441', href: '/cart' }]} />
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/35">{'\u0425\u043e\u043b\u0431\u043e\u0433\u0434\u043e\u0445'}</p>
+          <div className="mt-4 flex flex-col gap-3 text-[13px]">
+            <span>Messenger</span>
+            <span>Instagram</span>
+            <span>Facebook</span>
+          </div>
+        </div>
       </div>
-
-      <div className="grid grid-cols-3 gap-1.5">
-        {loading
-          ? Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="aspect-square animate-shimmer rounded-[16px]" />
-            ))
-          : slots.slice(0, 6).map((slot, i) => (
-              <a
-                key={slot.id}
-                href={slot.instagramUrl || 'https://instagram.com/uj_cosmetic'}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group relative aspect-square overflow-hidden rounded-[16px]"
-                style={{ background: 'var(--color-soft-pink)' }}
-              >
-                <Image
-                  src={slot.imageUrl}
-                  alt={`UJ Cosmetic Instagram ${i + 1}`}
-                  fill
-                  sizes="(max-width: 768px) 33vw, 16vw"
-                  className="object-cover transition-transform duration-500 group-hover:scale-110"
-                />
-                <div
-                  className="absolute inset-0 flex items-center justify-center opacity-0 transition-all duration-300 group-hover:opacity-100"
-                  style={{ background: 'rgba(233,30,140,0.30)' }}
-                >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                  </svg>
-                </div>
-              </a>
-            ))}
+      <div className="mx-auto mt-10 flex max-w-[1180px] flex-col gap-2 border-t border-white/10 pt-5 text-[12px] text-white/35 md:flex-row md:justify-between">
+        <span>&copy; {new Date().getFullYear()} UJ Beauty & Wellness</span>
+        <span>{'\u0423\u043b\u0430\u0430\u043d\u0431\u0430\u0430\u0442\u0430\u0440 \u0445\u043e\u0442, \u041c\u043e\u043d\u0433\u043e\u043b \u0423\u043b\u0441'}</span>
       </div>
-    </ScrollReveal>
+    </footer>
   );
 }
 
-export default function HomePage() {
-  const [categories, setCategories] = useState<any[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [reviewsPage, setReviewsPage] = useState(1);
-  const [isMobile, setIsMobile] = useState(true);
-
-  // Parallax for hero text
-  const { scrollY } = useScroll();
-  const heroTextY = useTransform(scrollY, [0, 400], [0, -80]);
-  const heroBgScale = useTransform(scrollY, [0, 400], [1, 1.08]);
-
-  useEffect(() => {
-    setIsMobile(window.innerWidth < 768);
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
-    Promise.all([
-      getAllProducts({ published: true }).catch(() => [] as Product[]),
-      getLatestReviews(12).catch(() => [] as Review[]),
-      getCategories().catch(() => [] as any[]),
-    ]).then(([productData, reviewData, categoriesData]) => {
-      setProducts(productData || []);
-      setReviews(reviewData || []);
-      setCategories(categoriesData || []);
-    }).finally(() => setLoading(false));
-  }, []);
-
-  const heroProducts = products.slice(0, 3);
-  const newProducts  = products.slice(0, 4);
-  const featured     = products.filter((p) => p.featured).slice(0, 4);
-  const displayProducts = featured.length ? featured : products.slice(0, 4);
-  const heroImage    = '/images/brand/hero.jpg';
-  const averageRating = useMemo(
-    () => reviews.length ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0,
-    [reviews]
-  );
-
-  const reviewsPerPage = isMobile ? 1 : 3;
-  const totalReviewsPages = Math.ceil(reviews.length / reviewsPerPage) || 1;
-  const currentReviews = useMemo(() => {
-    const start = (reviewsPage - 1) * reviewsPerPage;
-    return reviews.slice(start, start + reviewsPerPage);
-  }, [reviews, reviewsPage, reviewsPerPage]);
-
+function FooterLinks({ title, links }: { title: string; links: Array<{ label: string; href: string }> }) {
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-10 pb-[96px] md:pb-16">
-
-      {/* ── HERO ──────────────────────────────────────────────────────── */}
-      <section
-        className="relative -mx-0 overflow-hidden"
-        style={{ minHeight: 580, background: '#120810' }}
-      >
-        {/* Ken Burns background */}
-        <motion.div
-          className="absolute inset-0"
-          style={{ scale: heroBgScale }}
-        >
-          <div
-            className="absolute inset-0"
-            style={{ animation: 'kenBurns 14s ease-in-out infinite' }}
-          >
-            <Image
-              src={heroImage}
-              alt="UJ Beauty premium Korean skincare"
-              fill
-              sizes="100vw"
-              className="object-cover"
-              style={{ opacity: 0.78 }}
-              priority
-            />
-          </div>
-        </motion.div>
-
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 gradient-hero" />
-
-        {/* Blob morphing accent */}
-        <div
-          className="pointer-events-none absolute"
-          style={{
-            width: 320,
-            height: 320,
-            top: '-10%',
-            right: '-15%',
-            background: 'radial-gradient(ellipse, rgba(233,30,140,0.22) 0%, transparent 70%)',
-            animation: 'blobMorph 9s ease-in-out infinite',
-          }}
-        />
-
-        {/* Floating sakura petals */}
-        <FloatingPetals count={7} />
-
-        {/* Sparkle particles */}
-        <SparkleParticles />
-
-        {/* Noise texture */}
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E\")",
-            opacity: 0.5,
-          }}
-        />
-
-        {/* Hero content with parallax */}
-        <motion.div
-          className="absolute inset-x-5 bottom-7 text-white"
-          style={{ y: heroTextY }}
-        >
-          {/* Eyebrow pill */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            className="mb-5 inline-flex items-center gap-2 rounded-full px-3.5 py-2"
-            style={{
-              background: 'rgba(255,255,255,0.14)',
-              backdropFilter: 'blur(12px)',
-              border: '1px solid rgba(255,255,255,0.16)',
-              fontFamily: '"Montserrat", sans-serif',
-              fontSize: 10,
-              fontWeight: 600,
-              letterSpacing: '0.18em',
-              textTransform: 'uppercase',
-            }}
-          >
-            <Sparkles size={12} strokeWidth={1.8} />
-            Korean beauty curated
-          </motion.div>
-
-          {/* Main headline — staggered word reveal */}
-          <h1
-            style={{
-              fontFamily: '"Playfair Display", "Cormorant Garamond", Georgia, serif',
-              fontSize: 48,
-              fontWeight: 400,
-              lineHeight: 0.97,
-              letterSpacing: '-0.01em',
-              maxWidth: 360,
-            }}
-          >
-            <StaggeredText text="Тансаг арьс арчилгааг" />
-            {' '}
-            <motion.em
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.9, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-              style={{ fontStyle: 'italic', color: 'rgba(255,182,217,0.92)', display: 'inline-block' }}
-            >
-              өдөр бүртээ
-            </motion.em>
-          </h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.0, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            className="mt-4 max-w-[300px] text-[13.5px] leading-[1.65]"
-            style={{ color: 'rgba(255,255,255,0.75)' }}
-          >
-            Эмэгтэйлэг, premium мэдрэмжтэй skincare сонголтыг нэг дороос.
-          </motion.p>
-
-          {/* CTA row */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.15, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            className="mt-6 flex items-center gap-3"
-          >
-            <Link
-              href="/shop"
-              className="flex h-12 items-center gap-2 rounded-full px-6 text-[13px] font-bold transition-all hover:scale-105"
-              style={{
-                background: 'linear-gradient(135deg, #E91E8C, #C2185B)',
-                color: 'white',
-                boxShadow: '0 8px 28px rgba(233,30,140,0.40)',
-                fontFamily: '"Montserrat", sans-serif',
-                letterSpacing: '0.06em',
-              }}
-            >
-              Дэлгүүр үзэх <ArrowRight size={15} strokeWidth={2.5} />
-            </Link>
-            <Link
-              href="/reviews"
-              className="flex h-12 w-12 items-center justify-center rounded-full transition-all hover:scale-110"
-              style={{
-                background: 'rgba(255,255,255,0.15)',
-                backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255,255,255,0.20)',
-                color: 'white',
-              }}
-              aria-label="Сэтгэгдэл үзэх"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-              </svg>
-            </Link>
-          </motion.div>
-
-          {/* Hero product chips */}
-          {heroProducts.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.3, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-              className="mt-6 flex gap-2 overflow-x-auto hide-scrollbar"
-            >
-              {heroProducts.map((product) => (
-                <Link
-                  key={product.id}
-                  href={`/shop/${product.slug}`}
-                  className="flex min-w-[160px] items-center gap-2.5 rounded-[18px] p-2 transition-all active:scale-[0.98] hover:scale-[1.02]"
-                  style={{
-                    background: 'rgba(255,255,255,0.12)',
-                    backdropFilter: 'blur(16px)',
-                    border: '1px solid rgba(255,255,255,0.14)',
-                  }}
-                >
-                  <div
-                    className="relative h-12 w-10 shrink-0 overflow-hidden rounded-[10px]"
-                    style={{ background: 'rgba(255,255,255,0.18)' }}
-                  >
-                    <Image
-                      src={product.images?.[0] || '/placeholder-product.svg'}
-                      alt={product.name_mn}
-                      fill
-                      sizes="48px"
-                      className="object-cover"
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="line-clamp-2 text-[11.5px] font-semibold leading-snug">{product.name_mn}</p>
-                    <p className="mt-0.5 text-[10px] font-medium" style={{ color: 'rgba(255,182,217,0.85)' }}>
-                      Шууд үзэх →
-                    </p>
-                  </div>
-                </Link>
-              ))}
-            </motion.div>
-          )}
-        </motion.div>
-      </section>
-
-      {/* ── TRUST BADGES ─────────────────────────────────────────────── */}
-      <ScrollReveal className="px-4">
-        <div className="flex gap-2.5 overflow-x-auto hide-scrollbar">
-          {[
-            { icon: BadgeCheck, label: 'Сонгомол', sub: 'Curated beauty', color: '#C2185B', bg: 'rgba(194,24,91,0.08)' },
-            { icon: Truck,      label: 'Шуурхай хүргэлт', sub: 'Fast delivery', color: '#7C5CBF', bg: 'rgba(124,92,191,0.08)' },
-            { icon: Sparkles,   label: 'K-Beauty', sub: 'Premium care', color: '#0A8A9A', bg: 'rgba(10,138,154,0.08)' },
-          ].map((item) => {
-            const Icon = item.icon;
-            return (
-              <div
-                key={item.label}
-                className="flex shrink-0 items-center gap-3 rounded-[18px] p-3 pr-4 transition-all hover:scale-[1.02]"
-                style={{ background: '#FFFFFF', boxShadow: '0 2px 12px rgba(233,30,140,0.06)', minWidth: 148 }}
-              >
-                <div
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
-                  style={{ background: item.bg, color: item.color }}
-                >
-                  <Icon size={18} strokeWidth={1.8} />
-                </div>
-                <div>
-                  <p className="text-[12px] font-bold leading-tight" style={{ color: 'var(--color-text-dark)' }}>
-                    {item.label}
-                  </p>
-                  <p className="mt-0.5 text-[10px]" style={{ color: 'var(--color-text-medium)' }}>
-                    {item.sub}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </ScrollReveal>
-
-      {/* ── NEW ARRIVALS ─────────────────────────────────────────────── */}
-      <section className="px-4 md:px-8">
-        <ScrollReveal>
-          <SectionLabel eyebrow="New arrivals" title="Шинэ орсон" href="/shop?sort=newest" linkLabel="Бүгдийг харах" />
-        </ScrollReveal>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {loading
-            ? Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="animate-shimmer rounded-[24px]" style={{ height: 290 }} />
-              ))
-            : newProducts.map((product, i) => (
-                <ScrollReveal key={product.id} delay={i * 60}>
-                  <ProductCard product={product} compact />
-                </ScrollReveal>
-              ))}
-        </div>
-      </section>
-
-      {/* ── REVIEWS ──────────────────────────────────────────────────── */}
-      <ScrollReveal className="mx-4">
-        <div
-          className="rounded-[28px] p-5"
-          style={{ background: '#FFFFFF', boxShadow: '0 4px 32px rgba(233,30,140,0.08)' }}
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-label" style={{ color: 'var(--color-primary)', fontFamily: '"Montserrat", sans-serif' }}>
-                Real reviews
-              </p>
-              <h2
-                className="mt-1 section-underline in-view"
-                style={{
-                  fontFamily: '"Playfair Display", Georgia, serif',
-                  fontSize: 24,
-                  fontWeight: 500,
-                  color: 'var(--color-text-dark)',
-                }}
-              >
-                Бодит сэтгэгдэл
-              </h2>
-            </div>
-            {reviews.length > 0 && (
-              <div className="text-right">
-                <Stars rating={Math.round(averageRating)} size={14} />
-                <p className="mt-1 text-[11px] font-bold" style={{ color: 'var(--color-text-medium)' }}>
-                  {averageRating.toFixed(1)} · {reviews.length} сэтгэгдэл
-                </p>
-              </div>
-            )}
-          </div>
-
-          {reviews.length ? (
-            <div className="relative mt-6">
-              <div className="relative overflow-hidden min-h-[300px]">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={reviewsPage}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                    className="grid grid-cols-1 md:grid-cols-3 gap-4"
-                  >
-                    {currentReviews.map((review) => (
-                      <div key={review.id} className="w-full h-full">
-                        <Link
-                          href={`/shop/${review.productSlug}`}
-                          className="block w-full rounded-[24px] p-5 transition-all hover:scale-[1.02] border border-[#fbe5f0] h-full flex flex-col justify-between"
-                          style={{ background: 'var(--color-soft-pink)', boxShadow: '0 4px 16px rgba(233,30,140,0.03)' }}
-                        >
-                          <div>
-                            {review.imageUrls?.[0] && (
-                              <div
-                                className="relative mb-4 aspect-[16/10] overflow-hidden rounded-[16px]"
-                                style={{ background: 'var(--color-light-pink)' }}
-                              >
-                                <Image
-                                  src={review.imageUrls[0]}
-                                  alt={review.productName}
-                                  fill
-                                  sizes="(max-width: 768px) 340px, 400px"
-                                  className="object-cover transition-transform duration-500 hover:scale-105"
-                                />
-                              </div>
-                            )}
-                            <Stars rating={review.rating} />
-                            <p
-                              className="mt-3 text-[13px] leading-relaxed text-gray-800 line-clamp-4"
-                              style={{ minHeight: '80px' }}
-                            >
-                              {review.content}
-                            </p>
-                          </div>
-                          <div className="mt-4 flex items-center justify-between border-t border-[#fbe5f0] pt-3 shrink-0">
-                            <span className="text-[12px] font-bold text-[var(--color-primary)]">
-                              — {review.userName || 'UJ хэрэглэгч'}
-                            </span>
-                            <span className="text-[10px] font-bold text-gray-400 truncate max-w-[140px]">
-                              {review.productName}
-                            </span>
-                          </div>
-                        </Link>
-                      </div>
-                    ))}
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-
-              {/* Dynamic reviews pagination */}
-              {totalReviewsPages >= 1 && (
-                <div className="mt-8 flex items-center justify-center gap-1.5 py-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (reviewsPage > 1) {
-                        setReviewsPage((prev) => prev - 1);
-                      }
-                    }}
-                    disabled={reviewsPage === 1}
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-[#f8dbe8] bg-white text-[12px] font-bold text-[var(--color-text-dark)] shadow-sm transition-all hover:bg-[var(--color-soft-pink)] disabled:opacity-40 active:scale-95"
-                  >
-                    &lt;
-                  </button>
-                  
-                  {getVisiblePages(reviewsPage, totalReviewsPages).map((pageNum, idx) => {
-                    if (pageNum === '...') {
-                      return (
-                        <span key={`ellipsis-${idx}`} className="flex h-9 w-6 items-center justify-center text-[12px] font-bold text-[var(--color-brand-muted)]">
-                          ...
-                        </span>
-                      );
-                    }
-
-                    const isActive = pageNum === reviewsPage;
-                    return (
-                      <button
-                        key={pageNum}
-                        type="button"
-                        onClick={() => {
-                          setReviewsPage(pageNum as number);
-                        }}
-                        className={`flex h-9 w-9 items-center justify-center rounded-full text-[12px] font-bold transition-all shadow-sm active:scale-95 ${
-                          isActive
-                            ? 'bg-gradient-to-r from-[#E91E8C] to-[#C2185B] text-white shadow-[0_3px_10px_rgba(233,30,140,0.20)]'
-                            : 'border border-[#f8dbe8] bg-white text-[var(--color-text-dark)] hover:bg-[var(--color-soft-pink)]'
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (reviewsPage < totalReviewsPages) {
-                        setReviewsPage((prev) => prev - 1 + 2);
-                      }
-                    }}
-                    disabled={reviewsPage === totalReviewsPages}
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-[#f8dbe8] bg-white text-[12px] font-bold text-[var(--color-text-dark)] shadow-sm transition-all hover:bg-[var(--color-soft-pink)] disabled:opacity-40 active:scale-95"
-                  >
-                    &gt;
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <p
-              className="mt-4 rounded-[14px] p-4 text-[13px] leading-relaxed"
-              style={{ background: 'var(--color-soft-pink)', color: 'var(--color-text-medium)' }}
-            >
-              Хэрэглэгчдийн зурагтай сэтгэгдэл энд харагдана.
-            </p>
-          )}
-
-          <Link
-            href="/reviews"
-            className="mt-4 flex h-11 items-center justify-center rounded-full text-[12px] font-bold transition-all hover:scale-[1.02]"
-            style={{
-              background: 'linear-gradient(135deg, rgba(233,30,140,0.08), rgba(194,24,91,0.06))',
-              color: 'var(--color-primary)',
-              border: '1.5px solid rgba(233,30,140,0.15)',
-              fontFamily: '"Montserrat", sans-serif',
-              letterSpacing: '0.06em',
-            }}
-          >
-            Бүх сэтгэгдэл үзэх
+    <div>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/35">{title}</p>
+      <nav className="mt-4 flex flex-col gap-3">
+        {links.map((link) => (
+          <Link key={link.href} href={link.href} className="text-[13px] text-white/60 transition-colors hover:text-white" style={{ textDecoration: 'none' }}>
+            {link.label}
           </Link>
-        </div>
-      </ScrollReveal>
-
-      {/* ── RECOMMENDED ──────────────────────────────────────────────── */}
-      <section className="px-4 md:px-8">
-        <ScrollReveal>
-          <SectionLabel eyebrow="Recommended" title="Санал болгох" href="/shop" linkLabel="Бүгдийг харах" />
-        </ScrollReveal>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {loading
-            ? Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="animate-shimmer rounded-[24px]" style={{ height: 310 }} />
-              ))
-            : displayProducts.map((product, i) => (
-                <ScrollReveal key={product.id} delay={i * 60}>
-                  <ProductCard product={product} />
-                </ScrollReveal>
-              ))}
-        </div>
-      </section>
-
-      {/* ── CATEGORIES ────────────────────────────────────────────────── */}
-      <section className="px-4 md:px-8">
-        <ScrollReveal>
-          <SectionLabel eyebrow="Browse" title="Ангиллаар" />
-        </ScrollReveal>
-        <div className="grid grid-cols-4 gap-3 md:grid-cols-8 px-1">
-          {categories.filter(c => c.showOnHome).slice(0, 8).map((category, i) => {
-            const Icon = ICON_MAP[category.icon] || Tags;
-            const color = category.color || '#E91E8C';
-            return (
-              <motion.div
-                key={category.slug}
-                initial={{ opacity: 0, y: 24, scale: 0.85 }}
-                whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                viewport={{ once: true, amount: 0.2 }}
-                transition={{ delay: i * 0.05, duration: 0.5, ease: [0.34, 1.56, 0.64, 1] }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Link
-                  href={`/shop?category=${category.slug}`}
-                  className="group relative flex h-full flex-col items-center justify-start gap-3 rounded-[24px] p-3 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[rgba(233,30,140,0.12)] bg-white/60 backdrop-blur-md border border-white/40"
-                  style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}
-                >
-                  <div
-                    className="relative flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[18px] transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 shadow-sm"
-                    style={{ color: color, background: `linear-gradient(135deg, ${color}1A 0%, ${color}0D 100%)`, border: `1px solid ${color}26` }}
-                  >
-                    <Icon size={24} strokeWidth={1.5} />
-                    <div className="absolute inset-0 rounded-[18px] opacity-0 shadow-lg transition-opacity duration-300 group-hover:opacity-100" style={{ boxShadow: `0 8px 24px ${color}33` }} />
-                  </div>
-                  <p 
-                    className="text-[11px] font-bold leading-tight tracking-wide text-gray-800 line-clamp-2 px-1"
-                  >
-                    {category.name_mn}
-                  </p>
-                </Link>
-              </motion.div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ── INSTAGRAM ─────────────────────────────────────────────────── */}
-      <section className="px-4 md:px-8">
-        <InstagramFeedSection />
-      </section>
-
-      {/* ── PROMISE ───────────────────────────────────────────────────── */}
-      <ScrollReveal className="mx-4">
-        <section
-          className="relative overflow-hidden rounded-[28px] p-7 text-center"
-          style={{
-            background: 'linear-gradient(135deg, #E91E8C 0%, #C2185B 60%, #8B0037 100%)',
-            color: 'white',
-          }}
-        >
-          {/* Blob decoration */}
-          <div
-            className="pointer-events-none absolute"
-            style={{
-              width: 200,
-              height: 200,
-              top: '-30%',
-              right: '-10%',
-              background: 'rgba(255,255,255,0.08)',
-              animation: 'blobMorph 10s ease-in-out infinite',
-            }}
-          />
-          <div
-            className="pointer-events-none absolute"
-            style={{
-              width: 140,
-              height: 140,
-              bottom: '-20%',
-              left: '-5%',
-              background: 'rgba(255,255,255,0.06)',
-              animation: 'blobMorph 8s ease-in-out infinite reverse',
-            }}
-          />
-
-          <p
-            style={{
-              fontFamily: '"Montserrat", sans-serif',
-              fontSize: 9,
-              fontWeight: 700,
-              letterSpacing: '0.24em',
-              textTransform: 'uppercase',
-              color: 'rgba(255,255,255,0.65)',
-            }}
-          >
-            Our promise
-          </p>
-          <h2
-            className="relative mt-3"
-            style={{
-              fontFamily: '"Playfair Display", Georgia, serif',
-              fontSize: 26,
-              fontWeight: 400,
-              lineHeight: 1.25,
-            }}
-          >
-            Өөртөө анхаарах мөч бүрийг илүү гоё болгоё
-          </h2>
-          <Link
-            href="/about"
-            className="relative mt-6 inline-flex items-center gap-2 rounded-full px-6 py-3 text-[12px] font-bold transition-all hover:scale-105"
-            style={{
-              background: 'rgba(255,255,255,0.18)',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255,255,255,0.25)',
-              color: 'white',
-              fontFamily: '"Montserrat", sans-serif',
-              letterSpacing: '0.06em',
-            }}
-          >
-            Бидний тухай <ArrowRight size={12} strokeWidth={2.5} />
-          </Link>
-        </section>
-      </ScrollReveal>
-
+        ))}
+      </nav>
     </div>
   );
 }

@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/Toast';
-import { COUNTRIES, formatPhoneNumber, validatePhoneNumber } from '@/lib/phoneUtils';
 import { getPasswordStrength, PASSWORD_RULES } from '@/lib/passwordUtils';
 
 function GoogleLogo() {
@@ -20,39 +19,32 @@ function GoogleLogo() {
   );
 }
 
-function PasswordInput({
-  value,
-  onChange,
-  label,
-  right,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  label: string;
-  right?: React.ReactNode;
-}) {
+function KakaoLogo() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#3C1E1E" d="M12 3C6.48 3 2 6.58 2 11c0 2.84 1.87 5.33 4.68 6.78l-1.2 4.42 4.82-3.18C11.13 18.93 11.56 19 12 19c5.52 0 10-3.58 10-8s-4.48-8-10-8z" />
+    </svg>
+  );
+}
+
+function PasswordInput({ value, onChange, label, right }: { value: string; onChange: (value: string) => void; label: string; right?: React.ReactNode }) {
   const [visible, setVisible] = useState(false);
   return (
     <div>
       <div className="mb-2 flex items-center justify-between gap-3">
-        <label className="text-sm font-semibold text-[#993556]">{label}</label>
+        <label className="text-[12px] font-bold text-[var(--color-brand-dark)]">{label}</label>
         {right}
       </div>
-      <div className="relative">
+      <div className="luxury-input px-4">
         <input
           type={visible ? 'text' : 'password'}
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="w-full rounded-[30px] border border-[#F4C0D1] bg-white px-5 py-3 pr-12 text-sm outline-none transition focus:border-[#D4537E]"
+          className="min-w-0 flex-1 bg-transparent py-3 text-[13px] outline-none"
           required
         />
-        <button
-          type="button"
-          onClick={() => setVisible((current) => !current)}
-          className="absolute right-4 top-1/2 -translate-y-1/2 text-[#993556]"
-          aria-label={visible ? 'Нууц үг нуух' : 'Нууц үг харуулах'}
-        >
-          {visible ? <EyeOff size={18} /> : <Eye size={18} />}
+        <button type="button" onClick={() => setVisible((current) => !current)} className="flex h-10 w-10 items-center justify-center rounded-full text-[var(--color-brand-dark)]" aria-label={visible ? 'Нууц үг нуух' : 'Нууц үг харах'}>
+          {visible ? <EyeOff size={17} /> : <Eye size={17} />}
         </button>
       </div>
     </div>
@@ -63,17 +55,13 @@ function StrengthMeter({ password }: { password: string }) {
   const strength = getPasswordStrength(password);
   return (
     <div className="mt-3 space-y-3">
-      <div className="h-2 overflow-hidden rounded-full bg-[#FBEAF0]">
-        <div className={`h-full ${strength.color} transition-all`} style={{ width: `${strength.percent}%` }} />
+      <div className="h-2 overflow-hidden rounded-full bg-[var(--color-brand-light)]">
+        <div className={strength.color} style={{ width: `${strength.percent}%`, height: '100%', transition: 'width 240ms ease' }} />
       </div>
-      <div className="grid gap-2 text-xs text-gray-600">
+      <div className="grid gap-2 text-[12px] text-[var(--color-text-muted)]">
         {PASSWORD_RULES.map((rule) => {
           const passed = rule.test(password);
-          return (
-            <div key={rule.key} className={passed ? 'text-[#3B6D11]' : 'text-gray-500'}>
-              {passed ? '✓' : '○'} {rule.label}
-            </div>
-          );
+          return <div key={rule.key} className={passed ? 'font-semibold text-[var(--color-status-done-text)]' : ''}>{passed ? '✓' : '•'} {rule.label}</div>;
         })}
       </div>
     </div>
@@ -83,38 +71,48 @@ function StrengthMeter({ password }: { password: string }) {
 function AuthContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get('redirect') || '/account';
-  const { signInWithEmail, signUp, signInWithGoogle, user } = useAuth();
+  const redirectUrl = searchParams.get('redirect') || '/profile';
+  const { signInWithEmail, signUp, signInWithGoogle, signInWithKakao, user } = useAuth();
   const { toast } = useToast();
-
   const [mode, setMode] = useState<'login' | 'register'>(searchParams.get('mode') === 'register' ? 'register' : 'login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [phoneCountry, setPhoneCountry] = useState('+976');
-  const [phoneInput, setPhoneInput] = useState('');
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotOpen, setForgotOpen] = useState(false);
   const [waitingEmail, setWaitingEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
   const strength = useMemo(() => getPasswordStrength(password), [password]);
 
   useEffect(() => {
     if (user && !waitingEmail) router.replace(redirectUrl);
-  }, [user, waitingEmail, redirectUrl, router]);
+  }, [redirectUrl, router, user, waitingEmail]);
 
   const handleGoogle = async () => {
     setError('');
     setLoading(true);
     try {
       await signInWithGoogle();
-      toast('Google-р амжилттай нэвтэрлээ', 'success');
+      toast('Google-р амжилттай нэвтэрлээ.', 'success');
       router.replace(redirectUrl);
     } catch (err: any) {
       setError(err.message || 'Google-р нэвтрэхэд алдаа гарлаа.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleKakao = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      await signInWithKakao();
+      toast('KakaoTalk-р амжилттай нэвтэрлээ.', 'success');
+      router.replace(redirectUrl);
+    } catch (err: any) {
+      setError(err.message || 'KakaoTalk-р нэвтрэхэд алдаа гарлаа.');
     } finally {
       setLoading(false);
     }
@@ -141,44 +139,13 @@ function AuthContent() {
       setError('Мэдээллээ бүрэн, зөв оруулна уу.');
       return;
     }
-
-    const cleanPhone = phoneInput.replace(/\D/g, '');
-    let phone: any = null;
-    if (cleanPhone) {
-      const validation = validatePhoneNumber(phoneCountry, cleanPhone);
-      if (!validation.isValid) {
-        setError(validation.error || 'Утасны дугаар буруу байна.');
-        return;
-      }
-      phone = { countryCode: phoneCountry, localNumber: cleanPhone, purpose: 'delivery_only' };
-    }
-
     setLoading(true);
     try {
       const cleanEmail = email.trim().toLowerCase();
-      await signUp(cleanEmail, password, name.trim(), phone);
+      await signUp(cleanEmail, password, name.trim(), null);
       setWaitingEmail(cleanEmail);
     } catch (err: any) {
       setError(err.message || 'Бүртгэл үүсгэхэд алдаа гарлаа.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const resendVerification = async () => {
-    if (!email.trim() && !waitingEmail) return;
-    setLoading(true);
-    try {
-      const res = await fetch('/api/auth/request-email-verification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: (waitingEmail || email).trim().toLowerCase() }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Дахин илгээхэд алдаа гарлаа.');
-      toast('Баталгаажуулах линк дахин илгээгдлээ.', 'success');
-    } catch (err: any) {
-      setError(err.message || 'Дахин илгээхэд алдаа гарлаа.');
     } finally {
       setLoading(false);
     }
@@ -195,10 +162,7 @@ function AuthContent() {
         body: JSON.stringify({ email: forgotEmail.trim().toLowerCase() }),
       });
       const data = await res.json();
-      toast(data.message, data.googleOnly ? 'info' : 'success');
-      setForgotOpen(false);
-    } catch {
-      toast('Хэрэв тухайн и-мэйл бүртгэлтэй бол нууц үг сэргээх линк илгээгдэнэ.', 'success');
+      toast(data.message || 'Хэрэв тухайн и-мэйл бүртгэлтэй бол линк илгээгдэнэ.', data.googleOnly ? 'info' : 'success');
       setForgotOpen(false);
     } finally {
       setLoading(false);
@@ -207,159 +171,102 @@ function AuthContent() {
 
   if (waitingEmail) {
     return (
-      <main className="min-h-screen bg-[#FFF8FB] px-4 py-16">
-        <section className="mx-auto max-w-md rounded-2xl border border-[#F4C0D1] bg-white p-8 text-center">
-          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[#EAF3DE] text-2xl text-[#3B6D11]">✓</div>
-          <h1 className="text-2xl font-semibold text-[#993556]">И-мэйл баталгаажуулах</h1>
-          <p className="mt-3 text-sm leading-6 text-gray-600">
-            {waitingEmail} хаяг руу баталгаажуулах линк илгээлээ. И-мэйлээ шалгана уу.
-          </p>
-          <button
-            type="button"
-            onClick={resendVerification}
-            disabled={loading}
-            className="mt-6 w-full rounded-[30px] bg-[#D4537E] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
-          >
-            {loading ? 'Илгээж байна...' : 'Дахин илгээх'}
-          </button>
+      <main className="luxury-shell min-h-screen px-4 py-16">
+        <section className="luxury-card mx-auto max-w-md p-8 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-status-done-bg)] text-[22px] font-bold text-[var(--color-status-done-text)]">✓</div>
+          <h1 className="luxury-title mt-6 text-[28px]">И-мэйл баталгаажуулах</h1>
+          <p className="mt-3 text-[13px] leading-6 text-[var(--color-text-muted)]">{waitingEmail} хаяг руу баталгаажуулах линк илгээлээ.</p>
+          <button type="button" onClick={() => setWaitingEmail('')} className="mt-6 h-12 w-full rounded-full bg-[var(--color-brand)] text-[13px] font-bold text-white">Нэвтрэх рүү буцах</button>
         </section>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[#FFF8FB] px-4 py-12">
-      <section className="mx-auto max-w-md rounded-2xl border border-[#F4C0D1] bg-white p-6 shadow-sm sm:p-8">
+    <main className="luxury-shell min-h-screen px-4 py-10">
+      <section className="luxury-card mx-auto max-w-md p-6 sm:p-8">
         <div className="mb-7 text-center">
-          <div className="mx-auto mb-4 text-4xl font-serif tracking-[0.2em] text-[#993556]">UJ</div>
-          <h1 className="text-2xl font-semibold text-[#993556]">{mode === 'login' ? 'Нэвтрэх' : 'Бүртгүүлэх'}</h1>
+          <div className="mx-auto text-[42px] font-semibold leading-none text-[var(--color-text-primary)]" style={{ fontFamily: 'var(--font-serif)' }}>UJ</div>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-brand)]">Beauty & Wellness</p>
+          <h1 className="luxury-title mt-5 text-[30px]">{mode === 'login' ? 'Нэвтрэх' : 'Бүртгүүлэх'}</h1>
         </div>
 
-        <button
-          type="button"
-          onClick={handleGoogle}
-          disabled={loading}
-          className="flex w-full items-center justify-center gap-3 rounded-[30px] border border-[#ddd] bg-white px-5 py-3 text-sm font-semibold text-[#3c4043] transition hover:bg-gray-50 disabled:opacity-60"
-        >
-          <GoogleLogo />
-          {mode === 'login' ? 'Google-р нэвтрэх' : 'Google-р бүртгүүлэх'}
-        </button>
+        <div className="space-y-2.5">
+          <button
+            type="button"
+            onClick={handleGoogle}
+            disabled={loading}
+            className="flex h-12 w-full items-center justify-center gap-3 rounded-full border border-[var(--color-border)] bg-white text-[13px] font-semibold text-[#3c4043] transition hover:bg-[#FAFAFA] active:scale-[0.99] disabled:opacity-60"
+          >
+            <GoogleLogo />
+            {mode === 'login' ? 'Google' : 'Google-р бүртгүүлэх'}
+          </button>
 
-        <div className="my-6 flex items-center gap-3 text-xs text-gray-400">
-          <span className="h-px flex-1 bg-[#F4C0D1]" />
-          <span>{mode === 'login' ? 'эсвэл' : 'эсвэл и-мэйлээр'}</span>
-          <span className="h-px flex-1 bg-[#F4C0D1]" />
+          {process.env.NEXT_PUBLIC_KAKAO_JS_KEY && (
+            <button
+              type="button"
+              onClick={handleKakao}
+              disabled={loading}
+              className="flex h-12 w-full items-center justify-center gap-3 rounded-full bg-[#FEE500] text-[13px] font-semibold text-[#191600] transition hover:brightness-[0.98] active:scale-[0.99] disabled:opacity-60"
+            >
+              <KakaoLogo />
+              KakaoTalk
+            </button>
+          )}
         </div>
 
-        {error && (
-          <div className="mb-4 rounded-2xl border border-[#FCEBEB] bg-[#FCEBEB] p-4 text-sm text-[#A32D2D]">
-            {error}
-            {error.includes('баталгаажаагүй') && (
-              <button type="button" onClick={resendVerification} className="ml-2 font-semibold underline">
-                Дахин илгээх
-              </button>
-            )}
-          </div>
-        )}
+        <div className="my-6 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+          <span className="h-px flex-1 bg-[var(--color-border)]" />
+          эсвэл
+          <span className="h-px flex-1 bg-[var(--color-border)]" />
+        </div>
 
         <form onSubmit={mode === 'login' ? handleLogin : handleRegister} className="space-y-4">
           {mode === 'register' && (
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-[#993556]">Нэр</label>
-              <input value={name} onChange={(event) => setName(event.target.value)} className="w-full rounded-[30px] border border-[#F4C0D1] px-5 py-3 text-sm outline-none focus:border-[#D4537E]" required />
-            </div>
+            <label className="block">
+              <span className="mb-2 block text-[12px] font-bold text-[var(--color-brand-dark)]">Нэр</span>
+              <input value={name} onChange={(event) => setName(event.target.value)} className="luxury-input w-full px-5 text-[13px] outline-none" style={{ display: 'block' }} required />
+            </label>
           )}
-
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-[#993556]">И-мэйл хаяг</label>
-            <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} className="w-full rounded-[30px] border border-[#F4C0D1] px-5 py-3 text-sm outline-none focus:border-[#D4537E]" required />
-            {mode === 'register' && <p className="mt-2 text-xs text-gray-500">Баталгаажуулах линк и-мэйлд илгээнэ</p>}
-          </div>
-
+          <label className="block">
+            <span className="mb-2 block text-[12px] font-bold text-[var(--color-brand-dark)]">И-мэйл хаяг</span>
+            <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} className="luxury-input w-full px-5 text-[13px] outline-none" style={{ display: 'block' }} required />
+          </label>
           <PasswordInput
             label="Нууц үг"
             value={password}
             onChange={setPassword}
-            right={mode === 'login' ? (
-              <button type="button" onClick={() => setForgotOpen(true)} className="text-xs font-semibold text-[#D4537E]">
-                Нууц үгээ мартсан уу?
-              </button>
-            ) : null}
+            right={mode === 'login' ? <button type="button" onClick={() => setForgotOpen(true)} className="text-[12px] font-bold text-[var(--color-brand)]">Нууц үгээ мартсан уу?</button> : null}
           />
-
           {mode === 'register' && (
             <>
-              <StrengthMeter password={password} />
               <PasswordInput label="Нууц үг давтах" value={confirmPassword} onChange={setConfirmPassword} />
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-[#993556]">
-                  Утасны дугаар <span className="font-normal text-gray-400">(заавал биш)</span>
-                </label>
-                <div className="flex gap-2">
-                  <select
-                    value={phoneCountry}
-                    onChange={(event) => {
-                      setPhoneCountry(event.target.value);
-                      setPhoneInput('');
-                    }}
-                    className="w-28 rounded-[30px] border border-[#F4C0D1] bg-white px-3 py-3 text-sm outline-none focus:border-[#D4537E]"
-                  >
-                    {COUNTRIES.map((country) => (
-                      <option key={country.code} value={country.code}>
-                        {country.flag} {country.code}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    value={phoneInput}
-                    onChange={(event) => setPhoneInput(formatPhoneNumber(phoneCountry, event.target.value))}
-                    className="min-w-0 flex-1 rounded-[30px] border border-[#F4C0D1] px-5 py-3 text-sm outline-none focus:border-[#D4537E]"
-                    placeholder={COUNTRIES.find((country) => country.code === phoneCountry)?.placeholder}
-                  />
-                </div>
-                <p className="mt-2 text-xs text-gray-500">Хүргэлтийн зорилгоор ашиглана. Баталгаажуулалт шаардахгүй.</p>
-              </div>
+              <StrengthMeter password={password} />
             </>
           )}
-
-          <button
-            type="submit"
-            disabled={loading || (mode === 'register' && (!strength.isValid || password !== confirmPassword))}
-            className="flex w-full items-center justify-center rounded-[30px] bg-[#D4537E] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#993556] disabled:opacity-60"
-          >
-            {loading ? <Loader2 className="animate-spin" size={18} /> : mode === 'login' ? 'Нэвтрэх' : 'Бүртгүүлэх'}
+          {error && <p className="rounded-[14px] bg-[var(--color-status-cancel-bg)] px-4 py-3 text-[12px] font-semibold text-[var(--color-status-cancel-text)]">{error}</p>}
+          <button type="submit" disabled={loading} className="flex h-12 w-full items-center justify-center rounded-full bg-[var(--color-brand)] text-[13px] font-bold text-white disabled:opacity-60">
+            {loading ? <Loader2 size={16} className="animate-spin" /> : mode === 'login' ? 'Нэвтрэх' : 'Бүртгүүлэх'}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-gray-600">
+        <p className="mt-6 text-center text-[13px] text-[var(--color-text-muted)]">
           {mode === 'login' ? 'Бүртгэлгүй юу?' : 'Бүртгэлтэй юу?'}{' '}
-          <button type="button" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); }} className="font-semibold text-[#D4537E]">
+          <button type="button" onClick={() => setMode(mode === 'login' ? 'register' : 'login')} className="font-bold text-[var(--color-brand)]">
             {mode === 'login' ? 'Бүртгүүлэх' : 'Нэвтрэх'}
           </button>
         </p>
       </section>
 
       {forgotOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-4">
-          <form onSubmit={submitForgot} className="w-full max-w-sm rounded-2xl border border-[#F4C0D1] bg-white p-6 shadow-xl">
-            <h2 className="text-xl font-semibold text-[#993556]">Нууц үг сэргээх</h2>
-            <p className="mt-2 text-sm leading-6 text-gray-600">Бүртгэлтэй и-мэйлээ оруулна уу. Линк и-мэйлээр илгээгдэнэ.</p>
-            <input
-              type="email"
-              value={forgotEmail}
-              onChange={(event) => setForgotEmail(event.target.value)}
-              className="mt-5 w-full rounded-[30px] border border-[#F4C0D1] px-5 py-3 text-sm outline-none focus:border-[#D4537E]"
-              placeholder="example@gmail.com"
-              required
-            />
-            <div className="mt-5 flex gap-3">
-              <button type="button" onClick={() => setForgotOpen(false)} className="flex-1 rounded-[30px] border border-[#F4C0D1] px-5 py-3 text-sm font-semibold text-[#993556]">
-                Болих
-              </button>
-              <button type="submit" disabled={loading} className="flex-1 rounded-[30px] bg-[#D4537E] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">
-                Линк илгээх
-              </button>
-            </div>
+        <div className="fixed inset-0 z-[80]">
+          <button className="absolute inset-0 bg-black uj-sheet-overlay" onClick={() => setForgotOpen(false)} aria-label="Хаах" />
+          <form onSubmit={submitForgot} className="uj-bottom-sheet luxury-bottom-bar absolute inset-x-0 bottom-0 rounded-t-[28px] bg-white p-6">
+            <div className="mx-auto h-1 w-10 rounded-full bg-[var(--color-border)]" />
+            <h2 className="luxury-title mt-6 text-[26px]">Нууц үг сэргээх</h2>
+            <p className="mt-2 text-[13px] leading-6 text-[var(--color-text-muted)]">Хэрэв тухайн и-мэйл бүртгэлтэй бол сэргээх линк илгээгдэнэ.</p>
+            <input type="email" value={forgotEmail} onChange={(event) => setForgotEmail(event.target.value)} className="luxury-input mt-5 w-full px-5 text-[13px] outline-none" placeholder="И-мэйл хаяг" required />
+            <button disabled={loading} className="mt-4 h-12 w-full rounded-full bg-[var(--color-brand)] text-[13px] font-bold text-white">Линк илгээх</button>
           </form>
         </div>
       )}
@@ -369,7 +276,7 @@ function AuthContent() {
 
 export default function AuthPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#FFF8FB]" />}>
+    <Suspense fallback={<main className="px-4 py-12"><div className="h-80 rounded-[24px] uj-shimmer" /></main>}>
       <AuthContent />
     </Suspense>
   );
